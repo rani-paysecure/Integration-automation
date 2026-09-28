@@ -37,14 +37,13 @@ function isSupportedEnvironment(value: string): value is TestEnvironment {
  * Resolves the target environment from `TEST_ENV`.
  * Anything other than `local` or `uat` fails fast.
  */
-export function resolveEnvironment(
-  raw: string | undefined = process.env.TEST_ENV,
-): TestEnvironment {
-  const value = (raw ?? '').trim().toLowerCase();
+export function resolveEnvironment(raw?: string): TestEnvironment {
+  if (raw === undefined) loadEnvFiles();
+  const value = (raw ?? process.env.TEST_ENV ?? '').trim().toLowerCase();
   if (value === '') return DEFAULT_ENV;
   if (!isSupportedEnvironment(value)) {
     throw new ConfigurationError(
-      `Unsupported TEST_ENV "${raw ?? ''}". Allowed values: ${SUPPORTED_ENVIRONMENTS.join(', ')}.`,
+      `Unsupported TEST_ENV "${value}". Allowed values: ${SUPPORTED_ENVIRONMENTS.join(', ')}.`,
     );
   }
   return value;
@@ -97,7 +96,7 @@ export function peekUrls(env: TestEnvironment = resolveEnvironment()): {
   baseUrl: string | undefined;
   apiBaseUrl: string | undefined;
 } {
-  loadEnvFiles(env);
+  loadEnvFiles();
   const prefix = envPrefix(env);
   return {
     baseUrl: readEnv(`${prefix}_BASE_URL`),
@@ -116,7 +115,7 @@ export function getTestConfig(): TestConfig {
   if (cached) return cached;
 
   const env = resolveEnvironment();
-  loadEnvFiles(env);
+  loadEnvFiles();
   const prefix = envPrefix(env);
 
   const apiBaseUrlVar = `${prefix}_API_BASE_URL`;
@@ -158,6 +157,19 @@ export function getTestConfig(): TestConfig {
     merchant: Object.freeze({
       brandId: selected?.credentials.brandId ?? readFirstEnv(`${prefix}_BRAND_ID`, 'BRAND_ID'),
       paymentMethod,
+      currency: readEnv('RUN_CURRENCY')?.toUpperCase(),
+      expectedBank: readEnv('RUN_BANK'),
+    }),
+    transaction: Object.freeze({
+      payCardId: readEnv('RUN_PAY_CARD'),
+      headed: readBooleanEnv('RUN_HEADED', false),
+    }),
+    backoffice: Object.freeze({
+      baseUrl: rawBaseUrl === undefined ? undefined : assertSafeTargetUrl(rawBaseUrl, baseUrlVar),
+      username:
+        selected?.credentials.dashboard?.username ?? readEnv(`${prefix}_DASHBOARD_USERNAME`),
+      password:
+        selected?.credentials.dashboard?.password ?? readEnv(`${prefix}_DASHBOARD_PASSWORD`),
     }),
     profile:
       selected === undefined

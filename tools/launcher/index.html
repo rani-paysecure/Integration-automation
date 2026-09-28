@@ -6,213 +6,367 @@
     <title>Test Launcher</title>
     <style>
       :root {
-        --bg: #f5f5f7;
-        --surface: #ffffff;
-        --surface-2: #f0f0f3;
-        --text: #1c1c22;
-        --muted: #6b6b76;
-        --border: #dcdce2;
-        --accent: #3b1f7a;
-        --accent-text: #ffffff;
-        --pass: #1a7f4b;
-        --fail: #b42318;
-        --warn: #9a6700;
-        --log-bg: #15151a;
-        --log-text: #e4e4ea;
-        --radius: 10px;
-        color-scheme: light;
+        --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --text: #1c1c22; --muted: #6b6b76;
+        --border: #dcdce2; --accent: #3b1f7a; --accent-text: #ffffff; --pass: #1a7f4b; --fail: #b42318;
+        --warn: #9a6700; --log-bg: #15151a; --log-text: #e4e4ea; --radius: 10px; color-scheme: light;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #111114;
-          --surface: #1b1b20;
-          --surface-2: #24242b;
-          --text: #ececf1;
-          --muted: #9a9aa6;
-          --border: #33333c;
-          --accent: #8b6cf0;
-          --accent-text: #0f0f12;
-          --pass: #4ac07e;
-          --fail: #f07064;
-          --warn: #e0b24a;
-          --log-bg: #0b0b0e;
-          color-scheme: dark;
+          --bg: #111114; --surface: #1b1b20; --surface-2: #24242b; --text: #ececf1; --muted: #9a9aa6;
+          --border: #33333c; --accent: #8b6cf0; --accent-text: #0f0f12; --pass: #4ac07e; --fail: #f07064;
+          --warn: #e0b24a; --log-bg: #0b0b0e; color-scheme: dark;
         }
       }
       * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-      }
-      header {
-        padding: 18px 24px;
-        border-bottom: 1px solid var(--border);
-        background: var(--surface);
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-      }
-      header h1 { font-size: 17px; margin: 0; }
-      header span { color: var(--muted); font-size: 13px; }
-      main {
-        display: grid;
-        grid-template-columns: minmax(300px, 400px) 1fr;
-        gap: 20px;
-        padding: 20px 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-      }
-      @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } }
-      section {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px;
-        margin-bottom: 16px;
-      }
-      h2 {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--muted);
-        margin: 0 0 12px;
-      }
+      body { margin: 0; font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+      header { padding: 14px 24px 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+      .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+      .top h1 { font-size: 17px; margin: 0; }
+      .top .sub { color: var(--muted); font-size: 13px; }
+      .top .env { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      nav { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
+      nav button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 14px; color: var(--muted); }
+      nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+      main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+      .grid { display: grid; grid-template-columns: minmax(300px, 460px) minmax(0, 1fr); gap: 20px; }
+      .grid.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+      .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 16px; }
+      @media (max-width: 900px) { .grid, .grid.even, .cols-2, .cols-3 { grid-template-columns: 1fr; } main { padding: 16px; } }
+      section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+      h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+      h3 { font-size: 13px; margin: 18px 0 4px; }
       label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
-      label:first-of-type { margin-top: 0; }
       .hint { color: var(--muted); font-weight: 400; font-size: 12px; }
-      input, select {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface);
-        color: var(--text);
-        font: inherit;
-      }
-      input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      p.hint { margin: 0 0 8px; }
+      input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+      input[type='checkbox'] { width: auto; margin: 0; }
+      input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .check { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 10px 0 0; }
       .segmented { display: flex; gap: 6px; }
-      .segmented label {
-        flex: 1;
-        margin: 0;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px 10px;
-        cursor: pointer;
-        font-weight: 600;
-      }
-      .segmented label small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+      .segmented label { margin: 0; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+      .segmented label small { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 4px; }
       .segmented input { display: none; }
       .segmented label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-      .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-      button {
-        border: 1px solid var(--border);
-        background: var(--surface-2);
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 14px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-      }
+      .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+      button { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
       button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
       button.danger { color: var(--fail); }
+      button.small { padding: 4px 10px; font-size: 12px; }
+      .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--warn); text-transform: none; letter-spacing: 0; }
       .run-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
       .run-bar button.primary { padding: 10px 22px; }
-      .pill {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 700;
-        background: var(--surface-2);
-        color: var(--muted);
-      }
-      .pill.running { color: var(--warn); }
-      .pill.passed { color: var(--pass); }
-      .pill.failed, .pill.stopped { color: var(--fail); }
+      .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+      .pill.running { color: var(--warn); } .pill.passed { color: var(--pass); } .pill.failed, .pill.stopped { color: var(--fail); }
       .summary { font-weight: 600; }
       .links a { color: var(--accent); font-weight: 600; margin-right: 14px; }
-      pre#log {
-        background: var(--log-bg);
-        color: var(--log-text);
-        border-radius: var(--radius);
-        padding: 12px;
-        height: 60vh;
-        min-height: 320px;
-        overflow: auto;
-        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: pre-wrap;
-        word-break: break-word;
-        margin: 12px 0 0;
-      }
-      .msg { font-size: 13px; margin-top: 8px; min-height: 18px; }
-      .msg.error { color: var(--fail); }
-      .msg.ok { color: var(--pass); }
-      .hidden { display: none; }
+      pre#log { background: var(--log-bg); color: var(--log-text); border-radius: var(--radius); padding: 12px; height: 62vh; min-height: 320px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; margin: 12px 0 0; }
+      pre.preview { background: var(--surface-2); border-radius: 8px; padding: 10px; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow: auto; max-height: 420px; margin: 0; }
+      .msg { font-size: 13px; margin-top: 8px; min-height: 18px; white-space: pre-wrap; }
+      .msg.error { color: var(--fail); } .msg.ok { color: var(--pass); }
+      .hidden { display: none !important; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      th { color: var(--muted); font-weight: 600; font-size: 12px; }
+      .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+      .cards-pick label { font-weight: 500; display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+      .product-row { display: grid; grid-template-columns: 1fr 120px auto; gap: 8px; margin-top: 6px; }
+      .catalog { max-height: 46vh; overflow: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+      .catalog details { border-bottom: 1px solid var(--border); padding: 6px 0; }
+      .catalog details:last-child { border-bottom: 0; }
+      .catalog summary { cursor: pointer; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+      .test-item { display: grid !important; grid-template-columns: auto 56px 1fr auto auto; gap: 8px; align-items: center; font-weight: 400 !important; margin: 4px 0 4px 22px !important; font-size: 13px; }
+      .test-item .key { color: var(--muted); font-size: 12px; }
+      .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-weight: 600; }
+      .tag.accepted { color: var(--pass); } .tag.rejected { color: var(--fail); } .tag.transaction { color: var(--accent); }
+      .report-head { display: grid; gap: 12px; margin-bottom: 8px; }
+      .kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 16px; }
+      .kv { display: flex; flex-direction: column; font-size: 13px; min-width: 0; } .kv b { overflow-wrap: anywhere; font-weight: 600; }
+      .totals { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      table.report { table-layout: fixed; }
+      table.report th:nth-child(1) { width: 78px; } table.report th:nth-child(2) { width: 62px; }
+      table.report th:nth-child(3) { width: 22%; } table.report th:nth-child(4) { width: 15%; } table.report th:nth-child(6) { width: 190px; }
+      table.report td { font-size: 13px; overflow-wrap: anywhere; } table.report td.mono { font-size: 12px; white-space: pre-line; }
+      .detail pre.preview { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+      #reportView { min-width: 0; overflow-x: auto; }
+      tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--surface-2); }
+      .verdict { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
+      .verdict.PASS { color: var(--pass); } .verdict.FAIL { color: var(--fail); } .verdict.OBSERVED { color: var(--warn); } .verdict.SKIPPED { color: var(--muted); }
+      .detail { padding: 8px 4px 16px; } .detail h3 { font-size: 12px; margin: 14px 0 6px; overflow-wrap: anywhere; }
+      .error-text { color: var(--fail); white-space: pre-wrap; }
+      #viewSwitch label { padding: 4px 12px; }
     </style>
   </head>
   <body>
     <header>
-      <h1>Test Launcher</h1>
-      <span>Integration QA Automation · LOCAL / UAT only</span>
+      <div class="top">
+        <h1>Test Launcher</h1>
+        <span class="sub">Integration QA Automation · LOCAL / UAT only</span>
+        <div class="env"><span class="hint">Environment</span><div class="segmented" id="envs"></div></div>
+      </div>
+      <nav id="tabs">
+        <button data-tab="run" class="active">Run</button>
+        <button data-tab="testers">Testers</button>
+        <button data-tab="environments">Environments</button>
+        <button data-tab="purchase">Purchase data</button>
+        <button data-tab="cards">Test cards</button>
+        <button data-tab="advanced">Advanced</button>
+      </nav>
     </header>
+
     <main>
-      <div>
-        <section>
-          <h2>1 · Environment</h2>
-          <div class="segmented" id="envs"></div>
-        </section>
-
-        <section>
-          <h2>2 · Tester</h2>
-          <label for="profile">Profile <span class="hint">(brand ID + API key)</span></label>
-          <select id="profile"></select>
-
-          <div id="creds">
-            <label for="name">Profile name</label>
-            <input id="name" placeholder="e.g. Rani" autocomplete="off" />
-            <label for="brandId">Brand ID</label>
-            <input id="brandId" placeholder="Brand ID from the merchant dashboard" autocomplete="off" />
-            <label for="apiKey">API key <span class="hint" id="keyHint"></span></label>
-            <input id="apiKey" type="password" placeholder="Secret API key" autocomplete="new-password" />
-            <div class="row">
-              <button id="saveProfile" type="button">Save profile</button>
-              <button id="deleteProfile" type="button" class="danger hidden">Delete</button>
+      <!-- RUN -->
+      <div data-panel="run" class="grid">
+        <div>
+          <section>
+            <h2>1 · Configuration</h2>
+            <label for="runProfile">Tester <span class="hint">(brand ID + API key – manage in Testers)</span></label>
+            <select id="runProfile"></select>
+            <div class="hint mono" id="credSummary" style="margin-top: 6px"></div>
+            <div id="oneOff" class="hidden">
+              <label for="ooBrand">Brand ID</label><input id="ooBrand" autocomplete="off" />
+              <label for="ooKey">API key</label><input id="ooKey" type="password" autocomplete="new-password" />
+              <label for="ooDashUser">Dashboard username <span class="hint">(needed for PSP checks)</span></label><input id="ooDashUser" autocomplete="off" />
+              <label for="ooDashPass">Dashboard password</label><input id="ooDashPass" type="password" autocomplete="new-password" />
             </div>
+            <div class="cols-2">
+              <div><label for="runCurrency">Currency</label><select id="runCurrency"></select></div>
+              <div><label for="paymentMethod">Payment method</label><select id="paymentMethod"></select></div>
+            </div>
+            <label for="runBank">Bank / PSP <span class="hint">(checked against the PSP record after a transaction)</span></label>
+            <select id="runBank"></select>
+            <input id="paymentMethodOther" class="hidden" placeholder="Payment method, e.g. AMEX" style="margin-top: 8px" />
+            <input id="currencyOther" class="hidden" placeholder="Currency, e.g. CHF" maxlength="3" style="margin-top: 8px" />
+            <input id="bankOther" class="hidden" placeholder="Bank name as shown in the dashboard" style="margin-top: 8px" />
+          </section>
+          <section>
+            <h2>2 · Test cases <span class="badge" id="selCount">0 selected</span></h2>
+            <input id="testSearch" placeholder="Search – e.g. zip, FT-06, phone, card" autocomplete="off" />
+            <div class="row" style="margin-top: 8px">
+              <button id="selectVisible" class="small" type="button">Select shown</button>
+              <button id="clearSelection" class="small" type="button">Clear</button>
+              <span class="hint" id="catalogMsg"></span>
+            </div>
+            <div id="catalog" class="catalog"></div>
+            <div id="purchaseIdsBox" class="hidden">
+              <label for="purchaseIds">Purchase IDs for the PSP check <span class="hint">(one per line or comma-separated)</span></label>
+              <textarea id="purchaseIds" rows="3" placeholder="6aba50cc6c2e4742b36b8131"></textarea>
+            </div>
+          </section>
+          <section>
+            <h2>3 · Transaction</h2>
+            <label for="payCard">Complete a real transaction for <b>accepted</b> field cases</label>
+            <select id="payCard"></select>
+            <p class="hint" style="margin-top: 6px">"Transactions (test cards)" cases always pay. Paying opens the cashier, enters the card, clicks PAY and then checks the PSP request/response and routing in the back-office (logs the dashboard user out of the browser).</p>
+            <label class="check"><input id="headed" type="checkbox" /> Show browser while paying (one test at a time)</label>
+            <div class="cols-2">
+              <div><label for="workers">Parallel workers <span class="hint">(empty = default)</span></label><input id="workers" type="number" min="1" max="16" /></div>
+              <div><label for="retries">Retries on failure</label><input id="retries" type="number" min="0" max="3" value="0" /></div>
+            </div>
+          </section>
+        </div>
+        <div>
+          <section>
+            <div class="run-bar">
+              <button id="run" class="primary" type="button">▶ Run test</button>
+              <button id="stop" type="button" class="hidden">Stop</button>
+              <span class="pill" id="status">idle</span>
+              <span class="summary" id="summary"></span>
+            </div>
+            <div class="msg" id="runMsg"></div>
+            <div class="row" style="margin-top: 4px">
+              <div class="segmented" id="viewSwitch">
+                <label><input type="radio" name="view" value="report" checked /> Report</label>
+                <label><input type="radio" name="view" value="log" /> Live log</label>
+              </div>
+              <select id="history" style="max-width: 260px; margin-left: auto"></select>
+              <span class="links" id="links"></span>
+            </div>
+            <div id="reportView" style="margin-top: 12px"></div>
+            <pre id="log" class="hidden" aria-live="polite"></pre>
+          </section>
+        </div>
+      </div>
+
+      <!-- TESTERS -->
+      <div data-panel="testers" class="grid even hidden">
+        <section>
+          <h2>Tester profiles</h2>
+          <p class="hint">Stored only on this computer in <span class="mono">profiles.local.json</span> (never committed). Keys and passwords are never shown again after saving.</p>
+          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
+          <div class="row"><button id="newProfile" type="button">+ New tester</button></div>
+        </section>
+        <section>
+          <h2 id="profileFormTitle">New tester</h2>
+          <p class="hint">Credentials are saved for the environment selected at the top (<b id="profileEnvName"></b>).</p>
+          <label for="pName">Name</label><input id="pName" placeholder="e.g. Rani" autocomplete="off" />
+          <label for="pBrand">Brand ID</label><input id="pBrand" placeholder="Brand ID from the merchant dashboard" autocomplete="off" />
+          <label for="pKey">API key <span class="hint" id="pKeyHint"></span></label><input id="pKey" type="password" autocomplete="new-password" />
+          <div class="cols-2">
+            <div><label for="pDashUser">Dashboard username</label><input id="pDashUser" autocomplete="off" /></div>
+            <div><label for="pDashPass">Dashboard password <span class="hint" id="pDashHint"></span></label><input id="pDashPass" type="password" autocomplete="new-password" /></div>
+          </div>
+          <label for="pMethod">Default payment method</label><select id="pMethod"></select>
+          <div class="row">
+            <button id="saveProfile" class="primary" type="button">Save tester</button>
+            <button id="deleteProfile" class="danger hidden" type="button">Delete</button>
           </div>
           <div class="msg" id="profileMsg"></div>
         </section>
+      </div>
 
+      <!-- ENVIRONMENTS -->
+      <div data-panel="environments" class="hidden">
         <section>
-          <h2>3 · Payment method</h2>
-          <label for="paymentMethod">Card scheme</label>
-          <select id="paymentMethod"></select>
-          <input id="paymentMethodOther" class="hidden" placeholder="e.g. AMEX" style="margin-top: 8px" />
-        </section>
-
-        <section>
-          <h2>4 · Suite</h2>
-          <label for="suite">Test suite</label>
-          <select id="suite"></select>
-          <label for="filter">Filter <span class="hint">(optional – case ID or title, e.g. FT-01 or phone)</span></label>
-          <input id="filter" placeholder="All cases" autocomplete="off" />
+          <h2>Environments</h2>
+          <p class="hint">Dashboard (cashier / back-office) URL and API URL. Production hosts are rejected.</p>
+          <div id="envForms" class="cols-2"></div>
+          <label for="defaultEnv">Default environment for command-line runs</label>
+          <select id="defaultEnv" style="max-width: 240px"><option value="uat">UAT</option><option value="local">LOCAL</option></select>
+          <div class="row"><button id="saveDefaultEnv" type="button">Save default</button></div>
+          <div class="msg" id="envMsg"></div>
         </section>
       </div>
 
-      <div>
+      <!-- PURCHASE DATA -->
+      <div data-panel="purchase" class="grid even hidden">
         <section>
-          <div class="run-bar">
-            <button id="run" class="primary" type="button">Run tests</button>
-            <button id="stop" type="button" class="hidden">Stop</button>
-            <span class="pill" id="status">idle</span>
-            <span class="summary" id="summary"></span>
+          <h2>Baseline purchase – <span id="purchaseEnvName"></span> <span class="badge hidden" id="purchaseBadge">customised</span></h2>
+          <p class="hint">The "known good" request every test starts from. Brand ID and payment method come from the tester/run.</p>
+          <h3>Customer (client)</h3>
+          <div class="cols-2" id="clientFields"></div>
+          <h3>Order</h3>
+          <div class="cols-2">
+            <div><label for="currency">Currency</label><input id="currency" maxlength="3" /></div>
+            <div>
+              <label for="total">Total</label>
+              <div style="display: flex; gap: 8px"><input id="total" type="number" step="0.01" /><button id="sumTotal" class="small" type="button" style="white-space: nowrap" title="Set total to the sum of product prices">= sum</button></div>
+            </div>
           </div>
-          <div class="msg" id="runMsg"></div>
-          <div class="links" id="links"></div>
-          <pre id="log" aria-live="polite"></pre>
+          <label>Products</label>
+          <div id="products"></div>
+          <div class="row"><button id="addProduct" class="small" type="button">+ Add product</button></div>
+          <h3>Merchant settings</h3>
+          <div class="cols-2">
+            <div><label for="platform">Platform</label><input id="platform" /></div>
+            <div>
+              <label class="check" style="margin-top: 34px"><input id="sendReceipt" type="checkbox" /> send_receipt</label>
+              <label class="check"><input id="skipCapture" type="checkbox" /> skip_capture</label>
+            </div>
+          </div>
+          <h3>Redirects &amp; callbacks</h3>
+          <div id="urlFields"></div>
+          <div class="row">
+            <button id="savePurchase" class="primary" type="button">Save purchase data</button>
+            <button id="resetPurchase" type="button">Reset to team default</button>
+          </div>
+          <div class="msg" id="purchaseMsg"></div>
+        </section>
+        <section>
+          <h2>Request preview</h2>
+          <pre class="preview" id="purchasePreview"></pre>
+        </section>
+      </div>
+
+      <!-- TEST CARDS -->
+      <div data-panel="cards" class="grid even hidden">
+        <section>
+          <h2>Test cards – <span id="cardsEnvName"></span> <span class="badge hidden" id="cardsBadge">customised</span></h2>
+          <p class="hint">Cards used by "pay on cashier". Test cards only – never real cards.</p>
+          <table><thead><tr><th>On</th><th>Scenario</th><th>Card</th><th>Expected</th><th></th></tr></thead><tbody id="cardRows"></tbody></table>
+          <div class="row">
+            <button id="newCard" type="button">+ Add card</button>
+            <button id="resetCards" type="button">Reset to team default</button>
+          </div>
+          <div class="msg" id="cardsMsg"></div>
+        </section>
+        <section>
+          <h2 id="cardFormTitle">Add card</h2>
+          <label for="cLabel">Scenario name</label><input id="cLabel" placeholder="e.g. Visa approved" />
+          <div class="cols-3">
+            <div><label for="cNumber">Card number</label><input id="cNumber" inputmode="numeric" autocomplete="off" /></div>
+            <div><label for="cExpiry">Expiry (MM/YY)</label><input id="cExpiry" placeholder="12/30" /></div>
+            <div><label for="cCvv">CVV</label><input id="cCvv" inputmode="numeric" /></div>
+          </div>
+          <label for="cHolder">Cardholder name</label><input id="cHolder" />
+          <div class="cols-2">
+            <div>
+              <label for="cOutcome">Expected cashier result</label>
+              <select id="cOutcome">
+                <option value="success-redirect">Success redirect</option>
+                <option value="failure-redirect">Failure redirect</option>
+                <option value="pending-redirect">Pending redirect</option>
+                <option value="rejected">Rejected by cashier</option>
+                <option value="other-page">Stays on another page (e.g. 3DS challenge)</option>
+              </select>
+            </div>
+            <div><label for="cStatuses">Expected purchase status <span class="hint">(comma-separated)</span></label><input id="cStatuses" placeholder="PAID" /></div>
+          </div>
+          <label class="check"><input id="cEnabled" type="checkbox" checked /> Enabled</label>
+          <div class="row">
+            <button id="saveCard" class="primary" type="button">Save card</button>
+            <button id="deleteCard" class="danger hidden" type="button">Delete</button>
+          </div>
+          <div class="msg" id="cardMsg"></div>
+        </section>
+      </div>
+
+      <!-- ADVANCED -->
+      <div data-panel="advanced" class="hidden">
+        <section>
+          <h2>API authentication <span class="badge hidden" id="authBadge">customised</span></h2>
+          <div class="cols-3">
+            <div><label for="aHeader">API key header</label><input id="aHeader" /></div>
+            <div><label for="aPrefix">Prefix <span class="hint">(e.g. Bearer)</span></label><input id="aPrefix" /></div>
+            <div><label for="aToken">OAuth token path <span class="hint">(empty = API key)</span></label><input id="aToken" /></div>
+          </div>
+          <div class="row"><button id="saveAuth" type="button">Save</button><button id="resetAuth" type="button">Reset</button></div>
+        </section>
+        <section>
+          <h2>Payment methods <span class="badge hidden" id="methodsBadge">customised</span></h2>
+          <label for="methods">Card schemes offered in the launcher <span class="hint">(comma-separated, e.g. VISA, MASTERCARD)</span></label>
+          <input id="methods" />
+          <div class="row"><button id="saveMethods" type="button">Save</button><button id="resetMethods" type="button">Reset</button></div>
+        </section>
+        <section>
+          <h2>Currencies &amp; banks <span class="badge hidden" id="listsBadge">customised</span></h2>
+          <label for="currencies">Currencies offered in Run <span class="hint">(comma-separated ISO codes)</span></label>
+          <input id="currencies" />
+          <div class="row"><button id="saveCurrencies" type="button">Save</button><button id="resetCurrencies" type="button">Reset</button></div>
+          <label for="banks">Banks / PSPs for <b id="banksEnvName"></b> <span class="hint">(names as shown in the dashboard, e.g. paysafe_payfac)</span></label>
+          <input id="banks" />
+          <div class="row"><button id="saveBanks" type="button">Save</button><button id="resetBanks" type="button">Reset</button></div>
+        </section>
+        <section>
+          <h2>Logging &amp; reports <span class="badge hidden" id="runBadge">customised</span></h2>
+          <div class="cols-3">
+            <div>
+              <label for="logLevel">Log level</label>
+              <select id="logLevel"><option>debug</option><option>info</option><option>warn</option><option>error</option><option>silent</option></select>
+            </div>
+            <div>
+              <label for="trace">Playwright trace</label>
+              <select id="trace">
+                <option value="">Default (on failure locally, off in CI)</option>
+                <option value="off">Off</option><option value="on">Always</option>
+                <option value="retain-on-failure">Keep on failure</option><option value="on-first-retry">On first retry</option>
+              </select>
+            </div>
+            <div><label class="check" style="margin-top: 34px"><input id="logBodies" type="checkbox" /> Log (masked) request/response bodies</label></div>
+          </div>
+          <p class="hint" style="margin-top: 10px">Traces contain unmasked request data – keep them inside the team.</p>
+          <div class="row"><button id="saveRun" type="button">Save</button><button id="resetRun" type="button">Reset</button></div>
+          <div class="msg" id="advMsg"></div>
+        </section>
+        <section>
+          <h2>Where values are stored</h2>
+          <table>
+            <tr><td>Testers (brand ID, API key, dashboard login)</td><td class="mono">profiles.local.json</td><td class="hint">this computer only</td></tr>
+            <tr><td>Everything else on these tabs</td><td class="mono">settings.local.json</td><td class="hint">this computer only; overrides team defaults</td></tr>
+            <tr><td>Team defaults</td><td class="mono">config/defaults.json</td><td class="hint">committed – change via pull request</td></tr>
+          </table>
+          <p class="hint" style="margin-top: 8px">Precedence: shell / CI variables → this launcher → .env → team defaults.</p>
         </section>
       </div>
     </main>
@@ -220,237 +374,459 @@
     <script>
       const TOKEN = '__LAUNCHER_TOKEN__';
       const CUSTOM = '__custom__';
-      const NEW = '__new__';
       const $ = (id) => document.getElementById(id);
-      const state = { options: null, env: 'uat' };
+      const state = { options: null, settings: null, env: 'uat', editingProfile: null, editingCard: null };
 
       async function api(path, init = {}) {
-        const res = await fetch(path, {
-          ...init,
-          headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) },
-        });
+        const res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) } });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
         return body;
       }
-
-      function remember(key, value) {
-        try { localStorage.setItem(`launcher.${key}`, value); } catch {}
+      const remember = (k, v) => { try { localStorage.setItem(`launcher.${k}`, v); } catch {} };
+      const recall = (k) => { try { return localStorage.getItem(`launcher.${k}`); } catch { return null; } };
+      function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
+      function el(tag, props = {}, ...children) {
+        const node = document.createElement(tag);
+        for (const [k, v] of Object.entries(props)) { if (k === 'class') node.className = v; else if (k.startsWith('on')) node.addEventListener(k.slice(2), v); else node[k] = v; }
+        node.append(...children);
+        return node;
       }
-      function recall(key) {
-        try { return localStorage.getItem(`launcher.${key}`); } catch { return null; }
+      function say(id, text, ok = true) { const m = $(id); m.className = `msg ${ok ? 'ok' : 'error'}`; m.textContent = text; }
+      const eff = () => state.settings.effective;
+      const isOverridden = (path) => state.settings.overridden.includes(path);
+      async function saveSettings(path, value, msgId, okText = 'Saved.') {
+        try {
+          state.settings = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ path, value }) });
+          if (path.startsWith('environments')) { state.options = await api('/api/options'); renderEnvs(); }
+          renderAll(); say(msgId, okText);
+        }
+        catch (error) { say(msgId, error.message, false); }
+      }
+      async function resetSettings(path, msgId) {
+        try {
+          state.settings = await api(`/api/settings?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+          if (path.startsWith('environments')) { state.options = await api('/api/options'); renderEnvs(); }
+          renderAll(); say(msgId, 'Reset to team default.');
+        }
+        catch (error) { say(msgId, error.message, false); }
       }
 
-      function option(value, label) {
-        const el = document.createElement('option');
-        el.value = value;
-        el.textContent = label;
-        return el;
+      // ── tabs & environment ────────────────────────────────────────────────
+      function showTab(name) {
+        for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('active', b.dataset.tab === name);
+        for (const p of document.querySelectorAll('[data-panel]')) p.classList.toggle('hidden', p.dataset.panel !== name);
+        remember('tab', name);
       }
-
       function renderEnvs() {
-        const box = $('envs');
-        box.replaceChildren();
+        const box = $('envs'); box.replaceChildren();
         for (const env of state.options.environments) {
-          const label = document.createElement('label');
-          const input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'env';
-          input.value = env.id;
-          input.checked = env.id === state.env;
-          input.addEventListener('change', () => { state.env = env.id; remember('env', env.id); renderProfiles(); });
-          const hint = document.createElement('small');
-          hint.textContent = env.hint;
-          label.append(input, env.label, hint);
-          box.append(label);
+          const input = el('input', { type: 'radio', name: 'env', value: env.id, checked: env.id === state.env });
+          input.addEventListener('change', () => { state.env = env.id; remember('env', env.id); renderAll(); loadCatalog(); });
+          box.append(el('label', { title: env.hint }, input, env.label, el('small', {}, env.hint)));
         }
       }
 
-      function renderProfiles(selectId) {
-        const select = $('profile');
-        const previous = selectId || select.value || recall('profile');
-        select.replaceChildren();
+      // ── run tab ───────────────────────────────────────────────────────────
+      function renderRunProfiles() {
+        const select = $('runProfile'); const previous = select.value || recall('profile'); select.replaceChildren();
         for (const p of state.options.profiles) {
           const creds = p.environments[state.env];
-          select.append(option(p.id, creds ? p.name : `${p.name} (no ${state.env.toUpperCase()} credentials)`));
+          const opt = option(p.id, creds ? p.name : `${p.name} (no ${state.env.toUpperCase()} credentials)`);
+          opt.disabled = !creds; select.append(opt);
         }
-        select.append(option(NEW, '+ New profile…'), option(CUSTOM, 'One-off credentials (not saved)'));
-        const ids = [...select.options].map((o) => o.value);
-        select.value = ids.includes(previous) ? previous : state.options.profiles.length ? state.options.profiles[0].id : NEW;
-        onProfileChange();
+        select.append(option(CUSTOM, 'One-off credentials (not saved)'));
+        const usable = state.options.profiles.filter((p) => p.environments[state.env]).map((p) => p.id);
+        select.value = usable.includes(previous) ? previous : usable[0] || CUSTOM;
+        onRunProfileChange();
+      }
+      function onRunProfileChange() {
+        const value = $('runProfile').value; remember('profile', value);
+        $('oneOff').classList.toggle('hidden', value !== CUSTOM);
+        const profile = state.options.profiles.find((p) => p.id === value);
+        const c = profile?.environments[state.env];
+        $('credSummary').textContent = c ? `Brand ID ${c.brandId} · API key ${c.apiKeyHint}${c.dashboardUsername ? ` · dashboard ${c.dashboardUsername}` : ' · no dashboard login'}` : '';
+        if (profile?.paymentMethod) setSelectValue('paymentMethod', 'paymentMethodOther', profile.paymentMethod);
+      }
+      function fillSelect(id, otherId, items, first) {
+        const select = $(id); const previous = select.value || recall(id); select.replaceChildren();
+        if (first) select.append(option(first[0], first[1]));
+        for (const item of items) select.append(option(item, item));
+        select.append(option('OTHER', 'Other…'));
+        if (previous && [...select.options].some((o) => o.value === previous)) select.value = previous;
+        $(otherId).classList.toggle('hidden', select.value !== 'OTHER');
+      }
+      function setSelectValue(id, otherId, value) {
+        const select = $(id); const known = [...select.options].some((o) => o.value === value);
+        select.value = known ? value : 'OTHER';
+        $(otherId).value = known ? '' : value; $(otherId).classList.toggle('hidden', known);
+      }
+      const selectValue = (id, otherId) => ($(id).value === 'OTHER' ? $(otherId).value.trim() : $(id).value);
+      function renderRunChoices() {
+        const s = eff();
+        fillSelect('paymentMethod', 'paymentMethodOther', s.paymentMethods);
+        fillSelect('runCurrency', 'currencyOther', s.currencies, ['', `Template (${s.purchase[state.env].purchase.currency})`]);
+        fillSelect('runBank', 'bankOther', s.banks[state.env], ['', "Don't check routing"]);
+        const pc = $('payCard'); const prev = pc.value || recall('payCard'); pc.replaceChildren(option('', 'No – API validation only'));
+        for (const card of s.cards[state.env]) pc.append(option(card.id, `Yes – pay with ${card.label}`));
+        if ([...pc.options].some((o) => o.value === prev)) pc.value = prev;
+        const pm = $('pMethod'); const prevPm = pm.value; pm.replaceChildren(...s.paymentMethods.map((m) => option(m, m)));
+        if (prevPm) pm.value = prevPm;
       }
 
-      function currentProfile() {
-        return state.options.profiles.find((p) => p.id === $('profile').value);
-      }
-
-      function onProfileChange() {
-        const value = $('profile').value;
-        const profile = currentProfile();
-        const creds = profile?.environments[state.env];
-        remember('profile', value);
-        $('profileMsg').textContent = '';
-        $('name').value = profile ? profile.name : '';
-        $('name').disabled = value === CUSTOM;
-        $('brandId').value = creds ? creds.brandId : '';
-        $('apiKey').value = '';
-        $('apiKey').placeholder = creds ? 'Leave empty to keep the saved key' : 'Secret API key';
-        $('keyHint').textContent = creds ? `saved: ${creds.apiKeyHint}` : '';
-        $('saveProfile').classList.toggle('hidden', value === CUSTOM);
-        $('deleteProfile').classList.toggle('hidden', !profile);
-        if (profile?.paymentMethod) setPaymentMethod(profile.paymentMethod);
-      }
-
-      function setPaymentMethod(method) {
-        const select = $('paymentMethod');
-        const known = state.options.paymentMethods.includes(method);
-        select.value = known ? method : 'OTHER';
-        $('paymentMethodOther').value = known ? '' : method;
-        $('paymentMethodOther').classList.toggle('hidden', known);
-      }
-
-      function paymentMethod() {
-        return $('paymentMethod').value === 'OTHER' ? $('paymentMethodOther').value.trim().toUpperCase() : $('paymentMethod').value;
-      }
-
-      async function saveProfile() {
-        const msg = $('profileMsg');
-        msg.className = 'msg';
+      // test catalog
+      function loadSelection() { try { return new Set(JSON.parse(recall(`sel.${state.env}`) || '[]')); } catch { return new Set(); } }
+      function saveSelection() { remember(`sel.${state.env}`, JSON.stringify([...state.selected])); }
+      async function loadCatalog() {
+        $('catalogMsg').textContent = 'Loading test cases…';
         try {
-          const profile = currentProfile();
-          const { id, profiles } = await api('/api/profiles', {
-            method: 'POST',
-            body: JSON.stringify({
-              id: profile?.id,
-              name: $('name').value,
-              env: state.env,
-              brandId: $('brandId').value,
-              apiKey: $('apiKey').value,
-              paymentMethod: paymentMethod(),
-            }),
-          });
-          state.options.profiles = profiles;
-          renderProfiles(id);
-          msg.className = 'msg ok';
-          msg.textContent = `Saved for ${state.env.toUpperCase()}.`;
-        } catch (error) {
-          msg.className = 'msg error';
-          msg.textContent = error.message;
-        }
+          const { tests } = await api(`/api/tests?env=${state.env}`);
+          state.tests = tests; state.selected = new Set([...loadSelection()].filter((k) => tests.some((t) => t.key === k)));
+          $('catalogMsg').textContent = `${tests.length} available`;
+        } catch (error) { state.tests = []; $('catalogMsg').textContent = error.message; }
+        renderCatalog();
       }
-
-      async function deleteProfile() {
-        const profile = currentProfile();
-        if (!profile) return;
-        // Inline two-step confirmation (no browser dialogs).
-        const button = $('deleteProfile');
-        if (button.dataset.confirm !== profile.id) {
-          button.dataset.confirm = profile.id;
-          button.textContent = 'Click again to delete';
-          setTimeout(() => { button.dataset.confirm = ''; button.textContent = 'Delete'; }, 4000);
-          return;
+      function visibleTests() {
+        const q = $('testSearch').value.trim().toLowerCase();
+        return state.tests.filter((t) => !q || `${t.key} ${t.title} ${t.group}`.toLowerCase().includes(q));
+      }
+      function renderCatalog() {
+        const box = $('catalog'); box.replaceChildren();
+        const groups = new Map();
+        for (const t of visibleTests()) { if (!groups.has(t.group)) groups.set(t.group, []); groups.get(t.group).push(t); }
+        for (const [group, tests] of groups) {
+          const all = tests.every((t) => state.selected.has(t.key));
+          const head = el('input', { type: 'checkbox', checked: all, onchange: () => { for (const t of tests) head.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderCatalog(); } });
+          const details = el('details', { open: tests.length <= 12 || $('testSearch').value !== '' },
+            el('summary', {}, head, ` ${group} `, el('span', { class: 'hint' }, `(${tests.filter((t) => state.selected.has(t.key)).length}/${tests.length})`)));
+          for (const t of tests) {
+            const box2 = el('input', { type: 'checkbox', checked: state.selected.has(t.key), onchange: () => { box2.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderSelectionState(); } });
+            const tags = [];
+            if (t.expectation) tags.push(el('span', { class: `tag ${t.expectation}` }, t.expectation));
+            if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
+            details.append(el('label', { class: 'test-item' }, box2, el('span', { class: 'mono key' }, /^@FT-/.test(t.key) ? t.key.slice(1) : ''), el('span', {}, t.title.replace(/^FT-\S+\s/, '')), ...tags));
+          }
+          box.append(details);
         }
-        button.dataset.confirm = '';
-        button.textContent = 'Delete';
-        const { profiles } = await api(`/api/profiles/${profile.id}`, { method: 'DELETE' });
-        state.options.profiles = profiles;
-        renderProfiles();
+        if (!groups.size) box.append(el('p', { class: 'hint' }, 'No test cases match.'));
+        renderSelectionState();
+      }
+      function renderSelectionState() {
+        $('selCount').textContent = `${state.selected.size} selected`;
+        $('purchaseIdsBox').classList.toggle('hidden', !state.selected.has('@psp-by-id'));
+        $('run').disabled = state.selected.size === 0 || state.running;
       }
 
       async function startRun() {
-        const msg = $('runMsg');
-        msg.className = 'msg';
-        msg.textContent = '';
-        const value = $('profile').value;
+        $('runMsg').textContent = '';
+        const value = $('runProfile').value;
         const payload = {
-          env: state.env,
-          suiteId: $('suite').value,
-          paymentMethod: paymentMethod(),
-          filter: $('filter').value,
+          env: state.env, testKeys: [...state.selected], paymentMethod: selectValue('paymentMethod', 'paymentMethodOther').toUpperCase(),
+          currency: selectValue('runCurrency', 'currencyOther').toUpperCase(), bank: selectValue('runBank', 'bankOther'), payCard: $('payCard').value,
+          purchaseIds: $('purchaseIds').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
         };
-        if (value === CUSTOM || value === NEW) {
-          payload.brandId = $('brandId').value;
-          payload.apiKey = $('apiKey').value;
-        } else {
-          payload.profileId = value;
-        }
-        remember('suite', payload.suiteId);
-        try {
-          $('log').textContent = '';
-          await api('/api/runs', { method: 'POST', body: JSON.stringify(payload) });
-        } catch (error) {
-          msg.className = 'msg error';
-          msg.textContent = error.message;
-        }
+        if (value === CUSTOM) Object.assign(payload, { brandId: $('ooBrand').value, apiKey: $('ooKey').value, dashboardUsername: $('ooDashUser').value, dashboardPassword: $('ooDashPass').value });
+        else payload.profileId = value;
+        for (const id of ['runCurrency', 'runBank', 'payCard']) remember(id, $(id).value);
+        try { $('log').textContent = ''; setView('log'); await api('/api/runs', { method: 'POST', body: JSON.stringify(payload) }); }
+        catch (error) { say('runMsg', error.message, false); setView('report'); }
       }
-
+      function setView(view) {
+        for (const input of document.querySelectorAll('#viewSwitch input')) input.checked = input.value === view;
+        $('log').classList.toggle('hidden', view !== 'log'); $('reportView').classList.toggle('hidden', view !== 'report');
+      }
       function renderStatus(run) {
         const running = run.status === 'running' || run.status === 'stopping';
-        $('status').textContent = run.status;
-        $('status').className = `pill ${run.status}`;
-        $('run').disabled = running;
-        $('stop').classList.toggle('hidden', !running);
+        const finishedNow = state.running && !running;
+        state.running = running;
+        $('status').textContent = run.status; $('status').className = `pill ${run.status}`;
+        $('stop').classList.toggle('hidden', !running); renderSelectionState();
         $('summary').textContent = run.summary || '';
-        const links = $('links');
-        links.replaceChildren();
+        const links = $('links'); links.replaceChildren();
         if (!running && run.status !== 'idle') {
-          if (run.hasReport) {
-            const a = document.createElement('a');
-            a.href = '/report/';
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = 'Open HTML report';
-            links.append(a);
-          }
-          if (run.hasCsv) {
-            const a = document.createElement('a');
-            a.href = '/results.csv';
-            a.textContent = 'Download results (CSV)';
-            links.append(a);
-          }
+          if (run.hasReport) links.append(el('a', { href: '/report/', target: '_blank', rel: 'noopener', textContent: 'Playwright report' }));
+          if (run.hasCsv) links.append(el('a', { href: '/results.csv', textContent: 'Field CSV' }));
+          if (run.hasPspCsv) links.append(el('a', { href: '/psp-results.csv', textContent: 'PSP CSV' }));
         }
+        if (finishedNow) { loadHistory().then(() => showReport('latest')); setView('report'); }
       }
-
       function connect() {
-        const events = new EventSource(`/api/runs/events?token=${TOKEN}`);
-        const log = $('log');
+        const events = new EventSource(`/api/runs/events?token=${TOKEN}`); const log = $('log');
         events.addEventListener('status', (e) => renderStatus(JSON.parse(e.data)));
         events.addEventListener('line', (e) => {
           const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-          log.append(`${JSON.parse(e.data)}\n`);
-          if (nearBottom) log.scrollTop = log.scrollHeight;
+          log.append(`${JSON.parse(e.data)}\n`); if (nearBottom) log.scrollTop = log.scrollHeight;
         });
       }
 
-      async function init() {
-        state.options = await api('/api/options');
-        state.env = recall('env') || state.options.environments[0].id;
-        renderEnvs();
-
-        const pm = $('paymentMethod');
-        for (const m of state.options.paymentMethods) pm.append(option(m, m));
-        pm.append(option('OTHER', 'Other…'));
-        pm.addEventListener('change', () => $('paymentMethodOther').classList.toggle('hidden', pm.value !== 'OTHER'));
-
-        const suite = $('suite');
-        for (const s of state.options.suites) suite.append(option(s.id, s.label));
-        const lastSuite = recall('suite');
-        if (lastSuite && state.options.suites.some((s) => s.id === lastSuite)) suite.value = lastSuite;
-
-        renderProfiles();
-        $('profile').addEventListener('change', onProfileChange);
-        $('saveProfile').addEventListener('click', saveProfile);
-        $('deleteProfile').addEventListener('click', deleteProfile);
-        $('run').addEventListener('click', startRun);
-        $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));
-        renderStatus(state.options.run);
-        connect();
+      // execution report
+      async function loadHistory() {
+        const { runs } = await api('/api/reports').catch(() => ({ runs: [] }));
+        const h = $('history'); h.replaceChildren(option('latest', 'Latest run'));
+        for (const r of runs) h.append(option(r, `Run ${r.slice(0, 10)} ${r.slice(11).replace(/-/g, ':')} UTC`));
+      }
+      const pretty = (value) => (value === undefined || value === null || value === '' ? '—' : typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+      function kv(label, value) { return el('div', { class: 'kv' }, el('span', { class: 'hint' }, label), el('b', {}, value || '—')); }
+      async function showReport(name) {
+        const view = $('reportView');
+        let report;
+        try { report = await api(`/api/report?run=${encodeURIComponent(name)}`); }
+        catch { view.replaceChildren(el('p', { class: 'hint' }, 'No report yet – select test cases and click Run test.')); return; }
+        const c = report.config || {}; const s = report.summary || {};
+        const header = el('div', { class: 'report-head' },
+          el('div', { class: 'kv-grid' }, kv('Environment', c.environment), kv('Tester', c.tester), kv('Brand ID', c.brandId), kv('API key', c.apiKey),
+            kv('Currency', c.currency), kv('Bank', c.bank), kv('Payment method', c.paymentMethod), kv('Transaction', c.payWithCard)),
+          el('div', { class: 'totals' },
+            el('span', { class: 'pill' }, `${s.total} executed`), el('span', { class: 'pill passed' }, `${s.passed} passed`),
+            el('span', { class: 'pill failed' }, `${s.failed} failed`), el('span', { class: 'pill running' }, `${s.observed} observed`),
+            el('span', { class: 'pill' }, `${s.skipped} skipped`), el('span', { class: 'hint' }, `${Math.round(report.durationMs / 1000)} s · ${new Date(report.finishedAt).toLocaleString()}`)));
+        const filter = el('select', { style: 'max-width: 200px' }, option('', 'All results'), option('FAIL', 'Failed only'), option('PASS', 'Passed only'), option('OBSERVED', 'Observed only'));
+        const tbody = el('tbody');
+        const renderRows = () => {
+          tbody.replaceChildren();
+          for (const t of report.tests.filter((x) => !filter.value || x.verdict === filter.value)) {
+            const detail = el('tr', { class: 'hidden' }, el('td', { colSpan: 6 }, testDetail(t)));
+            const row = el('tr', { class: 'clickable', onclick: () => detail.classList.toggle('hidden') },
+              el('td', {}, el('span', { class: `verdict ${t.verdict}` }, t.verdict)), el('td', { class: 'mono' }, /^@FT-/.test(t.key) ? t.key.slice(1) : '–'),
+              el('td', {}, t.title.replace(/^FT-\S+\s/, '')), el('td', {}, t.expected || '—'), el('td', {}, t.actual || '—'),
+              el('td', { class: 'mono' }, [t.purchaseId, t.pspTransactionId].filter(Boolean).join('\n') || '—'));
+            tbody.append(row, detail);
+          }
+        };
+        filter.addEventListener('change', renderRows); renderRows();
+        view.replaceChildren(header, el('div', { class: 'row' }, filter, el('span', { class: 'hint' }, 'Click a row for request, response and PSP details.')),
+          el('table', { class: 'report' }, el('thead', {}, el('tr', {}, ...['Result', 'Case', 'Test', 'Expected', 'Actual', 'Purchase / PSP txn ID'].map((h) => el('th', {}, h)))), tbody));
+      }
+      function testDetail(t) {
+        const blocks = [];
+        const meta = el('div', { class: 'kv-grid' }, kv('Group', t.group), kv('Duration', `${(t.durationMs / 1000).toFixed(1)} s`), kv('Purchase ID', t.purchaseId), kv('PSP transaction ID', t.pspTransactionId),
+          ...Object.entries(t.annotations || {}).filter(([k]) => !['environment', 'profile', 'purchase id'].includes(k)).map(([k, v]) => kv(k, v)));
+        blocks.push(meta);
+        if (t.errors.length) blocks.push(el('h3', {}, 'Validation / error details'), el('pre', { class: 'preview error-text' }, t.errors.join('\n\n')));
+        t.exchanges.forEach((x, i) => {
+          blocks.push(el('h3', {}, `Request ${i + 1}: ${x.request.method} ${x.request.url}`), el('pre', { class: 'preview' }, pretty({ headers: x.request.headers, body: x.request.body })));
+          blocks.push(el('h3', {}, `Response ${i + 1}: ${x.response ? `HTTP ${x.response.status} · ${x.response.durationMs} ms` : 'no response'}`), el('pre', { class: 'preview' }, pretty(x.response ? x.response.body : x.error)));
+        });
+        if (t.psp) {
+          blocks.push(el('h3', {}, 'PSP checks'), el('table', {}, el('tbody', {}, ...t.psp.checks.map((c) => el('tr', {}, el('td', {}, el('span', { class: `verdict ${c.passed ? 'PASS' : 'FAIL'}` }, c.passed ? 'PASS' : 'FAIL')), el('td', {}, c.name), el('td', { class: 'hint' }, `expected ${c.expected}`), el('td', {}, c.actual || '—'))))));
+          blocks.push(el('div', { class: 'kv-grid' }, kv('Bank / PSP', t.psp.bankName), kv('MID', t.psp.midName), kv('PSP status', t.psp.pspStatus), kv('Gateway', [t.psp.gatewayCode, t.psp.gatewayMessage].filter(Boolean).join(' ')), kv('Sent to PSP', `${t.psp.pspAmount} ${t.psp.pspCurrency}`), kv('Error', t.psp.errorMessage)));
+          if (t.psp.notes?.length) blocks.push(el('p', { class: 'hint' }, `Notes: ${t.psp.notes.join(' | ')}`));
+        }
+        if (t.pspRequest) blocks.push(el('h3', {}, 'Request sent to PSP (masked)'), el('pre', { class: 'preview' }, pretty(t.pspRequest)));
+        if (t.pspResponse) blocks.push(el('h3', {}, 'PSP response (masked)'), el('pre', { class: 'preview' }, pretty(t.pspResponse)));
+        return el('div', { class: 'detail' }, ...blocks);
       }
 
-      init().catch((error) => {
-        $('runMsg').className = 'msg error';
-        $('runMsg').textContent = `Launcher failed to load: ${error.message}`;
-      });
+      // ── testers tab ───────────────────────────────────────────────────────
+      function renderProfiles() {
+        $('profileEnvName').textContent = state.env.toUpperCase();
+        const rows = $('profileRows'); rows.replaceChildren();
+        for (const p of state.options.profiles) {
+          const c = p.environments[state.env];
+          rows.append(el('tr', {},
+            el('td', {}, p.name), el('td', { class: 'mono' }, c ? c.brandId : '—'), el('td', { class: 'mono' }, c ? c.apiKeyHint : '—'),
+            el('td', {}, c?.dashboardUsername ? `${c.dashboardUsername}${c.hasDashboardPassword ? ' ✓' : ''}` : '—'),
+            el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editProfile(p.id) }))));
+        }
+        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 5, class: 'hint' }, 'No testers yet.')));
+        editProfile(state.editingProfile);
+      }
+      function editProfile(id) {
+        const p = state.options.profiles.find((x) => x.id === id); state.editingProfile = p ? p.id : null;
+        const c = p?.environments[state.env];
+        $('profileFormTitle').textContent = p ? `Edit ${p.name}` : 'New tester';
+        $('pName').value = p ? p.name : ''; $('pBrand').value = c ? c.brandId : '';
+        $('pKey').value = ''; $('pKey').placeholder = c ? 'Leave empty to keep the saved key' : 'Secret API key';
+        $('pKeyHint').textContent = c ? `saved: ${c.apiKeyHint}` : '';
+        $('pDashUser').value = c?.dashboardUsername || ''; $('pDashPass').value = '';
+        $('pDashPass').placeholder = c?.hasDashboardPassword ? 'Leave empty to keep' : 'Dashboard password';
+        $('pDashHint').textContent = c?.hasDashboardPassword ? 'saved' : '';
+        if (p?.paymentMethod && eff().paymentMethods.includes(p.paymentMethod)) $('pMethod').value = p.paymentMethod;
+        $('deleteProfile').classList.toggle('hidden', !p); $('profileMsg').textContent = '';
+      }
+      async function saveProfile() {
+        try {
+          const { id, profiles } = await api('/api/profiles', { method: 'POST', body: JSON.stringify({
+            id: state.editingProfile || undefined, name: $('pName').value, env: state.env, brandId: $('pBrand').value, apiKey: $('pKey').value,
+            dashboardUsername: $('pDashUser').value, dashboardPassword: $('pDashPass').value, paymentMethod: $('pMethod').value }) });
+          state.options.profiles = profiles; state.editingProfile = id; renderProfiles(); renderRunProfiles();
+          say('profileMsg', `Saved for ${state.env.toUpperCase()}.`);
+        } catch (error) { say('profileMsg', error.message, false); }
+      }
+      async function deleteProfile() {
+        const b = $('deleteProfile');
+        if (b.dataset.confirm !== state.editingProfile) { b.dataset.confirm = state.editingProfile; b.textContent = 'Click again to delete'; setTimeout(() => { b.dataset.confirm = ''; b.textContent = 'Delete'; }, 4000); return; }
+        b.dataset.confirm = ''; b.textContent = 'Delete';
+        const { profiles } = await api(`/api/profiles/${state.editingProfile}`, { method: 'DELETE' });
+        state.options.profiles = profiles; state.editingProfile = null; renderProfiles(); renderRunProfiles();
+      }
+
+      // ── environments tab ──────────────────────────────────────────────────
+      function renderEnvironments() {
+        const box = $('envForms'); box.replaceChildren();
+        for (const id of ['uat', 'local']) {
+          const e = eff().environments[id];
+          const base = el('input', { value: e.baseUrl, placeholder: 'https://…' });
+          const apiUrl = el('input', { value: e.apiBaseUrl, placeholder: 'https://…/api' });
+          const msg = `envMsg`;
+          box.append(el('div', {},
+            el('h3', {}, id.toUpperCase(), ' ', isOverridden(`environments.${id}`) ? el('span', { class: 'badge' }, 'customised') : ''),
+            el('label', {}, 'Dashboard / cashier URL'), base, el('label', {}, 'API base URL'), apiUrl,
+            el('div', { class: 'row' },
+              el('button', { type: 'button', textContent: 'Save', onclick: () => saveSettings(`environments.${id}`, { baseUrl: base.value.trim(), apiBaseUrl: apiUrl.value.trim() }, msg) }),
+              el('button', { type: 'button', textContent: 'Reset', onclick: () => resetSettings(`environments.${id}`, msg) }))));
+        }
+        $('defaultEnv').value = eff().run.defaultEnvironment;
+      }
+
+      // ── purchase tab ──────────────────────────────────────────────────────
+      const CLIENT_FIELDS = [['email', 'Email'], ['full_name', 'Full name'], ['phone', 'Phone'], ['date_of_birth', 'Date of birth (YYYY-MM-DD)'], ['street_address', 'Street address'], ['city', 'City'], ['zip_code', 'ZIP / postal code'], ['stateCode', 'State code'], ['country', 'Country (ISO-2)']];
+      const URL_FIELDS = [['success_redirect', 'Success redirect'], ['pending_redirect', 'Pending redirect'], ['failure_redirect', 'Failure redirect'], ['success_callback', 'Success callback'], ['failure_callback', 'Failure callback']];
+      function productRow(product = { name: '', price: 0 }) {
+        const row = el('div', { class: 'product-row' },
+          el('input', { value: product.name, placeholder: 'Product name', oninput: renderPreview }),
+          el('input', { type: 'number', step: '0.01', value: product.price, oninput: renderPreview }),
+          el('button', { class: 'small danger', type: 'button', textContent: 'Remove', onclick: () => { row.remove(); renderPreview(); } }));
+        return row;
+      }
+      function renderPurchase() {
+        const t = eff().purchase[state.env];
+        $('purchaseEnvName').textContent = state.env.toUpperCase();
+        $('purchaseBadge').classList.toggle('hidden', !isOverridden(`purchase.${state.env}`));
+        const cf = $('clientFields'); cf.replaceChildren();
+        for (const [key, label] of CLIENT_FIELDS) cf.append(el('div', {}, el('label', {}, label), el('input', { id: `cl_${key}`, value: t.client[key], oninput: renderPreview })));
+        $('currency').value = t.purchase.currency; $('total').value = t.purchase.total;
+        $('products').replaceChildren(...t.purchase.products.map(productRow));
+        $('platform').value = t.platform; $('sendReceipt').checked = t.send_receipt; $('skipCapture').checked = t.skip_capture;
+        const uf = $('urlFields'); uf.replaceChildren();
+        for (const [key, label] of URL_FIELDS) uf.append(el('label', {}, label), el('input', { id: `url_${key}`, value: t[key], oninput: renderPreview }));
+        renderPreview();
+      }
+      function readPurchaseForm() {
+        const client = Object.fromEntries(CLIENT_FIELDS.map(([k]) => [k, $(`cl_${k}`).value]));
+        const products = [...$('products').children].map((row) => { const [n, p] = row.querySelectorAll('input'); return { name: n.value, price: Number(p.value) }; });
+        const urls = Object.fromEntries(URL_FIELDS.map(([k]) => [k, $(`url_${k}`).value.trim()]));
+        return { client, purchase: { currency: $('currency').value.trim().toUpperCase(), products, total: Number($('total').value) }, platform: $('platform').value, send_receipt: $('sendReceipt').checked, skip_capture: $('skipCapture').checked, ...urls };
+      }
+      function renderPreview() {
+        try {
+          const t = readPurchaseForm();
+          $('purchasePreview').textContent = JSON.stringify({ ...t, brand_id: '<from tester>', paymentMethod: '<from run>' }, null, 2);
+        } catch { /* form not ready */ }
+      }
+
+      // ── cards tab ─────────────────────────────────────────────────────────
+      const maskCard = (n) => `•••• ${n.slice(-4)}`;
+      function renderCards() {
+        const cards = eff().cards[state.env];
+        $('cardsEnvName').textContent = state.env.toUpperCase();
+        $('cardsBadge').classList.toggle('hidden', !isOverridden(`cards.${state.env}`));
+        const rows = $('cardRows'); rows.replaceChildren();
+        cards.forEach((card, index) => {
+          const toggle = el('input', { type: 'checkbox', checked: card.enabled, onchange: () => {
+            const next = cards.map((c, i) => (i === index ? { ...c, enabled: toggle.checked } : c));
+            saveSettings(`cards.${state.env}`, next, 'cardsMsg');
+          } });
+          rows.append(el('tr', {}, el('td', {}, toggle), el('td', {}, card.label), el('td', { class: 'mono' }, `${maskCard(card.number)} · ${card.expiry}`),
+            el('td', {}, `${card.expectedOutcome} · ${card.expectedStatuses.join('/')}`),
+            el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editCard(card.id) }))));
+        });
+        if (!cards.length) rows.append(el('tr', {}, el('td', { colSpan: 5, class: 'hint' }, 'No cards for this environment.')));
+        editCard(state.editingCard);
+      }
+      function editCard(id) {
+        const card = eff().cards[state.env].find((c) => c.id === id); state.editingCard = card ? card.id : null;
+        $('cardFormTitle').textContent = card ? `Edit ${card.label}` : 'Add card';
+        $('cLabel').value = card?.label || ''; $('cNumber').value = card?.number || ''; $('cExpiry').value = card?.expiry || '';
+        $('cCvv').value = card?.cvv || ''; $('cHolder').value = card?.holderName || 'Test Customer';
+        $('cOutcome').value = card?.expectedOutcome || 'success-redirect'; $('cStatuses').value = (card?.expectedStatuses || ['PAID']).join(', ');
+        $('cEnabled').checked = card ? card.enabled : true;
+        $('deleteCard').classList.toggle('hidden', !card); $('cardMsg').textContent = '';
+      }
+      const slug = (text) => text.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'card';
+      function saveCard() {
+        const cards = eff().cards[state.env];
+        const label = $('cLabel').value.trim();
+        let id = state.editingCard || slug(label);
+        if (!state.editingCard) { let n = 2; const base = id; while (cards.some((c) => c.id === id)) id = `${base}-${n++}`; }
+        const card = { id, label, number: $('cNumber').value.replace(/\s/g, ''), expiry: $('cExpiry').value.trim(), cvv: $('cCvv').value.trim(), holderName: $('cHolder').value.trim(),
+          expectedOutcome: $('cOutcome').value, expectedStatuses: $('cStatuses').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean), enabled: $('cEnabled').checked };
+        const next = state.editingCard ? cards.map((c) => (c.id === id ? card : c)) : [...cards, card];
+        state.editingCard = id;
+        saveSettings(`cards.${state.env}`, next, 'cardMsg', 'Card saved.');
+      }
+      function deleteCard() {
+        const next = eff().cards[state.env].filter((c) => c.id !== state.editingCard);
+        state.editingCard = null; saveSettings(`cards.${state.env}`, next, 'cardsMsg', 'Card deleted.');
+      }
+
+      // ── advanced tab ──────────────────────────────────────────────────────
+      function renderAdvanced() {
+        const s = eff();
+        $('aHeader').value = s.auth.apiKeyHeader; $('aPrefix').value = s.auth.apiKeyPrefix; $('aToken').value = s.auth.tokenPath;
+        $('methods').value = s.paymentMethods.join(', ');
+        $('currencies').value = s.currencies.join(', ');
+        $('banks').value = s.banks[state.env].join(', '); $('banksEnvName').textContent = state.env.toUpperCase();
+        $('listsBadge').classList.toggle('hidden', !isOverridden('currencies') && !isOverridden(`banks.${state.env}`));
+        $('logLevel').value = s.run.logLevel; $('trace').value = s.run.trace; $('logBodies').checked = s.run.logHttpBodies;
+        $('authBadge').classList.toggle('hidden', !isOverridden('auth'));
+        $('methodsBadge').classList.toggle('hidden', !isOverridden('paymentMethods'));
+        $('runBadge').classList.toggle('hidden', !isOverridden('run'));
+      }
+
+      function renderAll() {
+        renderRunChoices(); renderRunProfiles(); renderProfiles();
+        renderEnvironments(); renderPurchase(); renderCards(); renderAdvanced();
+      }
+
+      async function init() {
+        [state.options, state.settings] = await Promise.all([api('/api/options'), api('/api/settings')]);
+        state.env = recall('env') || state.settings.effective.run.defaultEnvironment;
+        state.tests = []; state.selected = new Set();
+        renderEnvs();
+        renderAll();
+        for (const b of document.querySelectorAll('#tabs button')) b.addEventListener('click', () => showTab(b.dataset.tab));
+        showTab(recall('tab') || 'run');
+        $('runProfile').addEventListener('change', onRunProfileChange);
+        for (const [id, other] of [['paymentMethod', 'paymentMethodOther'], ['runCurrency', 'currencyOther'], ['runBank', 'bankOther']]) {
+          $(id).addEventListener('change', () => { $(other).classList.toggle('hidden', $(id).value !== 'OTHER'); remember(id, $(id).value); });
+        }
+        $('testSearch').addEventListener('input', renderCatalog);
+        $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
+        $('clearSelection').addEventListener('click', () => { state.selected.clear(); saveSelection(); renderCatalog(); });
+        for (const input of document.querySelectorAll('#viewSwitch input')) input.addEventListener('change', () => setView(input.value));
+        $('history').addEventListener('change', () => showReport($('history').value));
+        $('run').addEventListener('click', startRun);
+        $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));
+        $('newProfile').addEventListener('click', () => editProfile(null));
+        $('saveProfile').addEventListener('click', saveProfile);
+        $('deleteProfile').addEventListener('click', deleteProfile);
+        $('saveDefaultEnv').addEventListener('click', () => saveSettings('run', { ...eff().run, defaultEnvironment: $('defaultEnv').value }, 'envMsg'));
+        for (const id of ['currency', 'total', 'platform', 'sendReceipt', 'skipCapture']) $(id).addEventListener('input', renderPreview);
+        $('addProduct').addEventListener('click', () => { $('products').append(productRow()); renderPreview(); });
+        $('sumTotal').addEventListener('click', () => { const f = readPurchaseForm(); $('total').value = Math.round(f.purchase.products.reduce((s, p) => s + p.price, 0) * 100) / 100; renderPreview(); });
+        $('savePurchase').addEventListener('click', () => saveSettings(`purchase.${state.env}`, readPurchaseForm(), 'purchaseMsg'));
+        $('resetPurchase').addEventListener('click', () => resetSettings(`purchase.${state.env}`, 'purchaseMsg'));
+        $('newCard').addEventListener('click', () => editCard(null));
+        $('saveCard').addEventListener('click', saveCard);
+        $('deleteCard').addEventListener('click', deleteCard);
+        $('resetCards').addEventListener('click', () => { state.editingCard = null; resetSettings(`cards.${state.env}`, 'cardsMsg'); });
+        $('saveAuth').addEventListener('click', () => saveSettings('auth', { apiKeyHeader: $('aHeader').value.trim(), apiKeyPrefix: $('aPrefix').value.trim(), tokenPath: $('aToken').value.trim() }, 'advMsg'));
+        $('resetAuth').addEventListener('click', () => resetSettings('auth', 'advMsg'));
+        $('saveMethods').addEventListener('click', () => saveSettings('paymentMethods', $('methods').value.split(',').map((m) => m.trim().toUpperCase()).filter(Boolean), 'advMsg'));
+        $('resetMethods').addEventListener('click', () => resetSettings('paymentMethods', 'advMsg'));
+        $('saveCurrencies').addEventListener('click', () => saveSettings('currencies', $('currencies').value.split(',').map((m) => m.trim().toUpperCase()).filter(Boolean), 'advMsg'));
+        $('resetCurrencies').addEventListener('click', () => resetSettings('currencies', 'advMsg'));
+        $('saveBanks').addEventListener('click', () => saveSettings(`banks.${state.env}`, $('banks').value.split(',').map((m) => m.trim()).filter(Boolean), 'advMsg'));
+        $('resetBanks').addEventListener('click', () => resetSettings(`banks.${state.env}`, 'advMsg'));
+        $('saveRun').addEventListener('click', () => saveSettings('run', { ...eff().run, logLevel: $('logLevel').value, trace: $('trace').value, logHttpBodies: $('logBodies').checked }, 'advMsg'));
+        $('resetRun').addEventListener('click', () => resetSettings('run', 'advMsg'));
+        renderStatus(state.options.run);
+        connect();
+        await loadCatalog();
+        await loadHistory(); showReport('latest');
+      }
+      init().catch((error) => say('runMsg', `Launcher failed to load: ${error.message}`, false));
     </script>
   </body>
 </html>

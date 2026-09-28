@@ -4,7 +4,7 @@ import type { EnvironmentTestData } from './environment-data.types';
  * UAT test data. Values are NOT secrets; override via env vars where they
  * differ per tester/pipeline. Replace placeholders with real UAT values.
  */
-export const uatData: EnvironmentTestData = {
+export const uatData: Omit<EnvironmentTestData, 'purchase'> = {
   merchant: {
     id: process.env.UAT_MERCHANT_ID ?? 'UAT-MERCHANT-PLACEHOLDER',
     defaultCurrency: 'USD',
@@ -32,12 +32,4 @@ export const uatData: EnvironmentTestData = {
     maxAmount: 50_000_000,
   },
   callbackUrl: process.env.UAT_CALLBACK_URL,
-  purchase: {
-    platform: 'woocommerce',
-    successRedirect: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif',
-    pendingRedirect: 'https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif',
-    failureRedirect: 'https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif',
-    successCallback: 'https://www.google.com/',
-    failureCallback: 'https://staging.paysecure.net/merchant',
-  },
 };

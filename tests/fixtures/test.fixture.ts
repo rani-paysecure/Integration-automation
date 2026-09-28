@@ -50,14 +50,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   merchant: [
     async ({ testConfig }, use) => {
-      const { brandId, paymentMethod } = testConfig.merchant;
+      const { brandId, paymentMethod, currency, expectedBank } = testConfig.merchant;
       if (brandId === undefined) {
         const env = testConfig.env.toUpperCase();
         throw new ConfigurationError(
           `No brand ID for ${env}. Select a tester profile (TEST_PROFILE / launcher) or set ${env}_BRAND_ID in .env.`,
         );
       }
-      await use({ brandId, paymentMethod });
+      await use({ brandId, paymentMethod, currency, expectedBank });
     },
     { scope: 'worker' },
   ],
@@ -114,7 +114,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const exchanges: HttpExchange[] = [];
     await use(exchanges);
     const failed = testInfo.status !== testInfo.expectedStatus;
-    if (failed && exchanges.length > 0) {
+    // The launcher report shows request/response for every test (ATTACH_HTTP_ALWAYS=1).
+    const always = process.env.ATTACH_HTTP_ALWAYS === '1';
+    if ((failed || always) && exchanges.length > 0) {
       await testInfo.attach('http-exchanges.json', {
         body: JSON.stringify(exchanges, null, 2),
         contentType: 'application/json',
@@ -149,6 +151,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         type: 'payment method',
         description: testConfig.merchant.paymentMethod,
       });
+      if (testConfig.merchant.currency !== undefined) {
+        testInfo.annotations.push({ type: 'currency', description: testConfig.merchant.currency });
+      }
+      if (testConfig.merchant.expectedBank !== undefined) {
+        testInfo.annotations.push({ type: 'bank', description: testConfig.merchant.expectedBank });
+      }
       if (testConfig.merchant.brandId !== undefined) {
         testInfo.annotations.push({ type: 'brand id', description: testConfig.merchant.brandId });
       }

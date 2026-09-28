@@ -9,6 +9,16 @@ const encode = (value: string): string => encodeURIComponent(value);
 
 export const Endpoints = {
   health: '/health',
+  /** Back-office dashboard (session-cookie auth, served from BASE_URL). */
+  backoffice: {
+    loginPage: '/',
+    login: '/j_spring_security_check',
+    transactionsPage: '/admin/transacAdmin',
+    /** Transaction search (POST, query-string filters). */
+    transactions: '/trans/getAllTrans',
+    /** PSP request/response + bank transaction for one purchase. */
+    bankTransaction: '/trans/getBankTrans',
+  },
   purchases: {
     /** Trailing slash is part of the contract. */
     collection: '/v1/purchases/',
