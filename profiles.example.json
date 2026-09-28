@@ -1,0 +1,13 @@
+{
+  "profiles": [
+    {
+      "id": "tester-1",
+      "name": "Tester 1",
+      "paymentMethod": "VISA",
+      "environments": {
+        "uat": { "brandId": "<uat brand id>", "apiKey": "<uat secret api key>" },
+        "local": { "brandId": "<local brand id>", "apiKey": "<local secret api key>" }
+      }
+    }
+  ]
+}

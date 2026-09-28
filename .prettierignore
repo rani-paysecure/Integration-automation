@@ -1,0 +1,8 @@
+node_modules/
+reports/
+test-results/
+playwright-report/
+blob-report/
+package-lock.json
+.idea/
+tools/launcher/index.html

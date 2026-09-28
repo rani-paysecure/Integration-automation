@@ -1,0 +1,5 @@
+# Normalise line endings so Windows and CI agents behave the same way.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.zip binary
