@@ -1,29 +1,71 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
+import { getSettings, settingsAsEnv } from './settings';
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-
-let loaded = false;
+const LOADED_FLAG = '__IQA_CONFIG_LOADED';
 
 /**
- * Loads `.env.<env>` (optional) and then `.env` from the project root.
+ * Loads configuration into `process.env` once per run. Precedence (highest first):
  *
- * - Variables already present in `process.env` (shell, CI secrets) always win.
- * - Earlier files win over later ones, so `.env.uat` overrides `.env`.
- * - Safe to call multiple times; files are only read once per process.
+ * 1. shell / CI variables
+ * 2. launcher settings – settings.local.json (git-ignored)
+ * 3. `.env`
+ * 4. team defaults – config/defaults.json
+ *
+ * Workers inherit the result from the main process, so they skip this.
  */
-export function loadEnvFiles(env: string): void {
-  if (loaded) return;
-  loaded = true;
+export function loadEnvFiles(): void {
+  if (process.env[LOADED_FLAG] === '1') return;
+  const fromShell = new Set(Object.keys(process.env).filter((k) => process.env[k] !== ''));
 
-  const candidates = [`.env.${env}`, '.env'];
-  for (const file of candidates) {
-    const fullPath = path.join(PROJECT_ROOT, file);
-    if (fs.existsSync(fullPath)) {
-      dotenv.config({ path: fullPath, override: false, quiet: true });
-    }
+  const settings = getSettings();
+  const local = settingsAsEnv(settings);
+  const envFile = path.join(PROJECT_ROOT, '.env');
+  const dotenvValues = fs.existsSync(envFile)
+    ? dotenv.parse(fs.readFileSync(envFile))
+    : ({} as Record<string, string>);
+
+  const localOverrides = localKeys();
+  for (const [key, value] of Object.entries(dotenvValues)) {
+    if (!fromShell.has(key) && value !== '' && !localOverrides.has(key)) process.env[key] = value;
   }
+  for (const [key, value] of Object.entries(local)) {
+    if (fromShell.has(key)) continue;
+    // settings.local.json beats .env; team defaults only fill gaps.
+    if (localOverrides.has(key) || readEnv(key) === undefined) process.env[key] = value;
+  }
+  process.env[LOADED_FLAG] = '1';
+}
+
+/** Env var names that the tester changed in the launcher (present in settings.local.json). */
+function localKeys(): Set<string> {
+  const file = path.join(PROJECT_ROOT, 'settings.local.json');
+  if (!fs.existsSync(file)) return new Set();
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+  } catch {
+    return new Set();
+  }
+  const keys = new Set<string>();
+  const run = (raw.run ?? {}) as Record<string, unknown>;
+  const auth = (raw.auth ?? {}) as Record<string, unknown>;
+  const environments = (raw.environments ?? {}) as Record<string, Record<string, unknown>>;
+  if ('defaultEnvironment' in run) keys.add('TEST_ENV');
+  if ('logLevel' in run) keys.add('LOG_LEVEL');
+  if ('logHttpBodies' in run) keys.add('LOG_HTTP_BODIES');
+  if ('trace' in run) keys.add('PW_TRACE');
+  if ('apiKeyHeader' in auth) keys.add('API_KEY_HEADER');
+  if ('apiKeyPrefix' in auth) keys.add('API_KEY_PREFIX');
+  if ('tokenPath' in auth) keys.add('AUTH_TOKEN_PATH');
+  for (const [name, endpoints] of Object.entries(environments)) {
+    const prefix = name.toUpperCase();
+    if ('baseUrl' in endpoints) keys.add(`${prefix}_BASE_URL`);
+    if ('apiBaseUrl' in endpoints) keys.add(`${prefix}_API_BASE_URL`);
+  }
+  return keys;
 }
 
 /** Returns a trimmed env var, treating empty strings as undefined. */

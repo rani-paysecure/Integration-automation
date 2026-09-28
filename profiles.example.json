@@ -5,7 +5,11 @@
       "name": "Tester 1",
       "paymentMethod": "VISA",
       "environments": {
-        "uat": { "brandId": "<uat brand id>", "apiKey": "<uat secret api key>" },
+        "uat": {
+          "brandId": "<uat brand id>",
+          "apiKey": "<uat secret api key>",
+          "dashboard": { "username": "<dashboard user>", "password": "<dashboard password>" }
+        },
         "local": { "brandId": "<local brand id>", "apiKey": "<local secret api key>" }
       }
     }

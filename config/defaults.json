@@ -1,0 +1,121 @@
+{
+  "$comment": "Team defaults (committed). Per-machine changes made in the launcher go to settings.local.json (git-ignored) and override these. Never put secrets here.",
+  "run": {
+    "defaultEnvironment": "uat",
+    "logLevel": "info",
+    "logHttpBodies": true,
+    "trace": ""
+  },
+  "auth": {
+    "apiKeyHeader": "Authorization",
+    "apiKeyPrefix": "Bearer",
+    "tokenPath": ""
+  },
+  "environments": {
+    "uat": {
+      "baseUrl": "https://test4.paymentsclub.net",
+      "apiBaseUrl": "https://test4.paymentsclub.net/api"
+    },
+    "local": {
+      "baseUrl": "",
+      "apiBaseUrl": ""
+    }
+  },
+  "paymentMethods": ["VISA", "MASTERCARD"],
+  "currencies": ["EUR", "USD", "GBP", "INR", "AUD", "CAD", "BRL"],
+  "banks": {
+    "uat": ["paysafe_payfac"],
+    "local": []
+  },
+  "purchase": {
+    "uat": {
+      "client": {
+        "email": "ashishm.11@gmail.com",
+        "country": "AT",
+        "city": "jaipur",
+        "stateCode": "WI",
+        "street_address": "Kärntner Straße 10",
+        "zip_code": "1010",
+        "date_of_birth": "2011-04-25",
+        "phone": "+436601234567",
+        "full_name": "dummy User"
+      },
+      "purchase": {
+        "currency": "EUR",
+        "products": [
+          {
+            "name": "Gaming Cards",
+            "price": 2
+          }
+        ],
+        "total": 2
+      },
+      "platform": "woocommerce",
+      "send_receipt": false,
+      "skip_capture": false,
+      "success_redirect": "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
+      "pending_redirect": "https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif",
+      "failure_redirect": "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif",
+      "success_callback": "https://www.google.com/",
+      "failure_callback": "https://staging.paysecure.net/merchant"
+    },
+    "local": {
+      "client": {
+        "email": "ashishm.11@gmail.com",
+        "country": "AT",
+        "city": "jaipur",
+        "stateCode": "WI",
+        "street_address": "Kärntner Straße 10",
+        "zip_code": "1010",
+        "date_of_birth": "2011-04-25",
+        "phone": "+436601234567",
+        "full_name": "dummy User"
+      },
+      "purchase": {
+        "currency": "EUR",
+        "products": [
+          {
+            "name": "Gaming Cards",
+            "price": 2
+          }
+        ],
+        "total": 2
+      },
+      "platform": "woocommerce",
+      "send_receipt": false,
+      "skip_capture": false,
+      "success_redirect": "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
+      "pending_redirect": "https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif",
+      "failure_redirect": "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif",
+      "success_callback": "https://www.google.com/",
+      "failure_callback": "https://staging.paysecure.net/merchant"
+    }
+  },
+  "cards": {
+    "uat": [
+      {
+        "id": "risk-rule-3ds-u",
+        "label": "Visa – risk rule fails (3DS result U)",
+        "number": "4530910000012345",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Test Risk",
+        "expectedOutcome": "failure-redirect",
+        "expectedStatuses": ["ERROR"],
+        "enabled": true
+      },
+      {
+        "id": "invalid-card-details",
+        "label": "Visa 4111… rejected by cashier",
+        "number": "4111111111111111",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Test Invalid",
+        "expectedOutcome": "rejected",
+        "expectedStatuses": ["CREATED"],
+        "enabled": true
+      }
+    ],
+    "local": []
+  }
+}

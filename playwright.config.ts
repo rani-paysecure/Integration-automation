@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { getEnvironmentSettings, peekUrls, resolveEnvironment } from './config/test-config';
 
 /**
@@ -33,6 +33,7 @@ export default defineConfig({
   testDir: './tests',
   outputDir: './test-results',
   globalSetup: './config/global-setup.ts',
+  globalTeardown: './config/global-teardown.ts',
 
   timeout: settings.timeouts.test,
   expect: { timeout: settings.timeouts.expect },
@@ -48,6 +49,8 @@ export default defineConfig({
     ['junit', { outputFile: 'reports/junit/results.xml' }],
     ['json', { outputFile: 'reports/json/results.json' }],
     ['./src/reporters/field-test-reporter.ts', { outputDir: 'reports/field-tests' }],
+    ['./src/reporters/psp-report-reporter.ts', { outputDir: 'reports/psp-validation' }],
+    ['./src/reporters/ui-report-reporter.ts', { outputDir: 'reports/ui' }],
   ],
 
   metadata: {
@@ -74,8 +77,15 @@ export default defineConfig({
     // One project per business flow. Stages inside a flow are numbered spec files
     // (01-api-field-validation, 02-regex-validation, 03-psp-validation, ...).
     {
+      // API stages need no browser; the cashier payment stage opens Chrome.
       name: 'cashier-purchase',
       testDir: './tests/flows/cashier-purchase',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+          : {}),
+      },
     },
     {
       name: 's2s-purchase',

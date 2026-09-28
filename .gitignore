@@ -8,6 +8,9 @@ node_modules/
 
 # Tester profiles (brand IDs + API keys) – local only
 profiles.local.json
+# Launcher settings (per machine)
+settings.local.json
+settings.local.json.tmp
 
 # Generated test output (recreated by Playwright on every run)
 reports/*

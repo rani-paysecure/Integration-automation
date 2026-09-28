@@ -20,7 +20,7 @@ test.describe('Sensitive data masking', () => {
       client_secret: '***',
       headers: { Authorization: '***', 'x-api-key': '***' },
       paymentMethod: {
-        card: { cardNumber: '***1111', cvv: '***', expiryYear: '***', holderName: 'A B' },
+        card: { cardNumber: '***1111', cvv: '***', expiryYear: '***', holderName: '***' },
       },
       customer: { email: 'j***@example.com', phone: '***0100' },
       items: [{ password: '***' }],

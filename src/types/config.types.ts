@@ -58,6 +58,23 @@ export interface TestConfig {
     readonly brandId: string | undefined;
     /** Card scheme sent as `paymentMethod`, e.g. `VISA`. */
     readonly paymentMethod: string;
+    /** Currency for the run (RUN_CURRENCY); undefined = purchase template currency. */
+    readonly currency: string | undefined;
+    /** Bank / PSP the purchase is expected to be routed to (RUN_BANK); undefined = not checked. */
+    readonly expectedBank: string | undefined;
+  };
+  /** Transaction options for the run. */
+  readonly transaction: {
+    /** Test-card id (settings) used to complete payments for accepted cases (RUN_PAY_CARD). */
+    readonly payCardId: string | undefined;
+    /** Show the cashier browser (RUN_HEADED=1). */
+    readonly headed: boolean;
+  };
+  /** Back-office dashboard (transactions, PSP logs). Credentials from the tester profile or env. */
+  readonly backoffice: {
+    readonly baseUrl: string | undefined;
+    readonly username: string | undefined;
+    readonly password: string | undefined;
   };
   /** Selected tester profile (TEST_PROFILE), if any. */
   readonly profile: { readonly id: string; readonly name: string } | undefined;

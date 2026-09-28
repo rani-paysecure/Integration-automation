@@ -31,19 +31,47 @@ npx cross-env TEST_PROFILE=rani PAYMENT_METHOD=VISA npm run test:cashier:fields
 
 ## Test launcher (UI)
 
-`npm run launcher` starts a small local web UI at <http://127.0.0.1:4173> (opens automatically).
+`npm run launcher` starts a local web UI at <http://127.0.0.1:4173> (opens automatically).
 
-1. **Environment** – UAT or LOCAL.
-2. **Tester profile** – each QA's brand ID + API key. Add / edit / delete profiles in the UI;
-   "Custom" runs once with a brand ID + key that is not saved.
-3. **Payment method** – VISA, MASTERCARD, or any other scheme code.
-4. **Suite** – e.g. _Cashier purchase › 1. API field validation_; optional filter by case id/title
-   (e.g. `FT-01`, `phone`).
-5. **Run** – live log, then open the HTML report or download the results CSV.
+**Run tab – select, click Run test, read the result:**
+
+1. **Configuration** – environment (top right: UAT / LOCAL), tester (brand ID + API key, or
+   one-off credentials), currency, payment method (VISA, MASTERCARD, …) and bank / PSP.
+2. **Test cases** – searchable list of every case (e.g. search `zip` → FT-058…FT-063), card
+   transaction scenarios, the PSP check for existing purchase IDs and the framework self-tests.
+   Tick exactly what to run.
+3. **Transaction** – optionally let every _accepted_ field case continue into a **real
+   transaction** with a chosen test card: cashier → PAY → PSP → back-office. "Transactions (test
+   cards)" cases always pay.
+4. **▶ Run test** – runs the matching Playwright tests with that configuration.
+5. **Report** – configuration (API key masked), totals, and per test: expected vs actual,
+   pass/fail, purchase ID and PSP transaction ID; click a row for request, response,
+   validation/error details, PSP checks (incl. _routed to selected bank_), request sent to the PSP
+   and the PSP response. Earlier runs stay in the history dropdown (`reports/ui/history/`).
+
+How selections are applied: currency overrides the purchase template, payment method is sent as
+`paymentMethod`, bank is compared with the bank/PSP of the PSP record after a transaction, brand
+ID + API key come from the tester.
+
+Other tabs:
+
+| Tab               | What you set                                                                                                          | Stored in             |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **Run**           | environment, tester, payment method, suite, filter, purchase IDs, test cards, show browser, workers, retries          | – (per run)           |
+| **Testers**       | name, brand ID, API key, dashboard username/password, default payment method – per environment                        | `profiles.local.json` |
+| **Environments**  | dashboard/cashier URL and API URL for UAT and LOCAL, default environment                                              | `settings.local.json` |
+| **Purchase data** | baseline request: customer, currency, products, total, platform, `send_receipt`, `skip_capture`, redirects, callbacks | `settings.local.json` |
+| **Test cards**    | card scenarios (number, expiry, CVV, holder, expected cashier result + status), on/off                                | `settings.local.json` |
+| **Advanced**      | API key header/prefix, OAuth token path, payment-method list, log level, body logging, trace mode                     | `settings.local.json` |
+
+Both `*.local.json` files are git-ignored and stay on the tester's computer. Team defaults live in
+**`config/defaults.json`** (committed); a "customised" badge + **Reset** shows/undoes local changes.
+
+Precedence: **shell / CI variables → launcher (`settings.local.json`) → `.env` → `config/defaults.json`**.
 
 Security: binds to `127.0.0.1` only, rejects foreign `Host` headers, needs a per-session token for
-every change, never sends API keys back to the browser (only the last 4 characters), and masks keys
-in the streamed log.
+every change, validates every value (e.g. production hosts are rejected), never sends API keys or
+passwords back to the browser, and masks them in the streamed log.
 
 ## Tester profiles (3 QAs, own brand ID + API key)
 
@@ -217,6 +245,56 @@ npm run test:cashier:fields -- --grep FT-01  # filter by case id / title
   blocked, cardholder name) belongs to a future browser suite.
 - Auth: `Authorization: Bearer <API key of the selected profile>` (`API_KEY_HEADER=Authorization`, `API_KEY_PREFIX=Bearer`).
 
+## Cashier purchase – pay on the cashier (end to end)
+
+`tests/flows/cashier-purchase/03-cashier-payment.spec.ts` runs the real customer journey:
+**create purchase → open `checkout_url` → type test card → PAY → (3DS / PSP pages) → merchant
+redirect → final status → PSP request/response in the back-office**, and adds a row to the
+purchase ID → PSP transaction ID report.
+
+```bash
+npx playwright install chromium            # once
+npx cross-env TEST_PROFILE=rani npx playwright test --grep @cashier-payment
+npx cross-env TEST_PROFILE=rani npx playwright test --grep @cashier-payment --headed   # watch it
+```
+
+Card scenarios (`tests/test-data/cashier-purchase/cashier-cards.ts`):
+
+| Scenario              | Card                          | Expected                                                          |
+| --------------------- | ----------------------------- | ----------------------------------------------------------------- |
+| Approved              | `UAT_CARD_APPROVED` in `.env` | success redirect, `PAID`                                          |
+| Declined              | `UAT_CARD_DECLINED` in `.env` | failure redirect, `ERROR`                                         |
+| Risk rule (UAT)       | `4530 9100 0001 2345`         | via Paysafe 3DS → failure redirect, `ERROR` ("threeDResult is U") |
+| Cashier rejects (UAT) | `4111 1111 1111 1111`         | PAY rejected "Invalid card details", stays `CREATED`              |
+
+The cashier page object (`src/pages/cashier-page.ts`) uses the form's element IDs. In the launcher
+pick **Cashier purchase › pay on cashier**; tick _Show browser_ to watch.
+
+## Cashier purchase – stage 3: PSP request/response validation
+
+`tests/flows/cashier-purchase/03-psp-validation.spec.ts` reads, for each purchase ID, the
+back-office transaction (`POST /trans/getAllTrans`) and the bank / PSP record
+(`GET /trans/getBankTrans`) – the same data as _Transactions → click purchase ID_ in the dashboard.
+
+```bash
+# launcher: suite "Cashier purchase › 3. PSP request/response", paste purchase IDs
+npx cross-env TEST_PROFILE=rani PSP_PURCHASE_IDS=id1,id2 npx playwright test --grep @psp-validation
+```
+
+Checks per paid/failed purchase: PSP record exists · order reference = purchase ID · amount and
+currency sent to the PSP (FX amount/currency when converted) · request and response recorded ·
+PAID ⇒ PSP transaction ID present and last attempt successful · ERROR ⇒ last attempt not
+successful. Unpaid purchases are reported as **NOT ATTEMPTED**.
+
+Output: `reports/psp-validation/psp-validation-results.csv` – **purchase ID → PSP transaction ID**,
+bank, MID, amounts, PSP status, gateway code/message, failed checks, verdict (+ `history/`). The
+masked PSP request/response are attached to each test in the HTML report.
+
+**Dashboard login:** add _Dashboard username/password_ to your profile in the launcher (or
+`UAT_DASHBOARD_USERNAME` / `UAT_DASHBOARD_PASSWORD`). The dashboard allows **one active session per
+user** – a run logs in once (shared by all workers, removed after the run) and **ends that user's
+browser session**. Use a dedicated automation dashboard user per QA to avoid being logged out.
+
 ## Logging & sensitive data
 
 - Every request is logged as `METHOD url → status (ms)`; set `LOG_LEVEL=debug` for full
@@ -265,5 +343,5 @@ step (`POST https://…/v1/payments`).
 
 1. ✅ Paysecure API field validation
 2. ⏳ Regex validation (dashboard-configured regex, applied by the API and enforced on the cashier page)
-3. ⏳ Cashier payment (browser) + PSP request/response validation via the back-office API
+3. ✅ PSP request/response validation via the back-office (given purchase IDs) · ⏳ automated cashier payment
 4. ⏳ Excel report per run: purchase ID → transaction ID, status, PSP checks, verdict

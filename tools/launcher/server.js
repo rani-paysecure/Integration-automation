@@ -22,12 +22,16 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const settingsCore = require('../../config/settings-core');
+const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PROFILES_FILE = path.join(ROOT, 'profiles.local.json');
 const HTML_FILE = path.join(__dirname, 'index.html');
 const REPORT_DIR = path.join(ROOT, 'reports', 'html');
 const RESULTS_CSV = path.join(ROOT, 'reports', 'field-tests', 'field-test-results.csv');
+const PSP_CSV = path.join(ROOT, 'reports', 'psp-validation', 'psp-validation-results.csv');
+const UI_REPORT_DIR = path.join(ROOT, 'reports', 'ui');
 const PLAYWRIGHT_CLI = require.resolve('@playwright/test/cli', { paths: [ROOT] });
 
 const HOST = '127.0.0.1';
@@ -36,24 +40,91 @@ const TOKEN = crypto.randomBytes(24).toString('hex');
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_LOG_LINES = 5000;
 
-const ENVIRONMENTS = [
-  { id: 'uat', label: 'UAT', hint: 'test4.paymentsclub.net' },
-  { id: 'local', label: 'LOCAL', hint: 'your machine' },
+const ENVIRONMENT_IDS = ['uat', 'local'];
+
+// ── settings (config/defaults.json + settings.local.json) ─────────────────────
+
+/** Sections the UI may change. */
+const SETTINGS_PATHS = [
+  'run',
+  'auth',
+  'paymentMethods',
+  'currencies',
+  'banks.uat',
+  'banks.local',
+  'environments.uat',
+  'environments.local',
+  'purchase.uat',
+  'purchase.local',
+  'cards.uat',
+  'cards.local',
 ];
 
-/** Card schemes offered in the UI. "Other" lets testers type any value. */
-const PAYMENT_METHODS = ['VISA', 'MASTERCARD'];
+function effectiveSettings() {
+  const result = settingsCore.resolveSettings();
+  if (!result.success) {
+    throw new HttpError(500, `Settings are invalid:\n${z.prettifyError(result.error)}`);
+  }
+  return result.data;
+}
 
-const SUITES = [
-  {
-    id: 'cashier-fields',
-    label: 'Cashier purchase › 1. API field validation',
-    project: 'cashier-purchase',
-    grep: '@field-validation',
-  },
-  { id: 'cashier-all', label: 'Cashier purchase › all stages', project: 'cashier-purchase' },
-  { id: 'framework', label: 'Framework self-tests (offline)', project: 'framework' },
-];
+function getAt(obj, dotted) {
+  return dotted.split('.').reduce((node, key) => (node == null ? undefined : node[key]), obj);
+}
+
+function setAt(obj, dotted, value) {
+  const keys = dotted.split('.');
+  const last = keys.pop();
+  let node = obj;
+  for (const key of keys) {
+    if (typeof node[key] !== 'object' || node[key] === null) node[key] = {};
+    node = node[key];
+  }
+  if (value === undefined) Reflect.deleteProperty(node, last);
+  else node[last] = value;
+  // Drop empty parents so "reset" really falls back to the defaults.
+  if (keys.length && Object.keys(node).length === 0) setAt(obj, keys.join('.'), undefined);
+}
+
+function writeLocalSettings(data) {
+  const tmp = `${settingsCore.SETTINGS_FILE}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(tmp, settingsCore.SETTINGS_FILE);
+}
+
+/** Validates the whole merged result before anything is written. */
+function updateSettings(dotted, value) {
+  if (!SETTINGS_PATHS.includes(dotted)) throw new HttpError(400, 'Unknown settings section');
+  const local = settingsCore.readJson(settingsCore.SETTINGS_FILE);
+  setAt(local, dotted, value);
+  const merged = settingsCore.mergeSettings(settingsCore.readDefaults(), local);
+  const parsed = settingsCore.settingsSchema.safeParse(merged);
+  if (!parsed.success) throw new HttpError(400, z.prettifyError(parsed.error));
+  writeLocalSettings(local);
+}
+
+function settingsView() {
+  const local = settingsCore.readJson(settingsCore.SETTINGS_FILE);
+  return {
+    effective: effectiveSettings(),
+    defaults: settingsCore.readDefaults(),
+    overridden: SETTINGS_PATHS.filter((p) => getAt(local, p) !== undefined),
+  };
+}
+
+function environments() {
+  const settings = effectiveSettings();
+  return ENVIRONMENT_IDS.map((id) => {
+    const url = settings.environments[id].baseUrl || settings.environments[id].apiBaseUrl;
+    let hint = 'not configured';
+    try {
+      if (url) hint = new URL(url).host;
+    } catch {
+      /* keep hint */
+    }
+    return { id, label: id.toUpperCase(), hint };
+  });
+}
 
 // ── profiles ────────────────────────────────────────────────────────────────
 
@@ -88,7 +159,12 @@ function publicProfiles() {
     environments: Object.fromEntries(
       Object.entries(p.environments || {}).map(([env, c]) => [
         env,
-        { brandId: c.brandId, apiKeyHint: keyHint(c.apiKey) },
+        {
+          brandId: c.brandId,
+          apiKeyHint: keyHint(c.apiKey),
+          dashboardUsername: c.dashboard?.username || '',
+          hasDashboardPassword: Boolean(c.dashboard?.password),
+        },
       ]),
     ),
   }));
@@ -106,7 +182,7 @@ function slugify(name) {
 }
 
 function isEnv(value) {
-  return ENVIRONMENTS.some((e) => e.id === value);
+  return ENVIRONMENT_IDS.includes(value);
 }
 
 /** Upserts one environment's credentials on a profile. */
@@ -133,13 +209,27 @@ function saveProfile(input) {
     profile = { id, name, environments: {} };
     data.profiles.push(profile);
   }
-  const existingKey = profile.environments?.[env]?.apiKey;
+  const existing = profile.environments?.[env];
+  const existingKey = existing?.apiKey;
   if (!apiKey && !existingKey) throw new HttpError(400, 'API key is required');
+
+  const dashboardUsername = String(input.dashboardUsername || '').trim();
+  const dashboardPassword = String(input.dashboardPassword || '');
+  const keptPassword = dashboardPassword || existing?.dashboard?.password || '';
+  if (dashboardUsername && !keptPassword) {
+    throw new HttpError(400, 'Dashboard password is required');
+  }
 
   profile.name = name;
   if (paymentMethod) profile.paymentMethod = paymentMethod;
   profile.environments = profile.environments || {};
-  profile.environments[env] = { brandId, apiKey: apiKey || existingKey };
+  profile.environments[env] = {
+    brandId,
+    apiKey: apiKey || existingKey,
+    ...(dashboardUsername
+      ? { dashboard: { username: dashboardUsername, password: keptPassword } }
+      : {}),
+  };
   writeProfiles(data);
   return id;
 }
@@ -157,10 +247,6 @@ function deleteProfile(id) {
 let run = null;
 /** @type {Set<http.ServerResponse>} */
 const listeners = new Set();
-
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function mask(text, secrets) {
   let out = text;
@@ -184,55 +270,209 @@ function pushLine(line) {
   broadcast('line', clean);
 }
 
+const KEY_PATTERN = /^@[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const FRAMEWORK_KEY = '@framework';
+
+function childEnvFor(env) {
+  return { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
+}
+
+/** Lists the tests of the flow projects (cached per environment for a short time). */
+const catalogCache = new Map();
+function listTests(env) {
+  const cached = catalogCache.get(env);
+  if (cached && Date.now() - cached.at < 15_000) return Promise.resolve(cached.data);
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [PLAYWRIGHT_CLI, 'test', '--list', '--reporter=json', '--project=cashier-purchase'],
+      { cwd: ROOT, env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '' }, shell: false },
+    );
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (c) => (out += c));
+    child.stderr.on('data', (c) => (err += c));
+    child.on('close', () => {
+      try {
+        const json = JSON.parse(out.slice(out.indexOf('{')));
+        const tests = [];
+        const walk = (suite, group) => {
+          for (const spec of suite.specs || []) {
+            // JSON reporter lists tags without the leading '@'.
+            const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
+            const key = tags.find((t) => /^@(FT-|card-|backoffice-smoke)/.test(t));
+            if (!key) continue;
+            tests.push({
+              key,
+              title: spec.title,
+              group,
+              transaction: tags.includes('@transaction'),
+              expectation:
+                tags
+                  .find((t) => ['@accepted', '@rejected', '@observe', '@sanitized'].includes(t))
+                  ?.slice(1) || '',
+            });
+          }
+          for (const child of suite.suites || []) walk(child, child.title || group);
+        };
+        for (const suite of json.suites || []) walk(suite, suite.title);
+        tests.push({
+          key: '@psp-by-id',
+          title: 'PSP check for existing purchase IDs (enter IDs below)',
+          group: 'PSP check (read-only)',
+          transaction: false,
+          needsPurchaseIds: true,
+          expectation: '',
+        });
+        tests.push({
+          key: FRAMEWORK_KEY,
+          title: 'Framework self-tests (offline)',
+          group: 'Framework',
+          transaction: false,
+          expectation: '',
+        });
+        catalogCache.set(env, { at: Date.now(), data: tests });
+        resolve(tests);
+      } catch {
+        reject(
+          new HttpError(500, `Could not list tests: ${err.split('\n').slice(0, 5).join(' ')}`),
+        );
+      }
+    });
+  });
+}
+
+function maskedKey(key) {
+  return typeof key === 'string' && key.length > 4 ? `••••${key.slice(-4)}` : '••••';
+}
+
 function startRun(input) {
   if (run && run.status === 'running') throw new HttpError(409, 'A run is already in progress');
 
   const env = String(input.env || '');
   if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
-  const suite = SUITES.find((s) => s.id === input.suiteId);
-  if (!suite) throw new HttpError(400, 'Unknown suite');
+  const settings = effectiveSettings();
   const paymentMethod = String(input.paymentMethod || 'VISA')
     .trim()
     .toUpperCase();
   if (!/^[A-Z0-9_]{2,30}$/.test(paymentMethod)) throw new HttpError(400, 'Invalid payment method');
-  const filter = String(input.filter || '')
+  const currency = String(input.currency || '')
     .trim()
-    .slice(0, 100);
+    .toUpperCase();
+  if (currency && !/^[A-Z]{3}$/.test(currency))
+    throw new HttpError(400, 'Currency must be a 3-letter ISO code');
+  const bank = String(input.bank || '').trim();
+  if (bank && !/^[\w .:/-]{1,80}$/.test(bank)) throw new HttpError(400, 'Invalid bank name');
+  const payCard = String(input.payCard || '').trim();
+  if (payCard && !settings.cards[env].some((c) => c.id === payCard)) {
+    throw new HttpError(400, 'Unknown "pay with" card');
+  }
+
+  const keys = Array.isArray(input.testKeys) ? input.testKeys.map(String) : [];
+  if (keys.length === 0) throw new HttpError(400, 'Select at least one test case');
+  if (keys.length > 500 || keys.some((k) => !KEY_PATTERN.test(k))) {
+    throw new HttpError(400, 'Invalid test selection');
+  }
+  const frameworkOnly = keys.length === 1 && keys[0] === FRAMEWORK_KEY;
+  if (keys.includes(FRAMEWORK_KEY) && !frameworkOnly) {
+    throw new HttpError(400, 'Run the framework self-tests on their own');
+  }
 
   const prefix = env.toUpperCase();
   /** @type {NodeJS.ProcessEnv} */
   const childEnv = {
-    ...process.env,
-    TEST_ENV: env,
+    ...childEnvFor(env),
     PAYMENT_METHOD: paymentMethod,
-    FORCE_COLOR: '0',
-    TEST_PROFILE: '',
+    RUN_CURRENCY: currency,
+    RUN_BANK: bank,
+    RUN_PAY_CARD: payCard,
+    RUN_HEADED: input.headed === true ? '1' : '',
+    ATTACH_HTTP_ALWAYS: '1',
   };
   const secrets = [];
-  let who = 'custom credentials';
+  let who = 'one-off credentials';
+  let brandId = '';
+  let apiKeyHint = '';
 
-  if (suite.project === 'framework') {
-    // Offline self-tests need no credentials.
+  if (frameworkOnly) {
+    who = '–';
   } else if (input.profileId) {
     const profile = readProfiles().profiles.find((p) => p.id === input.profileId);
     const creds = profile?.environments?.[env];
     if (!profile || !creds) throw new HttpError(400, `Profile has no ${prefix} credentials`);
     childEnv.TEST_PROFILE = profile.id;
     secrets.push(creds.apiKey);
+    if (creds.dashboard?.password) secrets.push(creds.dashboard.password);
     who = profile.name;
+    brandId = creds.brandId;
+    apiKeyHint = maskedKey(creds.apiKey);
   } else {
-    const brandId = String(input.brandId || '').trim();
+    brandId = String(input.brandId || '').trim();
     const apiKey = String(input.apiKey || '').trim();
     if (!brandId || !apiKey) throw new HttpError(400, 'Brand ID and API key are required');
     childEnv[`${prefix}_BRAND_ID`] = brandId;
     childEnv[`${prefix}_API_KEY`] = apiKey;
     secrets.push(apiKey);
+    apiKeyHint = maskedKey(apiKey);
+    const dashboardUsername = String(input.dashboardUsername || '').trim();
+    const dashboardPassword = String(input.dashboardPassword || '');
+    if (dashboardUsername && dashboardPassword) {
+      childEnv[`${prefix}_DASHBOARD_USERNAME`] = dashboardUsername;
+      childEnv[`${prefix}_DASHBOARD_PASSWORD`] = dashboardPassword;
+      secrets.push(dashboardPassword);
+    }
   }
 
-  const args = [PLAYWRIGHT_CLI, 'test', `--project=${suite.project}`];
-  const patterns = [suite.grep, filter ? escapeRegExp(filter) : undefined].filter(Boolean);
-  if (patterns.length === 1) args.push('--grep', /** @type {string} */ (patterns[0]));
-  if (patterns.length > 1) args.push('--grep', patterns.map((p) => `(?=.*${p})`).join(''));
+  const purchaseIds = String(input.purchaseIds || '')
+    .split(/[\s,;]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (purchaseIds.some((id) => !/^[A-Za-z0-9_-]{6,64}$/.test(id))) {
+    throw new HttpError(400, 'Purchase IDs may only contain letters, digits, "-" and "_"');
+  }
+  if (keys.includes('@psp-by-id') && purchaseIds.length === 0) {
+    throw new HttpError(400, 'Enter at least one purchase ID for the PSP check');
+  }
+  if (purchaseIds.length > 50) throw new HttpError(400, 'At most 50 purchase IDs per run');
+  childEnv.PSP_PURCHASE_IDS = purchaseIds.join(',');
+
+  const payWith = settings.cards[env].find((c) => c.id === payCard);
+  childEnv.RUN_META = JSON.stringify({
+    environment: prefix,
+    tester: who,
+    brandId,
+    apiKey: apiKeyHint,
+    currency: currency || `${settings.purchase[env].purchase.currency} (template)`,
+    bank: bank || 'not checked',
+    paymentMethod,
+    payWithCard: payWith ? payWith.label : 'no transaction for field cases',
+    selection: `${keys.length} test case(s)`,
+  });
+
+  const args = [
+    PLAYWRIGHT_CLI,
+    'test',
+    `--project=${frameworkOnly ? 'framework' : 'cashier-purchase'}`,
+  ];
+  if (!frameworkOnly) {
+    const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));
+    args.push('--grep', `(?:${escaped.join('|')})(?=\\s|$)`);
+  }
+  const workers = Number(input.workers || 0);
+  if (!Number.isInteger(workers) || workers < 0 || workers > 16) {
+    throw new HttpError(400, 'Workers must be 1–16 (or empty for default)');
+  }
+  if (input.headed === true) args.push('--workers=1');
+  else if (workers > 0) args.push(`--workers=${workers}`);
+  const retries = Number(input.retries || 0);
+  if (!Number.isInteger(retries) || retries < 0 || retries > 3) {
+    throw new HttpError(400, 'Retries must be 0–3');
+  }
+  if (retries > 0) args.push(`--retries=${retries}`);
+  const suite = {
+    label: frameworkOnly ? 'Framework self-tests' : `${keys.length} selected test case(s)`,
+  };
+  const filter = '';
 
   const child = spawn(process.execPath, args, { cwd: ROOT, env: childEnv, shell: false });
   run = {
@@ -282,6 +522,8 @@ function runState() {
     meta: run.meta,
     hasReport: fs.existsSync(path.join(REPORT_DIR, 'index.html')),
     hasCsv: fs.existsSync(RESULTS_CSV),
+    hasPspCsv: fs.existsSync(PSP_CSV),
+    hasUiReport: fs.existsSync(path.join(UI_REPORT_DIR, 'latest.json')),
   };
 }
 
@@ -367,12 +609,58 @@ const server = http.createServer(async (req, res) => {
     }
     if (method === 'GET' && url.pathname === '/api/options') {
       return send(res, 200, {
-        environments: ENVIRONMENTS,
-        paymentMethods: PAYMENT_METHODS,
-        suites: SUITES.map(({ id, label }) => ({ id, label })),
+        environments: environments(),
+        paymentMethods: effectiveSettings().paymentMethods,
         profiles: publicProfiles(),
         run: runState(),
       });
+    }
+    if (method === 'GET' && url.pathname === '/api/tests') {
+      const env = String(url.searchParams.get('env') || '');
+      if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
+      return send(res, 200, { tests: await listTests(env) });
+    }
+    if (method === 'GET' && url.pathname === '/api/report') {
+      const name = String(url.searchParams.get('run') || 'latest');
+      const file =
+        name === 'latest'
+          ? path.join(UI_REPORT_DIR, 'latest.json')
+          : /^[0-9T-]{19}$/.test(name)
+            ? path.join(UI_REPORT_DIR, 'history', `${name}.json`)
+            : undefined;
+      if (!file || !fs.existsSync(file)) throw new HttpError(404, 'No report yet');
+      return send(res, 200, JSON.parse(fs.readFileSync(file, 'utf8')));
+    }
+    if (method === 'GET' && url.pathname === '/api/reports') {
+      const dir = path.join(UI_REPORT_DIR, 'history');
+      const runs = fs.existsSync(dir)
+        ? fs
+            .readdirSync(dir)
+            .filter((f) => f.endsWith('.json'))
+            .map((f) => f.slice(0, -5))
+            .sort()
+            .reverse()
+            .slice(0, 30)
+        : [];
+      return send(res, 200, { runs });
+    }
+    if (method === 'GET' && url.pathname === '/api/settings') {
+      return send(res, 200, settingsView());
+    }
+    if (method === 'PUT' && url.pathname === '/api/settings') {
+      const body = await readJson(req);
+      if (body.value === undefined || body.value === null)
+        throw new HttpError(400, 'Missing value');
+      updateSettings(String(body.path || ''), body.value);
+      return send(res, 200, settingsView());
+    }
+    if (method === 'DELETE' && url.pathname === '/api/settings') {
+      const dotted = String(url.searchParams.get('path') || '');
+      if (!SETTINGS_PATHS.includes(dotted)) throw new HttpError(400, 'Unknown settings section');
+      const local = settingsCore.readJson(settingsCore.SETTINGS_FILE);
+      setAt(local, dotted, undefined);
+      writeLocalSettings(local);
+      return send(res, 200, settingsView());
     }
     if (method === 'POST' && url.pathname === '/api/profiles') {
       const id = saveProfile(await readJson(req));
@@ -417,6 +705,15 @@ const server = http.createServer(async (req, res) => {
         'cache-control': 'no-store',
       });
       return fs.createReadStream(RESULTS_CSV).pipe(res);
+    }
+    if (method === 'GET' && url.pathname === '/psp-results.csv') {
+      if (!fs.existsSync(PSP_CSV)) throw new HttpError(404, 'No PSP results yet');
+      res.writeHead(200, {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': 'attachment; filename="psp-validation-results.csv"',
+        'cache-control': 'no-store',
+      });
+      return fs.createReadStream(PSP_CSV).pipe(res);
     }
     if (method === 'GET' && (url.pathname === '/report' || url.pathname.startsWith('/report/'))) {
       if (url.pathname === '/report') {

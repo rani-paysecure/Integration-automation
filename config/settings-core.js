@@ -1,0 +1,147 @@
+// @ts-check
+/**
+ * Settings schema + merge logic shared by the framework (config/settings.ts)
+ * and the launcher UI server (tools/launcher/server.js). Plain CommonJS so the
+ * launcher can use it without a TypeScript build.
+ */
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const { z } = require('zod');
+
+const ROOT = path.resolve(__dirname, '..');
+const DEFAULTS_FILE = path.join(__dirname, 'defaults.json');
+const SETTINGS_FILE = path.join(ROOT, 'settings.local.json');
+
+const OUTCOMES = /** @type {const} */ ([
+  'success-redirect',
+  'failure-redirect',
+  'pending-redirect',
+  'rejected',
+  'other-page',
+  'timeout',
+]);
+
+/** Host labels that indicate a live / production system. */
+const BLOCKED_HOST_LABELS = new Set(['prod', 'production', 'prd', 'live']);
+
+const safeUrl = z.url({ protocol: /^https?$/ }).refine(
+  (url) =>
+    !new URL(url).hostname
+      .toLowerCase()
+      .split(/[.-]/)
+      .some((l) => BLOCKED_HOST_LABELS.has(l)),
+  'production hosts are not allowed',
+);
+const urlOrEmpty = z.union([z.literal(''), safeUrl]);
+
+const cardSettingSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'id: lowercase letters, digits, "-"'),
+  label: z.string().trim().min(1),
+  number: z.string().regex(/^\d{12,19}$/, 'card number must be 12–19 digits'),
+  expiry: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'expiry must be MM/YY'),
+  cvv: z.string().regex(/^\d{3,4}$/, 'CVV must be 3–4 digits'),
+  holderName: z.string().trim().min(1),
+  expectedOutcome: z.enum(OUTCOMES),
+  expectedStatuses: z.array(z.string().trim().min(1)).min(1),
+  enabled: z.boolean(),
+});
+
+const purchaseTemplateSchema = z.object({
+  client: z.object({
+    email: z.string(),
+    country: z.string(),
+    city: z.string(),
+    stateCode: z.string(),
+    street_address: z.string(),
+    zip_code: z.string(),
+    date_of_birth: z.string(),
+    phone: z.string(),
+    full_name: z.string(),
+  }),
+  purchase: z.object({
+    currency: z.string(),
+    products: z.array(z.object({ name: z.string(), price: z.number() })).min(1),
+    total: z.number(),
+  }),
+  platform: z.string(),
+  send_receipt: z.boolean(),
+  skip_capture: z.boolean(),
+  success_redirect: z.string(),
+  pending_redirect: z.string(),
+  failure_redirect: z.string(),
+  success_callback: z.string(),
+  failure_callback: z.string(),
+});
+
+const endpointsSchema = z.object({ baseUrl: urlOrEmpty, apiBaseUrl: urlOrEmpty });
+
+const settingsSchema = z.object({
+  run: z.object({
+    defaultEnvironment: z.enum(['uat', 'local']),
+    logLevel: z.enum(['debug', 'info', 'warn', 'error', 'silent']),
+    logHttpBodies: z.boolean(),
+    trace: z.enum(['', 'on', 'off', 'retain-on-failure', 'on-first-retry', 'on-all-retries']),
+  }),
+  auth: z.object({
+    apiKeyHeader: z.string().trim().min(1),
+    apiKeyPrefix: z.string(),
+    tokenPath: z.string(),
+  }),
+  environments: z.object({ uat: endpointsSchema, local: endpointsSchema }),
+  paymentMethods: z.array(z.string().regex(/^[A-Z0-9_]{2,30}$/)).min(1),
+  currencies: z.array(z.string().regex(/^[A-Z]{3}$/, 'ISO-4217 code, e.g. EUR')).min(1),
+  banks: z.object({
+    uat: z.array(z.string().trim().min(1)),
+    local: z.array(z.string().trim().min(1)),
+  }),
+  purchase: z.object({ uat: purchaseTemplateSchema, local: purchaseTemplateSchema }),
+  cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
+});
+
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+const isPlainObject = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Deep merge; arrays and primitives from `override` replace `base`. @returns {unknown} */
+function mergeSettings(/** @type {unknown} */ base, /** @type {unknown} */ override) {
+  if (!isPlainObject(base) || !isPlainObject(override))
+    return override === undefined ? base : override;
+  /** @type {Record<string, unknown>} */
+  const result = { ...base };
+  for (const [key, value] of Object.entries(override))
+    result[key] = mergeSettings(base[key], value);
+  return result;
+}
+
+/** @returns {Record<string, unknown>} */
+function readJson(/** @type {string} */ file) {
+  if (!fs.existsSync(file)) return {};
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return isPlainObject(parsed) ? parsed : {};
+}
+
+function readDefaults() {
+  const defaults = readJson(DEFAULTS_FILE);
+  delete defaults.$comment;
+  return defaults;
+}
+
+/** Validates merged settings; returns { success, data } or { success: false, error }. */
+function resolveSettings(/** @type {string} */ file = SETTINGS_FILE) {
+  return settingsSchema.safeParse(mergeSettings(readDefaults(), readJson(file)));
+}
+
+module.exports = {
+  DEFAULTS_FILE,
+  SETTINGS_FILE,
+  OUTCOMES,
+  cardSettingSchema,
+  purchaseTemplateSchema,
+  settingsSchema,
+  mergeSettings,
+  readJson,
+  readDefaults,
+  resolveSettings,
+};

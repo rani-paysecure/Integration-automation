@@ -11,9 +11,16 @@ import { ConfigurationError } from './errors';
  */
 export const PROFILES_FILE = path.resolve(__dirname, '..', 'profiles.local.json');
 
+const dashboardSchema = z.object({
+  username: z.string().trim().min(1, 'dashboard username is required'),
+  password: z.string().min(1, 'dashboard password is required'),
+});
+
 const credentialsSchema = z.object({
   brandId: z.string().trim().min(1, 'brandId is required'),
   apiKey: z.string().trim().min(1, 'apiKey is required'),
+  /** Back-office (dashboard) login – used to read transactions and PSP logs. */
+  dashboard: dashboardSchema.optional(),
 });
 
 const environmentsShape = Object.fromEntries(
@@ -34,6 +41,7 @@ export const profilesFileSchema = z.object({
 
 export type TesterProfile = z.infer<typeof testerProfileSchema>;
 export type ProfileCredentials = z.infer<typeof credentialsSchema>;
+export type DashboardCredentials = z.infer<typeof dashboardSchema>;
 
 /** Reads all profiles. Returns an empty list when the file does not exist. */
 export function loadProfiles(file: string = PROFILES_FILE): TesterProfile[] {

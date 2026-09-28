@@ -42,6 +42,11 @@ export abstract class BaseApiClient {
     this.logger = options.logger;
   }
 
+  /** Request context used for every call (overridable, e.g. to swap cookie jars). */
+  protected requestContext(): APIRequestContext {
+    return this.options.request;
+  }
+
   protected get<T = unknown>(path: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     return this.send<T>('GET', path, options);
   }
@@ -107,7 +112,7 @@ export abstract class BaseApiClient {
         const started = Date.now();
         let raw: APIResponse;
         try {
-          raw = await this.options.request.fetch(url, {
+          raw = await this.requestContext().fetch(url, {
             method,
             headers,
             failOnStatusCode: false,

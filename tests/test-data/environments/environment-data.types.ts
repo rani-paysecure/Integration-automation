@@ -1,3 +1,4 @@
+import type { PurchaseTemplate } from '@config/settings';
 import type { CardDetails } from '@app-types/payment.types';
 
 /** Data that legitimately differs between LOCAL and UAT (merchants, test cards, limits). */
@@ -18,13 +19,9 @@ export interface EnvironmentTestData {
     readonly maxAmount: number;
   };
   readonly callbackUrl: string | undefined;
-  /** Hosted-checkout purchase settings (POST /v1/purchases/). */
-  readonly purchase: {
-    readonly platform: string;
-    readonly successRedirect: string;
-    readonly pendingRedirect: string;
-    readonly failureRedirect: string;
-    readonly successCallback: string;
-    readonly failureCallback: string;
-  };
+  /**
+   * Baseline purchase request (client, order, redirects, callbacks) – from
+   * config/defaults.json, overridable per tester in the launcher.
+   */
+  readonly purchase: PurchaseTemplate;
 }

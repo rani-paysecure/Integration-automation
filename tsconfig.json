@@ -19,6 +19,8 @@
 
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
@@ -28,6 +30,7 @@
       "@clients/*": ["./src/clients/*"],
       "@constants/*": ["./src/constants/*"],
       "@helpers/*": ["./src/helpers/*"],
+      "@pages/*": ["./src/pages/*"],
       "@schemas/*": ["./src/schemas/*"],
       "@app-types/*": ["./src/types/*"],
       "@utils/*": ["./src/utils/*"],
@@ -35,6 +38,12 @@
       "@test-data/*": ["./tests/test-data/*"]
     }
   },
-  "include": ["playwright.config.ts", "config/**/*.ts", "src/**/*.ts", "tests/**/*.ts"],
+  "include": [
+    "playwright.config.ts",
+    "config/**/*.ts",
+    "config/**/*.js",
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["node_modules", "reports", "test-results"]
 }
