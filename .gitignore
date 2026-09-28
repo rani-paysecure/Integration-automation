@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment files – never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Tester profiles (brand IDs + API keys) – local only
+profiles.local.json
+
+# Generated test output (recreated by Playwright on every run)
+reports/*
+!reports/.gitkeep
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db

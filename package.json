@@ -1,0 +1,54 @@
+{
+  "name": "integration-qa-automation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright + TypeScript automation framework for integration, API and end-to-end integration flow testing (LOCAL and UAT only).",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:local": "cross-env TEST_ENV=local playwright test",
+    "test:uat": "cross-env TEST_ENV=uat playwright test",
+    "test:cashier": "playwright test --project=cashier-purchase",
+    "test:cashier:fields": "playwright test --project=cashier-purchase --grep @field-validation",
+    "test:s2s": "playwright test --project=s2s-purchase",
+    "test:session": "playwright test --project=session",
+    "test:framework": "playwright test --project=framework",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug --workers=1",
+    "test:ci": "cross-env CI=true playwright test",
+    "launcher": "node tools/launcher/server.js",
+    "test:report": "playwright show-report reports/html",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "npm run typecheck && npm run lint && npm run format:check"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "api-testing",
+    "integration-testing"
+  ],
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.4",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-playwright": "^2.12.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "zod": "^4.6.5"
+  }
+}

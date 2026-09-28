@@ -1,0 +1,80 @@
+name: Integration tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        # LOCAL servers are not reachable from GitHub-hosted runners.
+        options: [uat]
+        default: uat
+      grep:
+        description: Optional tag / title filter (e.g. @smoke)
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment || 'uat' }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Typecheck, lint & framework self-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: npm run test:framework
+        env:
+          CI: 'true'
+
+  integration:
+    name: Flow tests (${{ inputs.environment }})
+    if: github.event_name == 'workflow_dispatch'
+    needs: quality
+    runs-on: ubuntu-latest
+    # Secrets are stored per GitHub Environment (uat). There is no production environment.
+    environment: ${{ inputs.environment }}
+    env:
+      CI: 'true'
+      TEST_ENV: ${{ inputs.environment }}
+      UAT_BASE_URL: ${{ vars.UAT_BASE_URL }}
+      UAT_API_BASE_URL: ${{ vars.UAT_API_BASE_URL }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      UAT_API_KEY: ${{ secrets.UAT_API_KEY }}
+      API_KEY_HEADER: ${{ vars.API_KEY_HEADER }}
+      API_KEY_PREFIX: ${{ vars.API_KEY_PREFIX }}
+      UAT_BRAND_ID: ${{ vars.UAT_BRAND_ID }}
+      PAYMENT_METHOD: ${{ vars.PAYMENT_METHOD || 'VISA' }}
+      AUTH_TOKEN_PATH: ${{ vars.AUTH_TOKEN_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run tests
+        env:
+          GREP: ${{ inputs.grep }}
+        run: |
+          args=(--project=cashier-purchase --project=s2s-purchase --project=session --pass-with-no-tests)
+          if [ -n "$GREP" ]; then args+=(--grep "$GREP"); fi
+          npx playwright test "${args[@]}"
+      - name: Upload reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-reports-${{ inputs.environment }}-${{ github.run_number }}
+          path: reports/
+          retention-days: 14

@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Test Launcher</title>
+    <style>
+      :root {
+        --bg: #f5f5f7;
+        --surface: #ffffff;
+        --surface-2: #f0f0f3;
+        --text: #1c1c22;
+        --muted: #6b6b76;
+        --border: #dcdce2;
+        --accent: #3b1f7a;
+        --accent-text: #ffffff;
+        --pass: #1a7f4b;
+        --fail: #b42318;
+        --warn: #9a6700;
+        --log-bg: #15151a;
+        --log-text: #e4e4ea;
+        --radius: 10px;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111114;
+          --surface: #1b1b20;
+          --surface-2: #24242b;
+          --text: #ececf1;
+          --muted: #9a9aa6;
+          --border: #33333c;
+          --accent: #8b6cf0;
+          --accent-text: #0f0f12;
+          --pass: #4ac07e;
+          --fail: #f07064;
+          --warn: #e0b24a;
+          --log-bg: #0b0b0e;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+      }
+      header h1 { font-size: 17px; margin: 0; }
+      header span { color: var(--muted); font-size: 13px; }
+      main {
+        display: grid;
+        grid-template-columns: minmax(300px, 400px) 1fr;
+        gap: 20px;
+        padding: 20px 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } }
+      section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+      label:first-of-type { margin-top: 0; }
+      .hint { color: var(--muted); font-weight: 400; font-size: 12px; }
+      input, select {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+      }
+      input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .segmented { display: flex; gap: 6px; }
+      .segmented label {
+        flex: 1;
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .segmented label small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+      .segmented input { display: none; }
+      .segmented label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+      .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      button {
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 14px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+      button.danger { color: var(--fail); }
+      .run-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .run-bar button.primary { padding: 10px 22px; }
+      .pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        background: var(--surface-2);
+        color: var(--muted);
+      }
+      .pill.running { color: var(--warn); }
+      .pill.passed { color: var(--pass); }
+      .pill.failed, .pill.stopped { color: var(--fail); }
+      .summary { font-weight: 600; }
+      .links a { color: var(--accent); font-weight: 600; margin-right: 14px; }
+      pre#log {
+        background: var(--log-bg);
+        color: var(--log-text);
+        border-radius: var(--radius);
+        padding: 12px;
+        height: 60vh;
+        min-height: 320px;
+        overflow: auto;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 12px 0 0;
+      }
+      .msg { font-size: 13px; margin-top: 8px; min-height: 18px; }
+      .msg.error { color: var(--fail); }
+      .msg.ok { color: var(--pass); }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Test Launcher</h1>
+      <span>Integration QA Automation · LOCAL / UAT only</span>
+    </header>
+    <main>
+      <div>
+        <section>
+          <h2>1 · Environment</h2>
+          <div class="segmented" id="envs"></div>
+        </section>
+
+        <section>
+          <h2>2 · Tester</h2>
+          <label for="profile">Profile <span class="hint">(brand ID + API key)</span></label>
+          <select id="profile"></select>
+
+          <div id="creds">
+            <label for="name">Profile name</label>
+            <input id="name" placeholder="e.g. Rani" autocomplete="off" />
+            <label for="brandId">Brand ID</label>
+            <input id="brandId" placeholder="Brand ID from the merchant dashboard" autocomplete="off" />
+            <label for="apiKey">API key <span class="hint" id="keyHint"></span></label>
+            <input id="apiKey" type="password" placeholder="Secret API key" autocomplete="new-password" />
+            <div class="row">
+              <button id="saveProfile" type="button">Save profile</button>
+              <button id="deleteProfile" type="button" class="danger hidden">Delete</button>
+            </div>
+          </div>
+          <div class="msg" id="profileMsg"></div>
+        </section>
+
+        <section>
+          <h2>3 · Payment method</h2>
+          <label for="paymentMethod">Card scheme</label>
+          <select id="paymentMethod"></select>
+          <input id="paymentMethodOther" class="hidden" placeholder="e.g. AMEX" style="margin-top: 8px" />
+        </section>
+
+        <section>
+          <h2>4 · Suite</h2>
+          <label for="suite">Test suite</label>
+          <select id="suite"></select>
+          <label for="filter">Filter <span class="hint">(optional – case ID or title, e.g. FT-01 or phone)</span></label>
+          <input id="filter" placeholder="All cases" autocomplete="off" />
+        </section>
+      </div>
+
+      <div>
+        <section>
+          <div class="run-bar">
+            <button id="run" class="primary" type="button">Run tests</button>
+            <button id="stop" type="button" class="hidden">Stop</button>
+            <span class="pill" id="status">idle</span>
+            <span class="summary" id="summary"></span>
+          </div>
+          <div class="msg" id="runMsg"></div>
+          <div class="links" id="links"></div>
+          <pre id="log" aria-live="polite"></pre>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const TOKEN = '__LAUNCHER_TOKEN__';
+      const CUSTOM = '__custom__';
+      const NEW = '__new__';
+      const $ = (id) => document.getElementById(id);
+      const state = { options: null, env: 'uat' };
+
+      async function api(path, init = {}) {
+        const res = await fetch(path, {
+          ...init,
+          headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        return body;
+      }
+
+      function remember(key, value) {
+        try { localStorage.setItem(`launcher.${key}`, value); } catch {}
+      }
+      function recall(key) {
+        try { return localStorage.getItem(`launcher.${key}`); } catch { return null; }
+      }
+
+      function option(value, label) {
+        const el = document.createElement('option');
+        el.value = value;
+        el.textContent = label;
+        return el;
+      }
+
+      function renderEnvs() {
+        const box = $('envs');
+        box.replaceChildren();
+        for (const env of state.options.environments) {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'env';
+          input.value = env.id;
+          input.checked = env.id === state.env;
+          input.addEventListener('change', () => { state.env = env.id; remember('env', env.id); renderProfiles(); });
+          const hint = document.createElement('small');
+          hint.textContent = env.hint;
+          label.append(input, env.label, hint);
+          box.append(label);
+        }
+      }
+
+      function renderProfiles(selectId) {
+        const select = $('profile');
+        const previous = selectId || select.value || recall('profile');
+        select.replaceChildren();
+        for (const p of state.options.profiles) {
+          const creds = p.environments[state.env];
+          select.append(option(p.id, creds ? p.name : `${p.name} (no ${state.env.toUpperCase()} credentials)`));
+        }
+        select.append(option(NEW, '+ New profile…'), option(CUSTOM, 'One-off credentials (not saved)'));
+        const ids = [...select.options].map((o) => o.value);
+        select.value = ids.includes(previous) ? previous : state.options.profiles.length ? state.options.profiles[0].id : NEW;
+        onProfileChange();
+      }
+
+      function currentProfile() {
+        return state.options.profiles.find((p) => p.id === $('profile').value);
+      }
+
+      function onProfileChange() {
+        const value = $('profile').value;
+        const profile = currentProfile();
+        const creds = profile?.environments[state.env];
+        remember('profile', value);
+        $('profileMsg').textContent = '';
+        $('name').value = profile ? profile.name : '';
+        $('name').disabled = value === CUSTOM;
+        $('brandId').value = creds ? creds.brandId : '';
+        $('apiKey').value = '';
+        $('apiKey').placeholder = creds ? 'Leave empty to keep the saved key' : 'Secret API key';
+        $('keyHint').textContent = creds ? `saved: ${creds.apiKeyHint}` : '';
+        $('saveProfile').classList.toggle('hidden', value === CUSTOM);
+        $('deleteProfile').classList.toggle('hidden', !profile);
+        if (profile?.paymentMethod) setPaymentMethod(profile.paymentMethod);
+      }
+
+      function setPaymentMethod(method) {
+        const select = $('paymentMethod');
+        const known = state.options.paymentMethods.includes(method);
+        select.value = known ? method : 'OTHER';
+        $('paymentMethodOther').value = known ? '' : method;
+        $('paymentMethodOther').classList.toggle('hidden', known);
+      }
+
+      function paymentMethod() {
+        return $('paymentMethod').value === 'OTHER' ? $('paymentMethodOther').value.trim().toUpperCase() : $('paymentMethod').value;
+      }
+
+      async function saveProfile() {
+        const msg = $('profileMsg');
+        msg.className = 'msg';
+        try {
+          const profile = currentProfile();
+          const { id, profiles } = await api('/api/profiles', {
+            method: 'POST',
+            body: JSON.stringify({
+              id: profile?.id,
+              name: $('name').value,
+              env: state.env,
+              brandId: $('brandId').value,
+              apiKey: $('apiKey').value,
+              paymentMethod: paymentMethod(),
+            }),
+          });
+          state.options.profiles = profiles;
+          renderProfiles(id);
+          msg.className = 'msg ok';
+          msg.textContent = `Saved for ${state.env.toUpperCase()}.`;
+        } catch (error) {
+          msg.className = 'msg error';
+          msg.textContent = error.message;
+        }
+      }
+
+      async function deleteProfile() {
+        const profile = currentProfile();
+        if (!profile) return;
+        // Inline two-step confirmation (no browser dialogs).
+        const button = $('deleteProfile');
+        if (button.dataset.confirm !== profile.id) {
+          button.dataset.confirm = profile.id;
+          button.textContent = 'Click again to delete';
+          setTimeout(() => { button.dataset.confirm = ''; button.textContent = 'Delete'; }, 4000);
+          return;
+        }
+        button.dataset.confirm = '';
+        button.textContent = 'Delete';
+        const { profiles } = await api(`/api/profiles/${profile.id}`, { method: 'DELETE' });
+        state.options.profiles = profiles;
+        renderProfiles();
+      }
+
+      async function startRun() {
+        const msg = $('runMsg');
+        msg.className = 'msg';
+        msg.textContent = '';
+        const value = $('profile').value;
+        const payload = {
+          env: state.env,
+          suiteId: $('suite').value,
+          paymentMethod: paymentMethod(),
+          filter: $('filter').value,
+        };
+        if (value === CUSTOM || value === NEW) {
+          payload.brandId = $('brandId').value;
+          payload.apiKey = $('apiKey').value;
+        } else {
+          payload.profileId = value;
+        }
+        remember('suite', payload.suiteId);
+        try {
+          $('log').textContent = '';
+          await api('/api/runs', { method: 'POST', body: JSON.stringify(payload) });
+        } catch (error) {
+          msg.className = 'msg error';
+          msg.textContent = error.message;
+        }
+      }
+
+      function renderStatus(run) {
+        const running = run.status === 'running' || run.status === 'stopping';
+        $('status').textContent = run.status;
+        $('status').className = `pill ${run.status}`;
+        $('run').disabled = running;
+        $('stop').classList.toggle('hidden', !running);
+        $('summary').textContent = run.summary || '';
+        const links = $('links');
+        links.replaceChildren();
+        if (!running && run.status !== 'idle') {
+          if (run.hasReport) {
+            const a = document.createElement('a');
+            a.href = '/report/';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = 'Open HTML report';
+            links.append(a);
+          }
+          if (run.hasCsv) {
+            const a = document.createElement('a');
+            a.href = '/results.csv';
+            a.textContent = 'Download results (CSV)';
+            links.append(a);
+          }
+        }
+      }
+
+      function connect() {
+        const events = new EventSource(`/api/runs/events?token=${TOKEN}`);
+        const log = $('log');
+        events.addEventListener('status', (e) => renderStatus(JSON.parse(e.data)));
+        events.addEventListener('line', (e) => {
+          const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+          log.append(`${JSON.parse(e.data)}\n`);
+          if (nearBottom) log.scrollTop = log.scrollHeight;
+        });
+      }
+
+      async function init() {
+        state.options = await api('/api/options');
+        state.env = recall('env') || state.options.environments[0].id;
+        renderEnvs();
+
+        const pm = $('paymentMethod');
+        for (const m of state.options.paymentMethods) pm.append(option(m, m));
+        pm.append(option('OTHER', 'Other…'));
+        pm.addEventListener('change', () => $('paymentMethodOther').classList.toggle('hidden', pm.value !== 'OTHER'));
+
+        const suite = $('suite');
+        for (const s of state.options.suites) suite.append(option(s.id, s.label));
+        const lastSuite = recall('suite');
+        if (lastSuite && state.options.suites.some((s) => s.id === lastSuite)) suite.value = lastSuite;
+
+        renderProfiles();
+        $('profile').addEventListener('change', onProfileChange);
+        $('saveProfile').addEventListener('click', saveProfile);
+        $('deleteProfile').addEventListener('click', deleteProfile);
+        $('run').addEventListener('click', startRun);
+        $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));
+        renderStatus(state.options.run);
+        connect();
+      }
+
+      init().catch((error) => {
+        $('runMsg').className = 'msg error';
+        $('runMsg').textContent = `Launcher failed to load: ${error.message}`;
+      });
+    </script>
+  </body>
+</html>
