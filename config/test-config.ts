@@ -131,11 +131,8 @@ export function getTestConfig(): TestConfig {
   // Tester profile (brand ID + API key) takes precedence over .env credentials.
   const profileId = readEnv('TEST_PROFILE');
   const selected = profileId === undefined ? undefined : resolveProfile(profileId, env);
-  const paymentMethod = (
-    readEnv('PAYMENT_METHOD') ??
-    selected?.profile.paymentMethod ??
-    DEFAULT_PAYMENT_METHOD
-  ).toUpperCase();
+  // Payment method is chosen per run (launcher: from the selected MID).
+  const paymentMethod = (readEnv('PAYMENT_METHOD') ?? DEFAULT_PAYMENT_METHOD).toUpperCase();
 
   cached = Object.freeze({
     env,
@@ -159,9 +156,11 @@ export function getTestConfig(): TestConfig {
       paymentMethod,
       currency: readEnv('RUN_CURRENCY')?.toUpperCase(),
       expectedBank: readEnv('RUN_BANK'),
+      expectedMid: readEnv('RUN_MID'),
     }),
     transaction: Object.freeze({
       payCardId: readEnv('RUN_PAY_CARD'),
+      payFieldCases: readBooleanEnv('RUN_PAY_FIELD_CASES', false),
       headed: readBooleanEnv('RUN_HEADED', false),
     }),
     backoffice: Object.freeze({

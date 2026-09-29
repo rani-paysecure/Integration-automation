@@ -5,6 +5,25 @@ export interface CashierCard {
   readonly expiry: string;
   readonly cvv: string;
   readonly holderName: string;
+  /** Handling of a 3DS challenge (bank OTP page); absent = none. */
+  readonly challenge?: ChallengeSetting;
+}
+
+export interface ChallengeSetting {
+  readonly action: 'none' | 'otp' | 'manual';
+  /** OTP to type; empty = read the "(OTP: 1234)" hint shown on test ACS pages. */
+  readonly otp: string;
+  /** Text of the submit button; empty = Submit / Continue / Verify / Confirm / OK. */
+  readonly submit: string;
+}
+
+/** What happened on the 3DS challenge page, when one was shown. */
+export interface ChallengeResult {
+  readonly shown: boolean;
+  readonly host: string;
+  readonly action: 'none' | 'otp' | 'manual';
+  /** e.g. "OTP entered, Submit pressed" / "completed by tester" / "not handled". */
+  readonly detail: string;
 }
 
 /** Where the cashier sent the customer after PAY. */
@@ -25,6 +44,8 @@ export interface CashierPaymentResult {
   readonly apiMessage: string;
   /** Hosts passed through after PAY, e.g. a 3DS / PSP authentication page. */
   readonly visitedPages: readonly string[];
+  /** Present when a 3DS challenge page was shown. */
+  readonly challenge?: ChallengeResult;
 }
 
 /** A card scenario to run through the cashier, with its expected result. */

@@ -55,6 +55,23 @@ export const FULLY_MASKED_KEYS: readonly string[] = [
   'taxid',
 ];
 
+/**
+ * PSP payloads use their own key names (`banff_secret`, `merchantApiKey`,
+ * `x_auth_token` …). Any key CONTAINING one of these fragments is fully masked.
+ */
+export const FULLY_MASKED_KEY_FRAGMENTS: readonly string[] = [
+  'secret',
+  'password',
+  'passwd',
+  'token',
+  'apikey',
+  'authkey',
+  'privatekey',
+  'signature',
+  'cvv',
+  'cvc',
+];
+
 /** Keys whose values are partially masked (last 4 characters kept). */
 export const PARTIALLY_MASKED_KEYS: readonly string[] = [
   'cardnumber',
@@ -64,6 +81,8 @@ export const PARTIALLY_MASKED_KEYS: readonly string[] = [
   'phone',
   'phonenumber',
   'mobile',
+  'msisdn',
+  'beneficiarymsisdn',
 ];
 
 /** Keys holding e-mail addresses (local part masked). */

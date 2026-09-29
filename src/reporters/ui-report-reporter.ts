@@ -4,8 +4,10 @@ import type { FullResult, Reporter, Suite, TestCase, TestResult } from '@playwri
 import { FIELD_CASE_ANNOTATION, FIELD_RESULT_ANNOTATION } from '../helpers/field-testing';
 import type { FieldCaseMeta, FieldResultMeta } from '../helpers/field-testing';
 import { PSP_RESULT_ANNOTATION, type PspSummary } from '../helpers/psp-validation';
+import { PSP_FIELD_CHECKS_ANNOTATION, type PspFieldCheckResult } from '../helpers/psp-field-checks';
 import type { HttpExchange } from '../types/api.types';
 import { maskSensitiveData, maskString } from '../utils/masking';
+import { classify, type CategoryId, type Polarity, type ReportItem } from './report-classification';
 
 /** Run configuration as chosen in the launcher (API key already masked there). */
 export interface RunMeta {
@@ -15,6 +17,7 @@ export interface RunMeta {
   readonly apiKey?: string;
   readonly currency?: string;
   readonly bank?: string;
+  readonly mid?: string;
   readonly paymentMethod?: string;
   readonly payWithCard?: string;
   readonly selection?: string;
@@ -30,10 +33,18 @@ export interface UiTestRow {
   readonly durationMs: number;
   readonly expected: string;
   readonly actual: string;
+  readonly category: CategoryId;
+  readonly categoryLabel: string;
+  /** positive = the happy path is expected, negative = a rejection / failure is expected. */
+  readonly polarity: Polarity;
+  readonly expectedItems: readonly ReportItem[];
+  readonly actualItems: readonly ReportItem[];
   readonly purchaseId: string;
   readonly pspTransactionId: string;
   readonly cashierOutcome: string;
   readonly psp: PspSummary | undefined;
+  /** Checks of an uploaded PSP case (PR-xxx). */
+  readonly pspFieldChecks: readonly PspFieldCheckResult[];
   readonly pspRequest: unknown;
   readonly pspResponse: unknown;
   readonly exchanges: readonly HttpExchange[];
@@ -105,7 +116,11 @@ export default class UiReportReporter implements Reporter {
       []) as HttpExchange[];
 
     const key =
-      test.tags.find((tag) => /^@(FT-|card-|psp-by-id|backoffice-smoke)/.test(tag)) ?? test.id;
+      test.tags.find((tag) =>
+        /^@(FT-|FV-|RX-|PR-|EC-|card-|psp-by-id|backoffice-smoke)/.test(tag),
+      ) ?? test.id;
+    const pspFieldChecks = (parseJson(values[PSP_FIELD_CHECKS_ANNOTATION]) ??
+      []) as PspFieldCheckResult[];
     const errors = result.errors.map((e) =>
       maskString(stripAnsi(e.message ?? e.value ?? '')).slice(0, 4000),
     );
@@ -113,7 +128,8 @@ export default class UiReportReporter implements Reporter {
     let verdict = 'PASS';
     if (result.status === 'skipped') verdict = 'SKIPPED';
     else if (result.status !== 'passed') verdict = 'FAIL';
-    else if (fieldCase?.expectation === 'observe') verdict = 'OBSERVED';
+    else if (fieldCase?.expectation === 'observe' || values.verdict === 'observe')
+      verdict = 'OBSERVED';
 
     const actualParts: string[] = [];
     if (fieldResult) {
@@ -122,17 +138,36 @@ export default class UiReportReporter implements Reporter {
       if (fieldResult.message) actualParts.push(`"${fieldResult.message}"`);
       if (fieldResult.status) actualParts.push(`status ${fieldResult.status}`);
     }
-    if (values['cashier outcome']) actualParts.push(`cashier: ${values['cashier outcome']}`);
+    if (values['regex result']) actualParts.push(values['regex result']);
+    if (values['sent to PSP']) actualParts.push(`PSP: ${values['sent to PSP']}`);
+    if (values['cashier outcome']) {
+      // The hosts passed through stay in the detail view; the summary keeps just the outcome.
+      actualParts.push(`cashier: ${values['cashier outcome'].replace(/\s*\(via .*\)$/, '')}`);
+    }
     if (values['final status']) actualParts.push(`final: ${values['final status']}`);
+    if (pspFieldChecks.length > 0) {
+      actualParts.push(
+        `field checks ${pspFieldChecks.filter((c) => c.passed).length}/${pspFieldChecks.length} passed`,
+      );
+    }
+    if (values['error message']) actualParts.push(`message: ${values['error message']}`);
     if (psp)
       actualParts.push(
         `PSP: ${psp.pspStatus || '–'} (${psp.checks.filter((c) => c.passed).length}/${psp.checks.length} checks)`,
       );
 
-    const hidden = new Set([FIELD_CASE_ANNOTATION, FIELD_RESULT_ANNOTATION, PSP_RESULT_ANNOTATION]);
+    const hidden = new Set([
+      FIELD_CASE_ANNOTATION,
+      FIELD_RESULT_ANNOTATION,
+      PSP_RESULT_ANNOTATION,
+      PSP_FIELD_CHECKS_ANNOTATION,
+    ]);
     const rest = Object.fromEntries(Object.entries(values).filter(([type]) => !hidden.has(type)));
 
+    const classification = classify({ key, values, fieldCase, fieldResult, psp, pspFieldChecks });
+
     this.rows.set(test.id, {
+      ...classification,
       key,
       title: test.title,
       group: test.parent.title,
@@ -147,6 +182,7 @@ export default class UiReportReporter implements Reporter {
       pspTransactionId: psp?.txnId ?? '',
       cashierOutcome: values['cashier outcome'] ?? '',
       psp,
+      pspFieldChecks,
       pspRequest: maskSensitiveData(parseJson(attachmentText(result, 'psp-request.json'))),
       pspResponse: maskSensitiveData(parseJson(attachmentText(result, 'psp-response.json'))),
       exchanges,

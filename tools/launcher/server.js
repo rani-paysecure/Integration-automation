@@ -23,6 +23,10 @@ const http = require('node:http');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const settingsCore = require('../../config/settings-core');
+const { DashboardClient, DashboardError } = require('./dashboard');
+const caseImport = require('./test-case-import');
+const regexCases = require('./regex-cases');
+const { reportWorkbook } = require('./report-xlsx');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -38,6 +42,8 @@ const HOST = '127.0.0.1';
 const PORT = Number(process.env.LAUNCHER_PORT || 4173);
 const TOKEN = crypto.randomBytes(24).toString('hex');
 const MAX_BODY_BYTES = 64 * 1024;
+/** Excel/CSV uploads arrive base64-encoded in JSON (≈4.5 MB file). */
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 const MAX_LOG_LINES = 5000;
 
 const ENVIRONMENT_IDS = ['uat', 'local'];
@@ -48,10 +54,6 @@ const ENVIRONMENT_IDS = ['uat', 'local'];
 const SETTINGS_PATHS = [
   'run',
   'auth',
-  'paymentMethods',
-  'currencies',
-  'banks.uat',
-  'banks.local',
   'environments.uat',
   'environments.local',
   'purchase.uat',
@@ -112,6 +114,67 @@ function settingsView() {
   };
 }
 
+// ── dashboard (banks, MIDs, merchants) ─────────────────────────────────────
+
+/** @type {Map<string, InstanceType<typeof DashboardClient>>} */
+const dashboards = new Map();
+
+/** Dashboard client for a tester profile (their own dashboard login). */
+function dashboardFor(env, profileId) {
+  if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
+  const profile = readProfiles().profiles.find((p) => p.id === profileId);
+  const creds = profile?.environments?.[env];
+  if (!creds) throw new HttpError(400, `Select a tester with ${env.toUpperCase()} credentials`);
+  if (!creds.dashboard?.username || !creds.dashboard?.password) {
+    throw new HttpError(400, 'This tester has no dashboard login – add it in the Testers tab');
+  }
+  const baseUrl = effectiveSettings().environments[env].baseUrl;
+  if (!baseUrl)
+    throw new HttpError(400, `No dashboard URL for ${env.toUpperCase()} – set it in Environments`);
+  const key = `${env}|${baseUrl}|${creds.dashboard.username}`;
+  let client = dashboards.get(key);
+  if (!client || client.password !== creds.dashboard.password) {
+    client = new DashboardClient({
+      baseUrl,
+      username: creds.dashboard.username,
+      password: creds.dashboard.password,
+    });
+    dashboards.set(key, client);
+  }
+  return { client, creds };
+}
+
+/** Wraps dashboard calls so login/network problems become readable 502s. */
+async function fromDashboard(load) {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new HttpError(
+      502,
+      error instanceof DashboardError ? message : `Dashboard unreachable: ${message}`,
+    );
+  }
+}
+
+/** Limits/Charges routing of the tester's merchant: currency + payment method → MID / bank. */
+async function routingFor(env, profileId) {
+  const { client, creds } = dashboardFor(env, profileId);
+  if (!creds.merchant) {
+    throw new HttpError(400, 'Set the merchant of this tester in the Testers tab first');
+  }
+  return fromDashboard(async () => ({
+    merchant: creds.merchant,
+    routes: (await client.routing(creds.merchant.id)).map((r) => ({
+      currency: r.currency,
+      paymentMethod: r.paymentMethod,
+      routeTo: r.routeTo,
+      targets: r.targets.map((t) => ({ id: t.id, name: t.name })),
+    })),
+  }));
+}
+
 function environments() {
   const settings = effectiveSettings();
   return ENVIRONMENT_IDS.map((id) => {
@@ -155,7 +218,6 @@ function publicProfiles() {
   return readProfiles().profiles.map((p) => ({
     id: p.id,
     name: p.name,
-    paymentMethod: p.paymentMethod || '',
     environments: Object.fromEntries(
       Object.entries(p.environments || {}).map(([env, c]) => [
         env,
@@ -164,6 +226,7 @@ function publicProfiles() {
           apiKeyHint: keyHint(c.apiKey),
           dashboardUsername: c.dashboard?.username || '',
           hasDashboardPassword: Boolean(c.dashboard?.password),
+          merchant: c.merchant || null,
         },
       ]),
     ),
@@ -191,9 +254,6 @@ function saveProfile(input) {
   const env = String(input.env || '');
   const brandId = String(input.brandId || '').trim();
   const apiKey = String(input.apiKey || '').trim();
-  const paymentMethod = String(input.paymentMethod || '')
-    .trim()
-    .toUpperCase();
   if (!name) throw new HttpError(400, 'Profile name is required');
   if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
   if (!brandId) throw new HttpError(400, 'Brand ID is required');
@@ -221,11 +281,23 @@ function saveProfile(input) {
   }
 
   profile.name = name;
-  if (paymentMethod) profile.paymentMethod = paymentMethod;
+  // Payment method is chosen per run (from the MID), not stored on the tester.
+  delete profile.paymentMethod;
   profile.environments = profile.environments || {};
+  const merchantId = Number(input.merchantId || 0);
+  const merchant =
+    merchantId > 0
+      ? {
+          id: merchantId,
+          name: String(input.merchantName || '')
+            .trim()
+            .slice(0, 120),
+        }
+      : existing?.merchant;
   profile.environments[env] = {
     brandId,
     apiKey: apiKey || existingKey,
+    ...(merchant ? { merchant } : {}),
     ...(dashboardUsername
       ? { dashboard: { username: dashboardUsername, password: keptPassword } }
       : {}),
@@ -273,6 +345,13 @@ function pushLine(line) {
 const KEY_PATTERN = /^@[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const FRAMEWORK_KEY = '@framework';
 
+/** Card IDs of the Test cards tab for an environment (template dropdown / preview warnings). */
+function cardIdsFor(url, envOverride) {
+  const env = String(envOverride || url.searchParams.get('env') || '');
+  if (!isEnv(env)) return [];
+  return (effectiveSettings().cards[env] || []).map((c) => c.id);
+}
+
 function childEnvFor(env) {
   return { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
 }
@@ -300,7 +379,7 @@ function listTests(env) {
           for (const spec of suite.specs || []) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
-            const key = tags.find((t) => /^@(FT-|card-|backoffice-smoke)/.test(t));
+            const key = tags.find((t) => /^@(FT-|FV-|RX-|PR-|EC-|card-|backoffice-smoke)/.test(t));
             if (!key) continue;
             tests.push({
               key,
@@ -363,9 +442,11 @@ function startRun(input) {
     throw new HttpError(400, 'Currency must be a 3-letter ISO code');
   const bank = String(input.bank || '').trim();
   if (bank && !/^[\w .:/-]{1,80}$/.test(bank)) throw new HttpError(400, 'Invalid bank name');
+  const mid = String(input.mid || '').trim();
+  if (mid && !/^[\w .:/,-]{1,400}$/.test(mid)) throw new HttpError(400, 'Invalid MID');
   const payCard = String(input.payCard || '').trim();
   if (payCard && !settings.cards[env].some((c) => c.id === payCard)) {
-    throw new HttpError(400, 'Unknown "pay with" card');
+    throw new HttpError(400, 'Unknown payment card');
   }
 
   const keys = Array.isArray(input.testKeys) ? input.testKeys.map(String) : [];
@@ -385,7 +466,9 @@ function startRun(input) {
     PAYMENT_METHOD: paymentMethod,
     RUN_CURRENCY: currency,
     RUN_BANK: bank,
+    RUN_MID: mid,
     RUN_PAY_CARD: payCard,
+    RUN_PAY_FIELD_CASES: payCard && input.payFieldCases === true ? '1' : '',
     RUN_HEADED: input.headed === true ? '1' : '',
     ATTACH_HTTP_ALWAYS: '1',
   };
@@ -444,8 +527,11 @@ function startRun(input) {
     apiKey: apiKeyHint,
     currency: currency || `${settings.purchase[env].purchase.currency} (template)`,
     bank: bank || 'not checked',
+    mid: mid || 'not checked',
     paymentMethod,
-    payWithCard: payWith ? payWith.label : 'no transaction for field cases',
+    payWithCard: payWith
+      ? `${payWith.label}${input.payFieldCases === true ? ' (also for accepted field cases)' : ''}`
+      : 'none',
     selection: `${keys.length} test case(s)`,
   });
 
@@ -511,8 +597,18 @@ function startRun(input) {
   return run.id;
 }
 
+/** Report files from the last run – they survive a launcher restart. */
+function reportFiles() {
+  return {
+    hasReport: fs.existsSync(path.join(REPORT_DIR, 'index.html')),
+    hasCsv: fs.existsSync(RESULTS_CSV),
+    hasPspCsv: fs.existsSync(PSP_CSV),
+    hasUiReport: fs.existsSync(path.join(UI_REPORT_DIR, 'latest.json')),
+  };
+}
+
 function runState() {
-  if (!run) return { status: 'idle' };
+  if (!run) return { status: 'idle', ...reportFiles() };
   return {
     id: run.id,
     status: run.status,
@@ -520,10 +616,7 @@ function runState() {
     summary: run.summary,
     startedAt: run.startedAt,
     meta: run.meta,
-    hasReport: fs.existsSync(path.join(REPORT_DIR, 'index.html')),
-    hasCsv: fs.existsSync(RESULTS_CSV),
-    hasPspCsv: fs.existsSync(PSP_CSV),
-    hasUiReport: fs.existsSync(path.join(UI_REPORT_DIR, 'latest.json')),
+    ...reportFiles(),
   };
 }
 
@@ -559,13 +652,13 @@ function send(res, status, body, type = 'application/json') {
   res.end(type === 'application/json' ? JSON.stringify(body) : body);
 }
 
-function readJson(req) {
+function readJson(req, maxBytes = MAX_BODY_BYTES) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
         reject(new HttpError(413, 'Request too large'));
         req.destroy();
       } else chunks.push(chunk);
@@ -610,17 +703,59 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.pathname === '/api/options') {
       return send(res, 200, {
         environments: environments(),
-        paymentMethods: effectiveSettings().paymentMethods,
         profiles: publicProfiles(),
         run: runState(),
       });
+    }
+    if (method === 'GET' && url.pathname.startsWith('/api/dashboard/')) {
+      const env = String(url.searchParams.get('env') || '');
+      const profileId = String(url.searchParams.get('profileId') || '');
+      const what = url.pathname.slice('/api/dashboard/'.length);
+      if (what === 'merchants') {
+        const { client } = dashboardFor(env, profileId);
+        const merchants = await fromDashboard(() => client.merchants());
+        return send(res, 200, { merchants: merchants.map((m) => ({ id: m.id, name: m.name })) });
+      }
+      if (what === 'banks') {
+        const { client } = dashboardFor(env, profileId);
+        const banks = await fromDashboard(() => client.banks());
+        const names = banks.map((b) => b.name);
+        const mids = String(url.searchParams.get('mids') || '')
+          .split(',')
+          .filter(Boolean);
+        const suggested = mids.map((m) => regexCases.bankForMid(m, names)).find(Boolean) || '';
+        return send(res, 200, { banks: names, suggested });
+      }
+      if (what === 'regex-rules') {
+        const bank = String(url.searchParams.get('bank') || '').trim();
+        if (!/^[\w .-]{1,80}$/.test(bank)) throw new HttpError(400, 'Choose a bank');
+        const { client } = dashboardFor(env, profileId);
+        const rules = await fromDashboard(() => client.fieldRules(bank));
+        const generated = regexCases.casesForBank(bank, rules);
+        return send(res, 200, {
+          bank,
+          rules: generated.rules,
+          ...caseImport.markDuplicates('regex', generated.cases),
+        });
+      }
+      if (what === 'routing') {
+        return send(res, 200, await routingFor(env, profileId));
+      }
+      throw new HttpError(404, 'Not found');
+    }
+    if (method === 'POST' && url.pathname === '/api/dashboard/refresh') {
+      for (const client of dashboards.values()) client.clearCache();
+      return send(res, 200, { ok: true });
     }
     if (method === 'GET' && url.pathname === '/api/tests') {
       const env = String(url.searchParams.get('env') || '');
       if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
       return send(res, 200, { tests: await listTests(env) });
     }
-    if (method === 'GET' && url.pathname === '/api/report') {
+    if (
+      method === 'GET' &&
+      (url.pathname === '/api/report' || url.pathname === '/api/report.xlsx')
+    ) {
       const name = String(url.searchParams.get('run') || 'latest');
       const file =
         name === 'latest'
@@ -629,7 +764,18 @@ const server = http.createServer(async (req, res) => {
             ? path.join(UI_REPORT_DIR, 'history', `${name}.json`)
             : undefined;
       if (!file || !fs.existsSync(file)) throw new HttpError(404, 'No report yet');
-      return send(res, 200, JSON.parse(fs.readFileSync(file, 'utf8')));
+      const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (url.pathname === '/api/report') return send(res, 200, report);
+      // One presentable workbook (Summary + Results) for sharing.
+      const stamp = String(report.finishedAt || '')
+        .slice(0, 16)
+        .replace(/[:T]/g, '-');
+      res.writeHead(200, {
+        'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'content-disposition': `attachment; filename="test-report-${stamp || name}.xlsx"`,
+        'cache-control': 'no-store',
+      });
+      return res.end(await reportWorkbook(report));
     }
     if (method === 'GET' && url.pathname === '/api/reports') {
       const dir = path.join(UI_REPORT_DIR, 'history');
@@ -643,6 +789,68 @@ const server = http.createServer(async (req, res) => {
             .slice(0, 30)
         : [];
       return send(res, 200, { runs });
+    }
+    // ── uploaded test cases (Excel/CSV, by category → tests/test-data/uploaded-cases) ──
+    if (method === 'GET' && url.pathname === '/api/test-cases') {
+      return send(res, 200, { categories: caseImport.listCategories() });
+    }
+    if (method === 'GET' && url.pathname === '/api/test-cases/template.xlsx') {
+      const category = String(url.searchParams.get('category') || '');
+      if (!caseImport.CATEGORIES[category]) throw new HttpError(400, 'Unknown category');
+      const buffer = Buffer.from(await caseImport.templateBuffer(category, cardIdsFor(url)));
+      const name = caseImport.CATEGORIES[category].label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      res.writeHead(200, {
+        'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'content-disposition': `attachment; filename="${name}-template.xlsx"`,
+        'cache-control': 'no-store',
+      });
+      return res.end(buffer);
+    }
+    if (method === 'POST' && url.pathname === '/api/test-cases/preview') {
+      const body = await readJson(req, MAX_UPLOAD_BYTES);
+      const category = String(body.category || '');
+      if (!caseImport.CATEGORIES[category]) throw new HttpError(400, 'Choose a category');
+      const filename = String(body.filename || '');
+      if (!/\.(xlsx|csv)$/i.test(filename))
+        throw new HttpError(400, 'Upload an .xlsx or .csv file');
+      const buffer = Buffer.from(String(body.data || ''), 'base64');
+      if (buffer.length === 0) throw new HttpError(400, 'The file is empty');
+      try {
+        return send(
+          res,
+          200,
+          await caseImport.previewImport(category, buffer, filename, cardIdsFor(url, body.env)),
+        );
+      } catch (error) {
+        throw new HttpError(400, error.message);
+      }
+    }
+    if (method === 'POST' && url.pathname === '/api/test-cases/append') {
+      if (run && run.status === 'running')
+        throw new HttpError(409, 'Wait for the current run to finish');
+      const body = await readJson(req, MAX_UPLOAD_BYTES);
+      const category = String(body.category || '');
+      if (!caseImport.CATEGORIES[category]) throw new HttpError(400, 'Choose a category');
+      let result;
+      try {
+        result = caseImport.appendCases(category, body.cases, String(body.filename || 'upload'));
+      } catch (error) {
+        throw new HttpError(400, error.message);
+      }
+      catalogCache.clear();
+      return send(res, 200, { ...result, categories: caseImport.listCategories() });
+    }
+    const caseMatch = /^\/api\/test-cases\/((?:FV|RX|PR|EC)-\d{3,})$/.exec(url.pathname);
+    if (method === 'DELETE' && caseMatch) {
+      if (run && run.status === 'running')
+        throw new HttpError(409, 'Wait for the current run to finish');
+      try {
+        caseImport.deleteCase(caseMatch[1]);
+      } catch (error) {
+        throw new HttpError(404, error.message);
+      }
+      catalogCache.clear();
+      return send(res, 200, { categories: caseImport.listCategories() });
     }
     if (method === 'GET' && url.pathname === '/api/settings') {
       return send(res, 200, settingsView());

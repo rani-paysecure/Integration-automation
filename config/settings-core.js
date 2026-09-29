@@ -46,6 +46,19 @@ const cardSettingSchema = z.object({
   expectedOutcome: z.enum(OUTCOMES),
   expectedStatuses: z.array(z.string().trim().min(1)).min(1),
   enabled: z.boolean(),
+  /**
+   * What to do when the bank shows a 3DS challenge page (OTP / password):
+   *   none   – nothing (frictionless card; a challenge ends the test as "other page")
+   *   otp    – type `otp` (empty = read the "(OTP: 1234)" hint of test pages) and press `submit`
+   *   manual – wait for the tester to complete it in the visible browser
+   */
+  challenge: z
+    .object({
+      action: z.enum(['none', 'otp', 'manual']),
+      otp: z.string().trim().max(40).default(''),
+      submit: z.string().trim().max(40).default(''),
+    })
+    .default({ action: 'none', otp: '', submit: '' }),
 });
 
 const purchaseTemplateSchema = z.object({
@@ -90,12 +103,6 @@ const settingsSchema = z.object({
     tokenPath: z.string(),
   }),
   environments: z.object({ uat: endpointsSchema, local: endpointsSchema }),
-  paymentMethods: z.array(z.string().regex(/^[A-Z0-9_]{2,30}$/)).min(1),
-  currencies: z.array(z.string().regex(/^[A-Z]{3}$/, 'ISO-4217 code, e.g. EUR')).min(1),
-  banks: z.object({
-    uat: z.array(z.string().trim().min(1)),
-    local: z.array(z.string().trim().min(1)),
-  }),
   purchase: z.object({ uat: purchaseTemplateSchema, local: purchaseTemplateSchema }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
 });

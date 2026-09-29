@@ -279,4 +279,29 @@ export class BackofficeClient extends BaseApiClient {
     }
     return bankTransactionSchema.parse(body);
   }
+
+  /**
+   * Field regexes of a bank (PaymentBankJsonData → Field Regex): `{ full_name: '^…$', … }`.
+   * Banks without rules return a non-JSON page – treated as "no rules".
+   */
+  async getFieldValidationRules(bankName: string): Promise<Record<string, string>> {
+    const response = await this.withSession(async () => {
+      const result = await this.get(Endpoints.backoffice.fieldValidationRules, {
+        params: { bank_name: bankName },
+      });
+      this.assertSession(result.raw.url());
+      return result;
+    });
+    const body: unknown = response.body;
+    if (!response.ok || typeof body !== 'object' || body === null || !('validationJson' in body)) {
+      return {};
+    }
+    const rules = body.validationJson;
+    if (typeof rules !== 'object' || rules === null) return {};
+    return Object.fromEntries(
+      Object.entries(rules as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    );
+  }
 }

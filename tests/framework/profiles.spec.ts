@@ -18,7 +18,6 @@ test.describe('Tester profiles', () => {
       {
         id: 'rani',
         name: 'Rani',
-        paymentMethod: 'VISA',
         environments: { uat: { brandId: 'brand-uat', apiKey: 'key-uat' } },
       },
     ],

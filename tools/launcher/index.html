@@ -9,12 +9,14 @@
         --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --text: #1c1c22; --muted: #6b6b76;
         --border: #dcdce2; --accent: #3b1f7a; --accent-text: #ffffff; --pass: #1a7f4b; --fail: #b42318;
         --warn: #9a6700; --log-bg: #15151a; --log-text: #e4e4ea; --radius: 10px; color-scheme: light;
+        --pass-bg: #ecf7f0; --fail-bg: #fdeeec; --warn-bg: #fdf6e3; --pos: #1d4ed8; --neg: #b45309;
       }
       @media (prefers-color-scheme: dark) {
         :root {
           --bg: #111114; --surface: #1b1b20; --surface-2: #24242b; --text: #ececf1; --muted: #9a9aa6;
           --border: #33333c; --accent: #8b6cf0; --accent-text: #0f0f12; --pass: #4ac07e; --fail: #f07064;
           --warn: #e0b24a; --log-bg: #0b0b0e; color-scheme: dark;
+          --pass-bg: #13261b; --fail-bg: #2c1614; --warn-bg: #2a2313; --pos: #7aa2ff; --neg: #f0a35e;
         }
       }
       * { box-sizing: border-box; }
@@ -23,7 +25,7 @@
       .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
       .top h1 { font-size: 17px; margin: 0; }
       .top .sub { color: var(--muted); font-size: 13px; }
-      .top .env { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      .top .env { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
       nav { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
       nav button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 14px; color: var(--muted); }
       nav button.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -43,7 +45,7 @@
       input[type='checkbox'] { width: auto; margin: 0; }
       input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       .check { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 10px 0 0; }
-      .segmented { display: flex; gap: 6px; }
+      .segmented { display: flex; gap: 6px; flex-wrap: wrap; }
       .segmented label { margin: 0; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
       .segmented label small { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 4px; }
       .segmented input { display: none; }
@@ -76,26 +78,141 @@
       .catalog details { border-bottom: 1px solid var(--border); padding: 6px 0; }
       .catalog details:last-child { border-bottom: 0; }
       .catalog summary { cursor: pointer; font-weight: 600; display: flex; gap: 8px; align-items: center; }
-      .test-item { display: grid !important; grid-template-columns: auto 56px 1fr auto auto; gap: 8px; align-items: center; font-weight: 400 !important; margin: 4px 0 4px 22px !important; font-size: 13px; }
-      .test-item .key { color: var(--muted); font-size: 12px; }
+      .test-item { display: flex !important; gap: 8px; align-items: baseline; font-weight: 400 !important; margin: 5px 0 5px 22px !important; font-size: 13px; line-height: 1.35; }
+      .test-item > span:nth-child(3) { flex: 1; min-width: 0; }
+      .test-item input { flex: none; transform: translateY(2px); }
+      .test-item .key { color: var(--muted); font-size: 12px; flex: none; }
+      .test-item .key:empty { display: none; }
       .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-weight: 600; }
       .tag.accepted { color: var(--pass); } .tag.rejected { color: var(--fail); } .tag.transaction { color: var(--accent); }
       .report-head { display: grid; gap: 12px; margin-bottom: 8px; }
-      .kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 16px; }
+      .kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 45%), 1fr)); gap: 8px 16px; }
       .kv { display: flex; flex-direction: column; font-size: 13px; min-width: 0; } .kv b { overflow-wrap: anywhere; font-weight: 600; }
       .totals { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
       table.report { table-layout: fixed; }
+      td.ids .id-line { display: flex; flex-direction: column; gap: 1px; }
+      td.ids .id-line + .id-line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+      td.ids .id-label { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+      td.ids .id-value { font-size: 12px; overflow-wrap: anywhere; }
+      .import-drop { display: block; border: 2px dashed var(--border); border-radius: var(--radius); padding: 22px 18px; text-align: center; cursor: pointer; font-weight: 500; }
+      .cat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+      .cat-tile { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); font-weight: 400; min-width: 0; }
+      .cat-tile.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+      .cat-tile .cat-head { display: flex; align-items: center; gap: 8px; }
+      .cat-tile .cat-name { font-weight: 700; font-size: 14px; }
+      .cat-tile .cat-prefix { font: 600 11px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; }
+      .cat-tile .cat-count { font-size: 12px; color: var(--muted); }
+      .cat-tile .cat-prefix, table.import td.nowrap { white-space: nowrap; }
+      .cat-tile .cat-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+      .upload-steps { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+      .upload-steps .step { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+      .upload-steps .step > div { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+      .upload-steps .step.grow { flex: 1 1 320px; } .upload-steps .step.grow > label { flex: 1; }
+      .step-no { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+      table.import td.multi { white-space: pre-line; }
+      .dash-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 8px 0 14px; background: var(--surface-2); }
+      .dash-head { display: flex; flex-direction: column; gap: 2px; }
+      .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 14px; }
+      .or-line::before, .or-line::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+      table.import td.regex { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+      .import-drop.over { border-color: var(--accent); background: var(--surface-2); }
+      .import-wrap { overflow-x: auto; margin-top: 10px; max-height: 60vh; overflow-y: auto; }
+      table.import { min-width: 860px; } table.import td { font-size: 12px; vertical-align: top; }
+      table.import input, table.import select { padding: 4px 6px; font-size: 12px; margin: 0; }
+      table.import tr.dup td, table.import tr.bad td { opacity: 0.65; }
+      .issue { color: var(--fail); font-size: 11px; display: block; } .warn { color: var(--warn); font-size: 11px; display: block; }
       table.report th:nth-child(1) { width: 78px; } table.report th:nth-child(2) { width: 62px; }
-      table.report th:nth-child(3) { width: 22%; } table.report th:nth-child(4) { width: 15%; } table.report th:nth-child(6) { width: 190px; }
+      table.report th:nth-child(3) { width: 22%; } table.report th:nth-child(4) { width: 15%; } table.report th:nth-child(6) { width: 250px; }
       table.report td { font-size: 13px; overflow-wrap: anywhere; } table.report td.mono { font-size: 12px; white-space: pre-line; }
       .detail pre.preview { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
       #reportView { min-width: 0; overflow-x: auto; }
       tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--surface-2); }
-      .verdict { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
-      .verdict.PASS { color: var(--pass); } .verdict.FAIL { color: var(--fail); } .verdict.OBSERVED { color: var(--warn); } .verdict.SKIPPED { color: var(--muted); }
+      .verdict { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); white-space: nowrap; }
+      .verdict.PASS { color: var(--pass); background: var(--pass-bg); } .verdict.FAIL { color: var(--fail); background: var(--fail-bg); } .verdict.OBSERVED { color: var(--warn); background: var(--warn-bg); } .verdict.SKIPPED { color: var(--muted); }
       .detail { padding: 8px 4px 16px; } .detail h3 { font-size: 12px; margin: 14px 0 6px; overflow-wrap: anywhere; }
       .error-text { color: var(--fail); white-space: pre-wrap; }
       #viewSwitch label { padding: 4px 12px; }
+      .config-bar { padding: 14px 16px; }
+      .config-grid { display: grid; grid-template-columns: minmax(180px, 1fr) 3fr; gap: 12px; align-items: end; }
+      .config-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+      .config-dash { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 2fr); gap: 12px; }
+      .route-info { padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-2); min-height: 38px; font-size: 13px; overflow-wrap: anywhere; }
+      .route-info b { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; }
+      .config-bar label { margin-top: 0; }
+      .config-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 10px; min-height: 28px; }
+      .config-foot #refreshDash { margin-left: auto; }
+      .run-grid { display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: 20px; align-items: start; }
+      .results { position: sticky; top: 12px; min-height: 60vh; min-width: 0; }
+      .run-grid > * { min-width: 0; }
+      .row.tight { margin-top: 8px; }
+      select.history { max-width: 240px; margin-left: auto; }
+      @media (max-width: 1100px) { .config-grid { grid-template-columns: 1fr; } .config-dash { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 900px) {
+        .run-grid, .config-grid.four { grid-template-columns: 1fr; }
+        .results { position: static; }
+        .top .env { margin-left: 0; width: 100%; }
+        select.history { margin-left: 0; max-width: none; }
+      }
+      @media (max-width: 520px) { .config-dash { grid-template-columns: 1fr; } }
+      @media (max-width: 760px) {
+        table.report { table-layout: auto; min-width: 680px; }
+        table.report th:nth-child(n) { width: auto; }
+      }
+      .msg:empty { min-height: 0; margin-top: 0; }
+      .grid > * { min-width: 0; }
+      @media (max-width: 760px) {
+        [data-panel='testers'] table, [data-panel='cards'] table { display: block; overflow-x: auto; white-space: nowrap; }
+        pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; }
+        .product-row { grid-template-columns: minmax(0, 1fr) 90px auto; }
+      }
+
+      /* ── report ── */
+      .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+      .stat { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; background: var(--surface); }
+      .stat b { display: block; font-size: 22px; line-height: 1.1; }
+      .stat span { font-size: 12px; color: var(--muted); }
+      .stat.pass { background: var(--pass-bg); border-color: transparent; } .stat.pass b { color: var(--pass); }
+      .stat.fail { background: var(--fail-bg); border-color: transparent; } .stat.fail b { color: var(--fail); }
+      .stat.obs b { color: var(--warn); }
+      .cat-summary { display: flex; flex-wrap: wrap; gap: 6px; }
+      .cat-chip { font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; background: var(--surface); }
+      .cat-chip .ok { color: var(--pass); font-weight: 700; } .cat-chip .ko { color: var(--fail); font-weight: 700; }
+      .report-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 4px; }
+      .report-filters select, .report-filters input { width: auto; min-width: 140px; flex: 1 1 140px; max-width: 220px; margin: 0; }
+      .report-group { margin-top: 16px; }
+      .challenge-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 4px; margin: 12px 0 8px; }
+      .challenge-box legend { font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 6px; }
+      .empty-group { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+      .empty-group .hint { flex: 1 1 180px; }
+      .report-actions { display: flex; gap: 12px; align-items: center; margin-left: auto; }
+      .download-btn { display: inline-block; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap; }
+      .small-link { color: var(--accent); font-weight: 600; font-size: 13px; white-space: nowrap; }
+      .report-group > h3 { display: flex; gap: 10px; align-items: baseline; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
+      .rcard { border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 10px 12px; margin-bottom: 8px; }
+      .rcard.PASS { border-left-color: var(--pass); } .rcard.FAIL { border-left-color: var(--fail); background: var(--fail-bg); }
+      .rcard.OBSERVED { border-left-color: var(--warn); } .rcard.SKIPPED { border-left-color: var(--muted); opacity: 0.8; }
+      .rcard-head { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+      .rcard-title { font-weight: 600; flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+      .badge-v { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 6px; color: #fff; white-space: nowrap; }
+      .badge-v.PASS { background: var(--pass); } .badge-v.FAIL { background: var(--fail); } .badge-v.OBSERVED { background: var(--warn); } .badge-v.SKIPPED { background: var(--muted); }
+      .chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+      .chip.positive { color: var(--pos); } .chip.negative { color: var(--neg); } .chip.neutral { color: var(--muted); }
+      .chip.cat { color: var(--muted); border-color: var(--border); background: var(--surface-2); }
+      .case-id { font: 600 12px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
+      .ea { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+      .ea-box { border-radius: 8px; padding: 8px 10px; background: var(--surface-2); min-width: 0; }
+      .ea-box.actual.PASS { background: var(--pass-bg); } .ea-box.actual.FAIL { background: var(--surface); box-shadow: inset 0 0 0 1px var(--fail); }
+      .ea-box h4 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+      .ea-box.actual.PASS h4 { color: var(--pass); } .ea-box.actual.FAIL h4 { color: var(--fail); }
+      .ea-line { display: grid; grid-template-columns: minmax(80px, 34%) 1fr; gap: 6px; font-size: 13px; padding: 2px 0; }
+      .ea-line span:first-child { color: var(--muted); font-size: 12px; }
+      .ea-line span:last-child { overflow-wrap: anywhere; }
+      .rcard-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin-top: 8px; font-size: 12px; }
+      .rcard-foot .ids { display: flex; flex-wrap: wrap; gap: 4px 14px; flex: 1; min-width: 0; }
+      .rcard-foot .ids span { overflow-wrap: anywhere; } .rcard-foot .ids b { color: var(--muted); font-size: 10px; letter-spacing: 0.04em; margin-right: 4px; }
+      .rcard-foot button { margin-left: auto; }
+      .rcard .detail { border-top: 1px solid var(--border); margin-top: 10px; }
+      @media (max-width: 640px) { .ea { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -111,63 +228,75 @@
         <button data-tab="environments">Environments</button>
         <button data-tab="purchase">Purchase data</button>
         <button data-tab="cards">Test cards</button>
+        <button data-tab="cases">Test cases</button>
         <button data-tab="advanced">Advanced</button>
       </nav>
     </header>
 
     <main>
       <!-- RUN -->
-      <div data-panel="run" class="grid">
-        <div>
-          <section>
-            <h2>1 · Configuration</h2>
-            <label for="runProfile">Tester <span class="hint">(brand ID + API key – manage in Testers)</span></label>
-            <select id="runProfile"></select>
-            <div class="hint mono" id="credSummary" style="margin-top: 6px"></div>
-            <div id="oneOff" class="hidden">
-              <label for="ooBrand">Brand ID</label><input id="ooBrand" autocomplete="off" />
-              <label for="ooKey">API key</label><input id="ooKey" type="password" autocomplete="new-password" />
-              <label for="ooDashUser">Dashboard username <span class="hint">(needed for PSP checks)</span></label><input id="ooDashUser" autocomplete="off" />
-              <label for="ooDashPass">Dashboard password</label><input id="ooDashPass" type="password" autocomplete="new-password" />
+      <div data-panel="run">
+        <section class="config-bar">
+          <div class="config-grid">
+            <div>
+              <label for="runProfile">Tester</label>
+              <select id="runProfile"></select>
             </div>
-            <div class="cols-2">
+            <div id="dashFields" class="config-dash">
               <div><label for="runCurrency">Currency</label><select id="runCurrency"></select></div>
               <div><label for="paymentMethod">Payment method</label><select id="paymentMethod"></select></div>
+              <div class="route-box">
+                <label>Routes to <span class="hint">(Limits/Charges)</span></label>
+                <div id="routeInfo" class="route-info">—</div>
+              </div>
             </div>
-            <label for="runBank">Bank / PSP <span class="hint">(checked against the PSP record after a transaction)</span></label>
-            <select id="runBank"></select>
-            <input id="paymentMethodOther" class="hidden" placeholder="Payment method, e.g. AMEX" style="margin-top: 8px" />
-            <input id="currencyOther" class="hidden" placeholder="Currency, e.g. CHF" maxlength="3" style="margin-top: 8px" />
-            <input id="bankOther" class="hidden" placeholder="Bank name as shown in the dashboard" style="margin-top: 8px" />
-          </section>
-          <section>
-            <h2>2 · Test cases <span class="badge" id="selCount">0 selected</span></h2>
-            <input id="testSearch" placeholder="Search – e.g. zip, FT-06, phone, card" autocomplete="off" />
-            <div class="row" style="margin-top: 8px">
-              <button id="selectVisible" class="small" type="button">Select shown</button>
-              <button id="clearSelection" class="small" type="button">Clear</button>
-              <span class="hint" id="catalogMsg"></span>
+          </div>
+          <div id="oneOff" class="hidden">
+            <div class="config-grid four">
+              <div><label for="ooBrand">Brand ID</label><input id="ooBrand" autocomplete="off" /></div>
+              <div><label for="ooKey">API key</label><input id="ooKey" type="password" autocomplete="new-password" /></div>
+              <div><label for="ooDashUser">Dashboard user <span class="hint">(for PSP checks)</span></label><input id="ooDashUser" autocomplete="off" /></div>
+              <div><label for="ooDashPass">Dashboard password</label><input id="ooDashPass" type="password" autocomplete="new-password" /></div>
             </div>
-            <div id="catalog" class="catalog"></div>
-            <div id="purchaseIdsBox" class="hidden">
-              <label for="purchaseIds">Purchase IDs for the PSP check <span class="hint">(one per line or comma-separated)</span></label>
-              <textarea id="purchaseIds" rows="3" placeholder="6aba50cc6c2e4742b36b8131"></textarea>
-            </div>
-          </section>
-          <section>
-            <h2>3 · Transaction</h2>
-            <label for="payCard">Complete a real transaction for <b>accepted</b> field cases</label>
-            <select id="payCard"></select>
-            <p class="hint" style="margin-top: 6px">"Transactions (test cards)" cases always pay. Paying opens the cashier, enters the card, clicks PAY and then checks the PSP request/response and routing in the back-office (logs the dashboard user out of the browser).</p>
-            <label class="check"><input id="headed" type="checkbox" /> Show browser while paying (one test at a time)</label>
-            <div class="cols-2">
-              <div><label for="workers">Parallel workers <span class="hint">(empty = default)</span></label><input id="workers" type="number" min="1" max="16" /></div>
-              <div><label for="retries">Retries on failure</label><input id="retries" type="number" min="0" max="3" value="0" /></div>
-            </div>
-          </section>
-        </div>
-        <div>
-          <section>
+          </div>
+          <div class="config-foot">
+            <span class="hint mono" id="credSummary"></span>
+            <span class="hint" id="dashMsg"></span>
+            <button id="refreshDash" class="small" type="button" title="Reload routing from Limits/Charges">↻ Refresh</button>
+          </div>
+        </section>
+
+        <div class="run-grid">
+          <div>
+            <section>
+              <h2>Test cases <span class="badge" id="selCount">0 selected</span></h2>
+              <input id="testSearch" placeholder="Search – e.g. zip, FT-06, RX-001, phone, card" autocomplete="off" />
+              <div class="row tight">
+                <button id="selectVisible" class="small" type="button">Select shown</button>
+                <button id="clearSelection" class="small" type="button">Clear</button>
+                <span class="hint" id="catalogMsg"></span>
+              </div>
+              <div id="catalog" class="catalog"></div>
+              <div id="purchaseIdsBox" class="hidden">
+                <label for="purchaseIds">Purchase IDs for the PSP check <span class="hint">(one per line or comma-separated)</span></label>
+                <textarea id="purchaseIds" rows="3" placeholder="6aba50cc6c2e4742b36b8131"></textarea>
+              </div>
+            </section>
+            <section>
+              <h2>Payments</h2>
+              <label for="payCard">Card for payments</label>
+              <select id="payCard"></select>
+              <p class="hint" style="margin-top: 6px">Regex, PSP and edge cases always pay (real transaction: cashier → PAY → PSP → dashboard log) – with the card from the sheet, otherwise this one. Card scenarios use their own card.</p>
+              <label class="check"><input id="payFieldCases" type="checkbox" /> Also pay for accepted field-validation cases</label>
+              <p class="hint" id="cardWarning"></p>
+              <label class="check"><input id="headed" type="checkbox" /> Show browser while paying</label>
+              <div class="cols-2">
+                <div><label for="workers">Workers <span class="hint">(empty = default)</span></label><input id="workers" type="number" min="1" max="16" /></div>
+                <div><label for="retries">Retries</label><input id="retries" type="number" min="0" max="3" value="0" /></div>
+              </div>
+            </section>
+          </div>
+          <section class="results">
             <div class="run-bar">
               <button id="run" class="primary" type="button">▶ Run test</button>
               <button id="stop" type="button" class="hidden">Stop</button>
@@ -175,12 +304,12 @@
               <span class="summary" id="summary"></span>
             </div>
             <div class="msg" id="runMsg"></div>
-            <div class="row" style="margin-top: 4px">
+            <div class="row tight">
               <div class="segmented" id="viewSwitch">
                 <label><input type="radio" name="view" value="report" checked /> Report</label>
                 <label><input type="radio" name="view" value="log" /> Live log</label>
               </div>
-              <select id="history" style="max-width: 260px; margin-left: auto"></select>
+              <select id="history" class="history"></select>
               <span class="links" id="links"></span>
             </div>
             <div id="reportView" style="margin-top: 12px"></div>
@@ -194,7 +323,7 @@
         <section>
           <h2>Tester profiles</h2>
           <p class="hint">Stored only on this computer in <span class="mono">profiles.local.json</span> (never committed). Keys and passwords are never shown again after saving.</p>
-          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
+          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th>Merchant</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
           <div class="row"><button id="newProfile" type="button">+ New tester</button></div>
         </section>
         <section>
@@ -204,10 +333,11 @@
           <label for="pBrand">Brand ID</label><input id="pBrand" placeholder="Brand ID from the merchant dashboard" autocomplete="off" />
           <label for="pKey">API key <span class="hint" id="pKeyHint"></span></label><input id="pKey" type="password" autocomplete="new-password" />
           <div class="cols-2">
-            <div><label for="pDashUser">Dashboard username</label><input id="pDashUser" autocomplete="off" /></div>
+            <div><label for="pDashUser">Dashboard username</label><input id="pDashUser" placeholder="e.g. RaniGupta" autocomplete="off" /></div>
             <div><label for="pDashPass">Dashboard password <span class="hint" id="pDashHint"></span></label><input id="pDashPass" type="password" autocomplete="new-password" /></div>
           </div>
-          <label for="pMethod">Default payment method</label><select id="pMethod"></select>
+          <label for="pMerchant">Merchant <span class="hint">(its Limits/Charges routing gives currency, payment method and MID on the Run tab)</span></label>
+          <div style="display: flex; gap: 8px"><select id="pMerchant"><option value="">Save the dashboard login, then load merchants</option></select><button id="loadMerchants" class="small" type="button" style="white-space: nowrap">Load merchants</button></div>
           <div class="row">
             <button id="saveProfile" class="primary" type="button">Save tester</button>
             <button id="deleteProfile" class="danger hidden" type="button">Delete</button>
@@ -274,7 +404,7 @@
         <section>
           <h2>Test cards – <span id="cardsEnvName"></span> <span class="badge hidden" id="cardsBadge">customised</span></h2>
           <p class="hint">Cards used by "pay on cashier". Test cards only – never real cards.</p>
-          <table><thead><tr><th>On</th><th>Scenario</th><th>Card</th><th>Expected</th><th></th></tr></thead><tbody id="cardRows"></tbody></table>
+          <table><thead><tr><th>On</th><th>Scenario</th><th>Card</th><th>Expected</th><th>3DS challenge</th><th></th></tr></thead><tbody id="cardRows"></tbody></table>
           <div class="row">
             <button id="newCard" type="button">+ Add card</button>
             <button id="resetCards" type="button">Reset to team default</button>
@@ -303,12 +433,91 @@
             </div>
             <div><label for="cStatuses">Expected purchase status <span class="hint">(comma-separated)</span></label><input id="cStatuses" placeholder="PAID" /></div>
           </div>
+          <fieldset class="challenge-box">
+            <legend>3DS challenge (bank OTP page)</legend>
+            <div class="cols-3">
+              <div>
+                <label for="cChallenge">When the bank asks for an OTP</label>
+                <select id="cChallenge">
+                  <option value="none">Nothing – frictionless card</option>
+                  <option value="otp">Enter the OTP automatically</option>
+                  <option value="manual">Wait for me to enter it (visible browser)</option>
+                </select>
+              </div>
+              <div><label for="cOtp">OTP <span class="hint">(empty = read "OTP: 1234" from the test page)</span></label><input id="cOtp" autocomplete="off" placeholder="1234" /></div>
+              <div><label for="cSubmit">Submit button text <span class="hint">(empty = Submit / Continue / Verify…)</span></label><input id="cSubmit" autocomplete="off" placeholder="Submit" /></div>
+            </div>
+            <p class="hint">Wrong OTP on purpose tests the decline path. "Wait for me" needs <b>Show browser while paying</b> on the Run tab and allows 5 minutes.</p>
+          </fieldset>
           <label class="check"><input id="cEnabled" type="checkbox" checked /> Enabled</label>
           <div class="row">
             <button id="saveCard" class="primary" type="button">Save card</button>
             <button id="deleteCard" class="danger hidden" type="button">Delete</button>
           </div>
           <div class="msg" id="cardMsg"></div>
+        </section>
+      </div>
+
+      <!-- TEST CASES -->
+      <div data-panel="cases" class="hidden">
+        <section>
+          <h2>Test case categories</h2>
+          <div id="categoryTiles" class="cat-tiles"></div>
+        </section>
+        <section>
+          <h2 id="uploadTitle">Upload</h2>
+          <p class="hint" id="categoryDescription"></p>
+          <div id="regexDash" class="dash-box hidden">
+            <div class="dash-head">
+              <b>From the dashboard</b>
+              <span class="hint">Field regexes of the bank (PaymentBankJsonData → Field Regex). Test values are suggested for every field and marked Valid / Invalid by the bank's own regex.</span>
+            </div>
+            <div class="row tight">
+              <select id="regexBank" style="max-width: 280px"><option value="">Loading banks…</option></select>
+              <button id="loadRegexRules" type="button" class="small">Load rules</button>
+              <span class="hint" id="regexHint"></span>
+            </div>
+            <div id="regexRulesBox" class="import-wrap hidden">
+              <table class="import"><thead><tr><th>Field</th><th>Regex</th><th>Note</th></tr></thead><tbody id="regexRules"></tbody></table>
+            </div>
+            <div class="or-line hidden" id="regexOr"><span>or upload your own values</span></div>
+          </div>
+          <div class="upload-steps">
+            <div class="step">
+              <span class="step-no">1</span>
+              <div>
+                <b>Download the template</b>
+                <div class="hint">Ready-to-fill sheet with examples, dropdowns and a short guide.</div>
+                <button id="downloadTemplate" type="button" class="small">Download template</button>
+              </div>
+            </div>
+            <div class="step grow">
+              <span class="step-no">2</span>
+              <label id="importDrop" class="import-drop" for="importFile">
+                <b>Upload the filled sheet</b> – choose a file or drop it here <span class="hint">(.xlsx or .csv, max 4 MB)</span>
+                <input id="importFile" type="file" accept=".xlsx,.csv" class="hidden" />
+              </label>
+            </div>
+          </div>
+          <div id="importPreview" class="hidden">
+            <div class="row tight"><span class="summary" id="importSummary"></span><span class="hint" id="importName"></span></div>
+            <div class="import-wrap">
+              <table class="import"><thead id="importHead"></thead><tbody id="importRows"></tbody></table>
+            </div>
+            <div class="row">
+              <button id="appendCases" class="primary" type="button">Add selected cases</button>
+              <button id="cancelImport" type="button">Cancel</button>
+            </div>
+          </div>
+          <div class="msg" id="importMsg"></div>
+        </section>
+        <section>
+          <h2><span id="listTitle">Uploaded cases</span> <span class="badge" id="customCount">0</span></h2>
+          <p class="hint" id="listHint"></p>
+          <div class="import-wrap">
+            <table class="import"><thead id="customHead"></thead><tbody id="customRows"></tbody></table>
+          </div>
+          <div class="msg" id="customMsg"></div>
         </section>
       </div>
 
@@ -322,21 +531,6 @@
             <div><label for="aToken">OAuth token path <span class="hint">(empty = API key)</span></label><input id="aToken" /></div>
           </div>
           <div class="row"><button id="saveAuth" type="button">Save</button><button id="resetAuth" type="button">Reset</button></div>
-        </section>
-        <section>
-          <h2>Payment methods <span class="badge hidden" id="methodsBadge">customised</span></h2>
-          <label for="methods">Card schemes offered in the launcher <span class="hint">(comma-separated, e.g. VISA, MASTERCARD)</span></label>
-          <input id="methods" />
-          <div class="row"><button id="saveMethods" type="button">Save</button><button id="resetMethods" type="button">Reset</button></div>
-        </section>
-        <section>
-          <h2>Currencies &amp; banks <span class="badge hidden" id="listsBadge">customised</span></h2>
-          <label for="currencies">Currencies offered in Run <span class="hint">(comma-separated ISO codes)</span></label>
-          <input id="currencies" />
-          <div class="row"><button id="saveCurrencies" type="button">Save</button><button id="resetCurrencies" type="button">Reset</button></div>
-          <label for="banks">Banks / PSPs for <b id="banksEnvName"></b> <span class="hint">(names as shown in the dashboard, e.g. paysafe_payfac)</span></label>
-          <input id="banks" />
-          <div class="row"><button id="saveBanks" type="button">Save</button><button id="resetBanks" type="button">Reset</button></div>
         </section>
         <section>
           <h2>Logging &amp; reports <span class="badge hidden" id="runBadge">customised</span></h2>
@@ -446,32 +640,85 @@
         const profile = state.options.profiles.find((p) => p.id === value);
         const c = profile?.environments[state.env];
         $('credSummary').textContent = c ? `Brand ID ${c.brandId} · API key ${c.apiKeyHint}${c.dashboardUsername ? ` · dashboard ${c.dashboardUsername}` : ' · no dashboard login'}` : '';
-        if (profile?.paymentMethod) setSelectValue('paymentMethod', 'paymentMethodOther', profile.paymentMethod);
+        loadRouting();
       }
-      function fillSelect(id, otherId, items, first) {
-        const select = $(id); const previous = select.value || recall(id); select.replaceChildren();
-        if (first) select.append(option(first[0], first[1]));
-        for (const item of items) select.append(option(item, item));
-        select.append(option('OTHER', 'Other…'));
-        if (previous && [...select.options].some((o) => o.value === previous)) select.value = previous;
-        $(otherId).classList.toggle('hidden', select.value !== 'OTHER');
+      // ── bank → MID → currency / payment method (from the dashboard) ───────
+      function fill(select, items, placeholder, preferred) {
+        const previous = select.value;
+        select.replaceChildren(...(placeholder ? [option('', placeholder)] : []), ...items.map((i) => option(i.value, i.label)));
+        const want = [previous, preferred].find((v) => v && items.some((i) => i.value === v));
+        if (want) select.value = want;
       }
-      function setSelectValue(id, otherId, value) {
-        const select = $(id); const known = [...select.options].some((o) => o.value === value);
-        select.value = known ? value : 'OTHER';
-        $(otherId).value = known ? '' : value; $(otherId).classList.toggle('hidden', known);
+      function currentProfileId() { const v = $('runProfile').value; return v === CUSTOM ? '' : v; }
+      /** Dashboard routing not usable: keep the dropdowns with the template currency + common card schemes. */
+      function useManual(message) {
+        state.dash = { routes: [], merchant: null, manual: true };
+        $('dashMsg').textContent = `${message} Routing is not checked.`;
+        const template = eff().purchase[state.env].purchase.currency;
+        fill($('runCurrency'), [template].map((c) => ({ value: c, label: c })), '', template);
+        fill($('paymentMethod'), ['VISA', 'MASTER'].map((m) => ({ value: m, label: m })), '', recall(`pm.${state.env}`) || 'VISA');
+        renderRoute();
       }
-      const selectValue = (id, otherId) => ($(id).value === 'OTHER' ? $(otherId).value.trim() : $(id).value);
+      async function loadRouting() {
+        const profileId = currentProfileId();
+        const profile = state.options.profiles.find((p) => p.id === profileId);
+        const creds = profile?.environments[state.env];
+        if (!creds) return useManual('One-off credentials: routing needs a saved tester.');
+        if (!creds.dashboardUsername || !creds.hasDashboardPassword) return useManual('This tester has no dashboard login – add it in Testers.');
+        if (!creds.merchant) return useManual('Set the merchant of this tester in Testers.');
+        $('dashMsg').textContent = 'Loading Limits/Charges routing from the dashboard…';
+        $('routeInfo').textContent = '…';
+        try {
+          const { routes, merchant } = await api(`/api/dashboard/routing?env=${state.env}&profileId=${encodeURIComponent(profileId)}`);
+          state.dash = { routes, merchant, manual: false };
+          $('dashMsg').textContent = `Merchant ${merchant.name} · ${routes.length} currency / payment-method routes`;
+          const currencies = [...new Set(routes.map((r) => r.currency))];
+          const template = eff().purchase[state.env].purchase.currency;
+          fill($('runCurrency'), currencies.map((c) => ({ value: c, label: c })), currencies.length ? '' : 'No routes configured', recall(`cur.${state.env}`) || template);
+          if (!$('runCurrency').value && currencies.length) $('runCurrency').value = currencies.includes(template) ? template : currencies[0];
+          onCurrencyChange();
+        } catch (error) { useManual(`Dashboard: ${error.message}`); }
+      }
+      function onCurrencyChange() {
+        if (state.dash.manual) return renderRoute();
+        const currency = $('runCurrency').value; remember(`cur.${state.env}`, currency);
+        const methods = state.dash.routes.filter((r) => r.currency === currency).map((r) => r.paymentMethod);
+        fill($('paymentMethod'), methods.map((m) => ({ value: m, label: m })), methods.length ? '' : 'None configured', recall(`pm.${state.env}`));
+        if (!$('paymentMethod').value && methods.length) $('paymentMethod').value = methods.includes('VISA') ? 'VISA' : methods[0];
+        renderRoute();
+      }
+      function currentRoute() {
+        if (state.dash.manual) return undefined;
+        return state.dash.routes.find((r) => r.currency === $('runCurrency').value && r.paymentMethod === $('paymentMethod').value);
+      }
+      function renderRoute() {
+        const box = $('routeInfo'); const route = currentRoute();
+        if (state.dash.manual) { box.textContent = 'Not checked (no dashboard routing)'; return; }
+        if (!route) { box.textContent = '—'; return; }
+        remember(`pm.${state.env}`, route.paymentMethod);
+        const names = route.targets.map((t) => t.name).filter(Boolean);
+        if (route.routeTo === 'route_to_mid' && names.length) box.replaceChildren('MID ', el('b', {}, names.join(', ')));
+        else if (route.routeTo === 'route_to_bank' && names.length) box.replaceChildren('Bank ', el('b', {}, names.join(', ')));
+        else box.textContent = `${route.routeTo || 'Not set'} – routing not checked`;
+      }
+      function runChoice() {
+        const route = currentRoute();
+        const names = route ? route.targets.map((t) => t.name).filter(Boolean) : [];
+        return {
+          currency: $('runCurrency').value,
+          paymentMethod: $('paymentMethod').value,
+          mid: route?.routeTo === 'route_to_mid' ? names.join(',') : '',
+          bank: route?.routeTo === 'route_to_bank' ? names.join(',') : '',
+        };
+      }
       function renderRunChoices() {
-        const s = eff();
-        fillSelect('paymentMethod', 'paymentMethodOther', s.paymentMethods);
-        fillSelect('runCurrency', 'currencyOther', s.currencies, ['', `Template (${s.purchase[state.env].purchase.currency})`]);
-        fillSelect('runBank', 'bankOther', s.banks[state.env], ['', "Don't check routing"]);
-        const pc = $('payCard'); const prev = pc.value || recall('payCard'); pc.replaceChildren(option('', 'No – API validation only'));
-        for (const card of s.cards[state.env]) pc.append(option(card.id, `Yes – pay with ${card.label}`));
-        if ([...pc.options].some((o) => o.value === prev)) pc.value = prev;
-        const pm = $('pMethod'); const prevPm = pm.value; pm.replaceChildren(...s.paymentMethods.map((m) => option(m, m)));
-        if (prevPm) pm.value = prevPm;
+        const s2 = eff();
+        const pc = $('payCard'); const prev = pc.value || recall('payCard'); pc.replaceChildren(option('', 'None – no payments'));
+        const cards = s2.cards[state.env].filter((card) => card.enabled !== false);
+        for (const card of cards) pc.append(option(card.id, card.label));
+        // Default to the first card so regex / PSP / edge cases can run straight away.
+        pc.value = [...pc.options].some((o) => o.value === prev && prev !== '') ? prev : cards[0]?.id || '';
+        $('payFieldCases').checked = recall('payFieldCases') === '1';
       }
 
       // test catalog
@@ -504,30 +751,43 @@
             const tags = [];
             if (t.expectation) tags.push(el('span', { class: `tag ${t.expectation}` }, t.expectation));
             if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
-            details.append(el('label', { class: 'test-item' }, box2, el('span', { class: 'mono key' }, /^@FT-/.test(t.key) ? t.key.slice(1) : ''), el('span', {}, t.title.replace(/^FT-\S+\s/, '')), ...tags));
+            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '')), ...tags));
           }
           box.append(details);
         }
-        if (!groups.size) box.append(el('p', { class: 'hint' }, 'No test cases match.'));
+        // Uploaded categories without cases still show, with a pointer to where cases are added.
+        if (!$('testSearch').value) {
+          for (const c of state.categories || []) {
+            if (c.cases.length > 0 || c.id === 'field') continue;
+            const go = el('button', { type: 'button', class: 'small' }, 'Add cases →');
+            go.addEventListener('click', () => { state.category = c.id; remember('caseCategory', c.id); showTab('cases'); renderCategories(); });
+            box.append(el('div', { class: 'empty-group' }, el('b', {}, c.label), el('span', { class: 'hint' }, `No ${c.prefix}-xxx cases yet – add them on the Test cases tab.`), go));
+          }
+        }
+        if (!groups.size && !box.childElementCount) box.append(el('p', { class: 'hint' }, 'No test cases match.'));
         renderSelectionState();
       }
       function renderSelectionState() {
         $('selCount').textContent = `${state.selected.size} selected`;
         $('purchaseIdsBox').classList.toggle('hidden', !state.selected.has('@psp-by-id'));
         $('run').disabled = state.selected.size === 0 || state.running;
+        const needsCard = [...state.selected].filter((k) => /^@(RX|PR|EC)-/.test(k));
+        $('cardWarning').className = needsCard.length && !$('payCard').value ? 'msg error' : 'hint';
+        $('cardWarning').textContent = needsCard.length && !$('payCard').value ? `${needsCard.length} selected case(s) need a card – choose one above, or they are skipped (unless the sheet names a card).` : '';
       }
 
       async function startRun() {
         $('runMsg').textContent = '';
+        const choice = runChoice();
+        if (!choice.currency || !choice.paymentMethod) { say('runMsg', 'Select currency and payment method.', false); return; }
         const value = $('runProfile').value;
         const payload = {
-          env: state.env, testKeys: [...state.selected], paymentMethod: selectValue('paymentMethod', 'paymentMethodOther').toUpperCase(),
-          currency: selectValue('runCurrency', 'currencyOther').toUpperCase(), bank: selectValue('runBank', 'bankOther'), payCard: $('payCard').value,
+          env: state.env, testKeys: [...state.selected], ...runChoice(), payCard: $('payCard').value, payFieldCases: $('payFieldCases').checked,
           purchaseIds: $('purchaseIds').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
         };
         if (value === CUSTOM) Object.assign(payload, { brandId: $('ooBrand').value, apiKey: $('ooKey').value, dashboardUsername: $('ooDashUser').value, dashboardPassword: $('ooDashPass').value });
         else payload.profileId = value;
-        for (const id of ['runCurrency', 'runBank', 'payCard']) remember(id, $(id).value);
+        remember('payCard', $('payCard').value); remember('payFieldCases', $('payFieldCases').checked ? '1' : '');
         try { $('log').textContent = ''; setView('log'); await api('/api/runs', { method: 'POST', body: JSON.stringify(payload) }); }
         catch (error) { say('runMsg', error.message, false); setView('report'); }
       }
@@ -543,10 +803,8 @@
         $('stop').classList.toggle('hidden', !running); renderSelectionState();
         $('summary').textContent = run.summary || '';
         const links = $('links'); links.replaceChildren();
-        if (!running && run.status !== 'idle') {
-          if (run.hasReport) links.append(el('a', { href: '/report/', target: '_blank', rel: 'noopener', textContent: 'Playwright report' }));
-          if (run.hasCsv) links.append(el('a', { href: '/results.csv', textContent: 'Field CSV' }));
-          if (run.hasPspCsv) links.append(el('a', { href: '/psp-results.csv', textContent: 'PSP CSV' }));
+        // Files of the last run – shown after a launcher restart too.
+        if (!running) {
         }
         if (finishedNow) { loadHistory().then(() => showReport('latest')); setView('report'); }
       }
@@ -566,36 +824,110 @@
         for (const r of runs) h.append(option(r, `Run ${r.slice(0, 10)} ${r.slice(11).replace(/-/g, ':')} UTC`));
       }
       const pretty = (value) => (value === undefined || value === null || value === '' ? '—' : typeof value === 'string' ? value : JSON.stringify(value, null, 2));
-      function kv(label, value) { return el('div', { class: 'kv' }, el('span', { class: 'hint' }, label), el('b', {}, value || '—')); }
+      function kv(label, value) { return el('div', { class: 'kv' }, el('span', { class: 'hint' }, label.charAt(0).toUpperCase() + label.slice(1)), el('b', {}, value || '—')); }
+      /** Purchase ID and PSP transaction ID as two labelled lines (not one merged string). */
+      function idCell(t) {
+        const td = el('td', { class: 'ids' });
+        const line = (label, value) => el('div', { class: 'id-line' }, el('span', { class: 'id-label' }, label), el('span', { class: 'mono id-value', title: value }, value));
+        if (t.purchaseId) td.append(line('Purchase', t.purchaseId));
+        if (t.pspTransactionId) td.append(line('PSP txn', t.pspTransactionId));
+        if (!td.childElementCount) td.append('—');
+        return td;
+      }
+      // ── report view ─────────────────────────────────────────────────────────
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
+      function categoryFromKey(key) {
+        if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+      }
+      /** Older reports have no category / items – derive what we can. */
+      function normaliseRow(t) {
+        const category = t.category || categoryFromKey(t.key);
+        return {
+          ...t, category, categoryLabel: t.categoryLabel || CATEGORY_NAMES[category], polarity: t.polarity || 'neutral',
+          expectedItems: t.expectedItems?.length ? t.expectedItems : t.expected ? [{ label: 'Expected', value: t.expected }] : [],
+          actualItems: t.actualItems?.length ? t.actualItems : (t.actual || '').split(' · ').filter(Boolean).map((v) => ({ label: '', value: v })),
+        };
+      }
+      const POLARITY_TEXT = { positive: '＋ Positive', negative: '− Negative', neutral: 'Informational' };
+      function eaBox(kind, title, items, verdict) {
+        const box = el('div', { class: `ea-box ${kind} ${kind === 'actual' ? verdict : ''}` }, el('h4', {}, title));
+        if (!items.length) box.append(el('div', { class: 'hint' }, '—'));
+        for (const i of items) box.append(el('div', { class: 'ea-line' }, el('span', {}, i.label || '•'), el('span', {}, i.value)));
+        return box;
+      }
+      function reportCard(t) {
+        const card = el('div', { class: `rcard ${t.verdict}` });
+        const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
+        const title = t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '');
+        const head = el('div', { class: 'rcard-head' },
+          el('span', { class: `badge-v ${t.verdict}` }, VERDICT_TEXT[t.verdict] || t.verdict),
+          ...(caseId ? [el('span', { class: 'case-id' }, caseId)] : []),
+          el('span', { class: 'rcard-title' }, title),
+          el('span', { class: `chip ${t.polarity}`, title: t.polarity === 'positive' ? 'Happy path – success is expected' : t.polarity === 'negative' ? 'Negative case – a rejection / failure is expected' : '' }, POLARITY_TEXT[t.polarity]),
+          el('span', { class: 'chip cat' }, t.categoryLabel));
+        const ids = el('div', { class: 'ids' });
+        if (t.purchaseId) ids.append(el('span', {}, el('b', {}, 'PURCHASE'), el('span', { class: 'mono' }, t.purchaseId)));
+        if (t.pspTransactionId) ids.append(el('span', {}, el('b', {}, 'PSP TXN'), el('span', { class: 'mono' }, t.pspTransactionId)));
+        ids.append(el('span', { class: 'hint' }, `${(t.durationMs / 1000).toFixed(1)} s`));
+        let detail;
+        const toggle = el('button', { type: 'button', class: 'small' }, 'Details ▸');
+        toggle.addEventListener('click', () => {
+          if (!detail) { detail = testDetail(t); card.append(detail); toggle.textContent = 'Hide details ▾'; return; }
+          detail.classList.toggle('hidden'); toggle.textContent = detail.classList.contains('hidden') ? 'Details ▸' : 'Hide details ▾';
+        });
+        card.append(head, el('div', { class: 'ea' }, eaBox('expected', 'Expected', t.expectedItems, t.verdict), eaBox('actual', 'Actual', t.actualItems, t.verdict)),
+          ...(t.verdict === 'FAIL' && t.errors.length ? [el('div', { class: 'msg error' }, t.errors[0].split('\n')[0].slice(0, 300))] : []),
+          el('div', { class: 'rcard-foot' }, ids, toggle));
+        return card;
+      }
       async function showReport(name) {
         const view = $('reportView');
         let report;
         try { report = await api(`/api/report?run=${encodeURIComponent(name)}`); }
         catch { view.replaceChildren(el('p', { class: 'hint' }, 'No report yet – select test cases and click Run test.')); return; }
+        const tests = report.tests.map(normaliseRow);
         const c = report.config || {}; const s = report.summary || {};
+        const stat = (cls, n, label) => el('div', { class: `stat ${cls}` }, el('b', {}, String(n ?? 0)), el('span', {}, label));
+        const byCat = CATEGORY_ORDER.map((id) => ({ id, rows: tests.filter((t) => t.category === id) })).filter((g) => g.rows.length);
         const header = el('div', { class: 'report-head' },
+          el('div', { class: 'stat-row' }, stat('', s.total, 'executed'), stat('pass', s.passed, 'passed'), stat('fail', s.failed, 'failed'), stat('obs', s.observed, 'observed'), stat('', s.skipped, 'skipped')),
+          el('div', { class: 'cat-summary' }, ...byCat.map((g) => el('span', { class: 'cat-chip' }, `${CATEGORY_NAMES[g.id]}  `,
+            el('span', { class: 'ok' }, `✓ ${g.rows.filter((t) => t.verdict === 'PASS').length}`), '  ',
+            el('span', { class: 'ko' }, `✗ ${g.rows.filter((t) => t.verdict === 'FAIL').length}`)))),
           el('div', { class: 'kv-grid' }, kv('Environment', c.environment), kv('Tester', c.tester), kv('Brand ID', c.brandId), kv('API key', c.apiKey),
-            kv('Currency', c.currency), kv('Bank', c.bank), kv('Payment method', c.paymentMethod), kv('Transaction', c.payWithCard)),
-          el('div', { class: 'totals' },
-            el('span', { class: 'pill' }, `${s.total} executed`), el('span', { class: 'pill passed' }, `${s.passed} passed`),
-            el('span', { class: 'pill failed' }, `${s.failed} failed`), el('span', { class: 'pill running' }, `${s.observed} observed`),
-            el('span', { class: 'pill' }, `${s.skipped} skipped`), el('span', { class: 'hint' }, `${Math.round(report.durationMs / 1000)} s · ${new Date(report.finishedAt).toLocaleString()}`)));
-        const filter = el('select', { style: 'max-width: 200px' }, option('', 'All results'), option('FAIL', 'Failed only'), option('PASS', 'Passed only'), option('OBSERVED', 'Observed only'));
-        const tbody = el('tbody');
-        const renderRows = () => {
-          tbody.replaceChildren();
-          for (const t of report.tests.filter((x) => !filter.value || x.verdict === filter.value)) {
-            const detail = el('tr', { class: 'hidden' }, el('td', { colSpan: 6 }, testDetail(t)));
-            const row = el('tr', { class: 'clickable', onclick: () => detail.classList.toggle('hidden') },
-              el('td', {}, el('span', { class: `verdict ${t.verdict}` }, t.verdict)), el('td', { class: 'mono' }, /^@FT-/.test(t.key) ? t.key.slice(1) : '–'),
-              el('td', {}, t.title.replace(/^FT-\S+\s/, '')), el('td', {}, t.expected || '—'), el('td', {}, t.actual || '—'),
-              el('td', { class: 'mono' }, [t.purchaseId, t.pspTransactionId].filter(Boolean).join('\n') || '—'));
-            tbody.append(row, detail);
+            kv('Currency', c.currency), kv('Payment method', c.paymentMethod), kv('MID', c.mid || c.bank), kv('Pay with card', c.payWithCard),
+            kv('Finished', `${new Date(report.finishedAt).toLocaleString()} · ${Math.round(report.durationMs / 1000)} s`)));
+        const fVerdict = el('select', {}, option('', 'All results'), option('FAIL', 'Failed'), option('PASS', 'Passed'), option('OBSERVED', 'Observed'), option('SKIPPED', 'Skipped'));
+        const fCat = el('select', {}, option('', 'All categories'), ...byCat.map((g) => option(g.id, CATEGORY_NAMES[g.id])));
+        const fPol = el('select', {}, option('', 'Positive & negative'), option('positive', 'Positive only'), option('negative', 'Negative only'));
+        const fText = el('input', { placeholder: 'Search case, value, ID…' });
+        const list = el('div');
+        const render = () => {
+          const q = fText.value.trim().toLowerCase();
+          const shown = tests.filter((t) => (!fVerdict.value || t.verdict === fVerdict.value) && (!fCat.value || t.category === fCat.value) && (!fPol.value || t.polarity === fPol.value)
+            && (!q || `${t.key} ${t.title} ${t.purchaseId} ${t.pspTransactionId} ${t.expectedItems.map((i) => i.value).join(' ')} ${t.actualItems.map((i) => i.value).join(' ')}`.toLowerCase().includes(q)));
+          list.replaceChildren();
+          if (!shown.length) list.append(el('p', { class: 'hint' }, 'No tests match the filters.'));
+          for (const id of CATEGORY_ORDER) {
+            const rows = shown.filter((t) => t.category === id);
+            if (!rows.length) continue;
+            // Failures first inside each category.
+            rows.sort((a, b) => (a.verdict === 'FAIL' ? 0 : 1) - (b.verdict === 'FAIL' ? 0 : 1));
+            const pass = rows.filter((t) => t.verdict === 'PASS').length; const fail = rows.filter((t) => t.verdict === 'FAIL').length;
+            list.append(el('div', { class: 'report-group' },
+              el('h3', {}, CATEGORY_NAMES[id], el('span', { class: 'hint' }, `${rows.length} test${rows.length === 1 ? '' : 's'} · ${pass} passed · ${fail} failed`)),
+              ...rows.map(reportCard)));
           }
         };
-        filter.addEventListener('change', renderRows); renderRows();
-        view.replaceChildren(header, el('div', { class: 'row' }, filter, el('span', { class: 'hint' }, 'Click a row for request, response and PSP details.')),
-          el('table', { class: 'report' }, el('thead', {}, el('tr', {}, ...['Result', 'Case', 'Test', 'Expected', 'Actual', 'Purchase / PSP txn ID'].map((h) => el('th', {}, h)))), tbody));
+        for (const f of [fVerdict, fCat, fPol]) f.addEventListener('change', render);
+        fText.addEventListener('input', render);
+        render();
+        const csvButton = el('a', { href: `/api/report.xlsx?run=${encodeURIComponent(name)}`, class: 'download-btn' }, '⬇ Download report (Excel)');
+        const pwLink = el('a', { href: '/report/', target: '_blank', rel: 'noopener', class: 'small-link' }, 'Playwright report ↗');
+        view.replaceChildren(header, el('div', { class: 'report-filters' }, fVerdict, fCat, fPol, fText, el('span', { class: 'report-actions' }, csvButton, ...(name === 'latest' ? [pwLink] : []))), list);
       }
       function testDetail(t) {
         const blocks = [];
@@ -607,6 +939,9 @@
           blocks.push(el('h3', {}, `Request ${i + 1}: ${x.request.method} ${x.request.url}`), el('pre', { class: 'preview' }, pretty({ headers: x.request.headers, body: x.request.body })));
           blocks.push(el('h3', {}, `Response ${i + 1}: ${x.response ? `HTTP ${x.response.status} · ${x.response.durationMs} ms` : 'no response'}`), el('pre', { class: 'preview' }, pretty(x.response ? x.response.body : x.error)));
         });
+        if (t.pspFieldChecks?.length) {
+          blocks.push(el('h3', {}, 'PSP field checks (from the sheet)'), el('table', {}, el('tbody', {}, ...t.pspFieldChecks.map((c) => el('tr', {}, el('td', {}, el('span', { class: `verdict ${c.passed ? 'PASS' : 'FAIL'}` }, c.passed ? 'PASS' : 'FAIL')), el('td', {}, c.name), el('td', { class: 'hint' }, `expected ${c.expected}`), el('td', {}, c.actual || '—'))))));
+        }
         if (t.psp) {
           blocks.push(el('h3', {}, 'PSP checks'), el('table', {}, el('tbody', {}, ...t.psp.checks.map((c) => el('tr', {}, el('td', {}, el('span', { class: `verdict ${c.passed ? 'PASS' : 'FAIL'}` }, c.passed ? 'PASS' : 'FAIL')), el('td', {}, c.name), el('td', { class: 'hint' }, `expected ${c.expected}`), el('td', {}, c.actual || '—'))))));
           blocks.push(el('div', { class: 'kv-grid' }, kv('Bank / PSP', t.psp.bankName), kv('MID', t.psp.midName), kv('PSP status', t.psp.pspStatus), kv('Gateway', [t.psp.gatewayCode, t.psp.gatewayMessage].filter(Boolean).join(' ')), kv('Sent to PSP', `${t.psp.pspAmount} ${t.psp.pspCurrency}`), kv('Error', t.psp.errorMessage)));
@@ -626,9 +961,10 @@
           rows.append(el('tr', {},
             el('td', {}, p.name), el('td', { class: 'mono' }, c ? c.brandId : '—'), el('td', { class: 'mono' }, c ? c.apiKeyHint : '—'),
             el('td', {}, c?.dashboardUsername ? `${c.dashboardUsername}${c.hasDashboardPassword ? ' ✓' : ''}` : '—'),
+            el('td', {}, c?.merchant ? c.merchant.name : '—'),
             el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editProfile(p.id) }))));
         }
-        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 5, class: 'hint' }, 'No testers yet.')));
+        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 6, class: 'hint' }, 'No testers yet.')));
         editProfile(state.editingProfile);
       }
       function editProfile(id) {
@@ -641,16 +977,29 @@
         $('pDashUser').value = c?.dashboardUsername || ''; $('pDashPass').value = '';
         $('pDashPass').placeholder = c?.hasDashboardPassword ? 'Leave empty to keep' : 'Dashboard password';
         $('pDashHint').textContent = c?.hasDashboardPassword ? 'saved' : '';
-        if (p?.paymentMethod && eff().paymentMethods.includes(p.paymentMethod)) $('pMethod').value = p.paymentMethod;
+        const m = c?.merchant;
+        $('pMerchant').replaceChildren(m ? option(String(m.id), m.name) : option('', c?.hasDashboardPassword ? 'Click "Load merchants"' : 'Save the dashboard login, then load merchants'));
         $('deleteProfile').classList.toggle('hidden', !p); $('profileMsg').textContent = '';
       }
       async function saveProfile() {
         try {
           const { id, profiles } = await api('/api/profiles', { method: 'POST', body: JSON.stringify({
             id: state.editingProfile || undefined, name: $('pName').value, env: state.env, brandId: $('pBrand').value, apiKey: $('pKey').value,
-            dashboardUsername: $('pDashUser').value, dashboardPassword: $('pDashPass').value, paymentMethod: $('pMethod').value }) });
+            dashboardUsername: $('pDashUser').value, dashboardPassword: $('pDashPass').value,
+            merchantId: $('pMerchant').value, merchantName: $('pMerchant').selectedOptions[0]?.textContent || '' }) });
           state.options.profiles = profiles; state.editingProfile = id; renderProfiles(); renderRunProfiles();
           say('profileMsg', `Saved for ${state.env.toUpperCase()}.`);
+        } catch (error) { say('profileMsg', error.message, false); }
+      }
+      async function loadMerchants() {
+        if (!state.editingProfile) { say('profileMsg', 'Save the tester with its dashboard login first.', false); return; }
+        say('profileMsg', 'Loading merchants from the dashboard…');
+        try {
+          const { merchants } = await api(`/api/dashboard/merchants?env=${state.env}&profileId=${encodeURIComponent(state.editingProfile)}`);
+          const current = $('pMerchant').value;
+          $('pMerchant').replaceChildren(option('', 'Select merchant'), ...merchants.map((m) => option(String(m.id), m.name)));
+          if (current) $('pMerchant').value = current;
+          say('profileMsg', `${merchants.length} merchants loaded – pick the merchant of this brand and save.`);
         } catch (error) { say('profileMsg', error.message, false); }
       }
       async function deleteProfile() {
@@ -729,9 +1078,10 @@
           } });
           rows.append(el('tr', {}, el('td', {}, toggle), el('td', {}, card.label), el('td', { class: 'mono' }, `${maskCard(card.number)} · ${card.expiry}`),
             el('td', {}, `${card.expectedOutcome} · ${card.expectedStatuses.join('/')}`),
+            el('td', {}, { otp: 'OTP auto', manual: 'OTP by tester', none: '—' }[card.challenge?.action || 'none']),
             el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editCard(card.id) }))));
         });
-        if (!cards.length) rows.append(el('tr', {}, el('td', { colSpan: 5, class: 'hint' }, 'No cards for this environment.')));
+        if (!cards.length) rows.append(el('tr', {}, el('td', { colSpan: 6, class: 'hint' }, 'No cards for this environment.')));
         editCard(state.editingCard);
       }
       function editCard(id) {
@@ -741,6 +1091,9 @@
         $('cCvv').value = card?.cvv || ''; $('cHolder').value = card?.holderName || 'Test Customer';
         $('cOutcome').value = card?.expectedOutcome || 'success-redirect'; $('cStatuses').value = (card?.expectedStatuses || ['PAID']).join(', ');
         $('cEnabled').checked = card ? card.enabled : true;
+        $('cChallenge').value = card?.challenge?.action || 'none'; $('cOtp').value = card?.challenge?.otp || ''; $('cSubmit').value = card?.challenge?.submit || '';
+        const syncChallenge = () => { const on = $('cChallenge').value === 'otp'; $('cOtp').disabled = !on; $('cSubmit').disabled = !on; };
+        $('cChallenge').onchange = syncChallenge; syncChallenge();
         $('deleteCard').classList.toggle('hidden', !card); $('cardMsg').textContent = '';
       }
       const slug = (text) => text.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'card';
@@ -750,7 +1103,8 @@
         let id = state.editingCard || slug(label);
         if (!state.editingCard) { let n = 2; const base = id; while (cards.some((c) => c.id === id)) id = `${base}-${n++}`; }
         const card = { id, label, number: $('cNumber').value.replace(/\s/g, ''), expiry: $('cExpiry').value.trim(), cvv: $('cCvv').value.trim(), holderName: $('cHolder').value.trim(),
-          expectedOutcome: $('cOutcome').value, expectedStatuses: $('cStatuses').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean), enabled: $('cEnabled').checked };
+          expectedOutcome: $('cOutcome').value, expectedStatuses: $('cStatuses').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean), enabled: $('cEnabled').checked,
+          challenge: { action: $('cChallenge').value, otp: $('cOtp').value.trim(), submit: $('cSubmit').value.trim() } };
         const next = state.editingCard ? cards.map((c) => (c.id === id ? card : c)) : [...cards, card];
         state.editingCard = id;
         saveSettings(`cards.${state.env}`, next, 'cardMsg', 'Card saved.');
@@ -764,14 +1118,149 @@
       function renderAdvanced() {
         const s = eff();
         $('aHeader').value = s.auth.apiKeyHeader; $('aPrefix').value = s.auth.apiKeyPrefix; $('aToken').value = s.auth.tokenPath;
-        $('methods').value = s.paymentMethods.join(', ');
-        $('currencies').value = s.currencies.join(', ');
-        $('banks').value = s.banks[state.env].join(', '); $('banksEnvName').textContent = state.env.toUpperCase();
-        $('listsBadge').classList.toggle('hidden', !isOverridden('currencies') && !isOverridden(`banks.${state.env}`));
         $('logLevel').value = s.run.logLevel; $('trace').value = s.run.trace; $('logBodies').checked = s.run.logHttpBodies;
         $('authBadge').classList.toggle('hidden', !isOverridden('auth'));
-        $('methodsBadge').classList.toggle('hidden', !isOverridden('paymentMethods'));
         $('runBadge').classList.toggle('hidden', !isOverridden('run'));
+      }
+
+      // ── test cases (upload by category) ─────────────────────────────────────
+      const CASE_KEY = /^@(FT|FV|RX|PR|EC)-/;
+      function currentCategory() { return (state.categories || []).find((c) => c.id === state.category) || (state.categories || [])[0]; }
+      async function readFileBase64(file) {
+        const bytes = new Uint8Array(await file.arrayBuffer()); let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return btoa(bin);
+      }
+      function renderCategories() {
+        const box = $('categoryTiles'); box.replaceChildren();
+        for (const c of state.categories || []) {
+          const tile = el('button', { type: 'button', class: `cat-tile${c.id === state.category ? ' active' : ''}` },
+            el('span', { class: 'cat-name' }, c.label),
+            el('div', { class: 'cat-head' }, el('span', { class: 'cat-prefix' }, `${c.prefix}-xxx`), el('span', { class: 'cat-count' }, `${c.cases.length} uploaded`)),
+            el('div', { class: 'cat-desc' }, c.description));
+          tile.addEventListener('click', () => { state.category = c.id; remember('caseCategory', c.id); state.importCases = []; renderImport(); say('importMsg', ''); renderCategories(); });
+          box.append(tile);
+        }
+        const c = currentCategory(); if (!c) return;
+        $('uploadTitle').textContent = `Upload · ${c.label}`;
+        $('categoryDescription').textContent = `Columns: ${c.columns.map((col) => col.header + (col.required ? '' : ' (optional)')).join(' · ')}`;
+        $('listTitle').textContent = `Uploaded · ${c.label}`;
+        $('regexDash').classList.toggle('hidden', c.id !== 'regex');
+        $('regexOr').classList.toggle('hidden', c.id !== 'regex');
+        if (c.id === 'regex') loadRegexBanks();
+        $('listHint').textContent = `Saved in ${c.file} – commit it to share with the team. Select them on the Run tab${['psp', 'edge'].includes(c.id) ? ' (they make a real transaction with the card from the sheet or the Run tab)' : ''}.`;
+        renderCustom();
+      }
+      async function previewFile(file) {
+        if (!file) return;
+        const c = currentCategory();
+        $('importPreview').classList.add('hidden'); say('importMsg', 'Reading…');
+        if (!/\.(xlsx|csv)$/i.test(file.name)) return say('importMsg', 'Choose an .xlsx or .csv file.', false);
+        if (file.size > 4 * 1024 * 1024) return say('importMsg', 'The file is larger than 4 MB.', false);
+        try {
+          const result = await api('/api/test-cases/preview', { method: 'POST', body: JSON.stringify({ category: c.id, env: state.env, filename: file.name, data: await readFileBase64(file) }) });
+          state.importFile = file.name; state.importCases = result.cases; state.importColumns = result.columns;
+          $('importName').textContent = `· ${file.name}`; say('importMsg', ''); renderImport();
+        } catch (error) { say('importMsg', error.message, false); }
+        $('importFile').value = '';
+      }
+      function renderImport() {
+        const rows = state.importCases || []; const body = $('importRows'); body.replaceChildren();
+        $('importPreview').classList.toggle('hidden', rows.length === 0);
+        if (rows.length === 0) return;
+        $('importHead').replaceChildren(el('tr', {}, ...['Add', 'Row', ...state.importColumns, 'Notes'].map((h) => el('th', {}, h))));
+        const dup = rows.filter((c) => c.duplicate).length; const bad = rows.filter((c) => c.issues.length).length;
+        const update = () => { const n = rows.filter((c) => c.include).length; $('importSummary').textContent = `${rows.length} case(s) found · ${n} selected${dup ? ` · ${dup} already exist` : ''}${bad ? ` · ${bad} need fixing` : ''}`; $('appendCases').disabled = n === 0; };
+        for (const c of rows) {
+          const box = el('input', { type: 'checkbox', checked: c.include, disabled: c.issues.length > 0 });
+          box.addEventListener('change', () => { c.include = box.checked; update(); });
+          const notes = el('td', {});
+          if (c.duplicate) notes.append(el('span', { class: 'warn' }, 'Already exists'));
+          for (const i of c.issues) notes.append(el('span', { class: 'issue' }, i));
+          for (const w of c.warnings || []) notes.append(el('span', { class: 'warn' }, w));
+          if (!notes.childElementCount) notes.append(el('span', { class: 'hint' }, 'OK'));
+          body.append(el('tr', { class: c.issues.length ? 'bad' : c.duplicate ? 'dup' : '' },
+            el('td', {}, box), el('td', {}, c.rows.join(', ') || '—'), ...c.display.map((v, i) => el('td', { class: i === 0 && ['field', 'regex'].includes(state.category) ? 'mono' : 'multi' }, v || '—')), notes));
+        }
+        update();
+      }
+      async function appendImport() {
+        const chosen = (state.importCases || []).filter((c) => c.include).map((c) => ({ rows: c.rows, data: c.data }));
+        try {
+          const result = await api('/api/test-cases/append', { method: 'POST', body: JSON.stringify({ category: state.category, filename: state.importFile, cases: chosen }) });
+          state.categories = result.categories; state.importCases = []; renderImport(); renderCategories();
+          const range = result.ids.length ? ` (${result.ids[0]}${result.ids.length > 1 ? ` – ${result.ids[result.ids.length - 1]}` : ''})` : '';
+          say('importMsg', `Added ${result.added} case(s)${range}${result.duplicates ? `, skipped ${result.duplicates} that already exist` : ''}. They are on the Run tab now.`);
+          loadCatalog();
+        } catch (error) { say('importMsg', error.message, false); }
+      }
+      /** Saved tester of the Run tab – the dashboard login used for bank rules. */
+      function dashboardTester() {
+        const id = $('runProfile').value;
+        const creds = state.options.profiles.find((p) => p.id === id)?.environments[state.env];
+        return creds?.dashboardUsername && creds.hasDashboardPassword ? id : '';
+      }
+      async function loadRegexBanks() {
+        const profileId = dashboardTester();
+        const select = $('regexBank');
+        if (!profileId) { select.replaceChildren(option('', 'No dashboard login')); $('regexHint').textContent = 'Choose a saved tester with a dashboard login on the Run tab.'; return; }
+        if (state.regexBanksFor === `${state.env}:${profileId}` && select.options.length > 1) return;
+        const choice = runChoice();
+        const mids = choice.mid || choice.bank;
+        try {
+          const { banks, suggested } = await api(`/api/dashboard/banks?env=${state.env}&profileId=${encodeURIComponent(profileId)}&mids=${encodeURIComponent(mids)}`);
+          state.regexBanksFor = `${state.env}:${profileId}`;
+          select.replaceChildren(option('', 'Choose a bank'), ...banks.map((b) => option(b, b)));
+          const pick = suggested || recall('regexBank') || '';
+          if (banks.includes(pick)) select.value = pick;
+          $('regexHint').textContent = suggested ? `Suggested from routing: ${choice.currency} / ${choice.paymentMethod} → ${mids}` : '';
+        } catch (error) { select.replaceChildren(option('', 'Banks not available')); $('regexHint').textContent = error.message; }
+      }
+      async function loadRegexRules() {
+        const bank = $('regexBank').value; const profileId = dashboardTester();
+        if (!bank || !profileId) return say('importMsg', 'Choose a bank (and a tester with a dashboard login on the Run tab).', false);
+        remember('regexBank', bank); say('importMsg', `Loading field regexes of ${bank}…`);
+        try {
+          const result = await api(`/api/dashboard/regex-rules?env=${state.env}&profileId=${encodeURIComponent(profileId)}&bank=${encodeURIComponent(bank)}`);
+          const body = $('regexRules'); body.replaceChildren();
+          for (const r of result.rules) body.append(el('tr', {}, el('td', { class: 'mono nowrap' }, r.field), el('td', { class: 'regex' }, r.pattern), el('td', { class: 'hint' }, r.note || `${result.cases.filter((c) => c.data.field === r.field).length} test values`)));
+          $('regexRulesBox').classList.toggle('hidden', result.rules.length === 0);
+          if (result.rules.length === 0) { state.importCases = []; renderImport(); return say('importMsg', `${bank} has no field regexes configured.`, false); }
+          state.importFile = `dashboard: ${bank}`; state.importCases = result.cases; state.importColumns = result.columns;
+          $('importName').textContent = `· ${bank} (dashboard)`; say('importMsg', ''); renderImport();
+        } catch (error) { say('importMsg', error.message, false); }
+      }
+      async function loadCustom() {
+        try {
+          const data = await api('/api/test-cases');
+          if (!Array.isArray(data.categories)) {
+            // The page is read from disk on every load, the server code only on start.
+            throw new Error('The launcher server is older than this page – restart it: press Ctrl+C in its terminal, then run npm run launcher.');
+          }
+          state.categories = data.categories;
+          if (state.tests) renderCatalog();
+          if (!state.categories.some((c) => c.id === state.category)) state.category = recall('caseCategory') || 'field';
+          renderCategories();
+        } catch (error) { say('customMsg', error.message, false); }
+      }
+      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'] };
+      function renderCustom() {
+        const c = currentCategory(); if (!c) return;
+        const cols = ['ID', 'Test case', ...LIST_COLUMNS[c.id], 'Source', ''];
+        $('customHead').replaceChildren(el('tr', {}, ...cols.map((h) => el('th', {}, h))));
+        const body = $('customRows'); body.replaceChildren();
+        $('customCount').textContent = String(c.cases.length);
+        if (c.cases.length === 0) body.append(el('tr', {}, el('td', { colSpan: cols.length, class: 'hint' }, 'No cases uploaded in this category yet.')));
+        for (const x of c.cases) {
+          const del = el('button', { type: 'button', class: 'small danger' }, 'Delete');
+          del.addEventListener('click', async () => {
+            if (del.dataset.confirm !== '1') { del.dataset.confirm = '1'; del.textContent = 'Confirm'; return; }
+            try { state.categories = (await api(`/api/test-cases/${x.id}`, { method: 'DELETE' })).categories; state.selected?.delete(`@${x.id}`); saveSelection(); renderCategories(); loadCatalog(); say('customMsg', `Deleted ${x.id}.`); }
+            catch (error) { say('customMsg', error.message, false); }
+          });
+          body.append(el('tr', {}, el('td', { class: 'mono nowrap' }, x.id), el('td', {}, x.title), ...x.summary.map((v, i) => el('td', { class: i === 0 && ['psp', 'edge'].includes(c.id) ? 'nowrap' : 'multi' }, v || '—')),
+            el('td', { class: 'hint' }, x.source), el('td', {}, del)));
+        }
       }
 
       function renderAll() {
@@ -788,15 +1277,27 @@
         for (const b of document.querySelectorAll('#tabs button')) b.addEventListener('click', () => showTab(b.dataset.tab));
         showTab(recall('tab') || 'run');
         $('runProfile').addEventListener('change', onRunProfileChange);
-        for (const [id, other] of [['paymentMethod', 'paymentMethodOther'], ['runCurrency', 'currencyOther'], ['runBank', 'bankOther']]) {
-          $(id).addEventListener('change', () => { $(other).classList.toggle('hidden', $(id).value !== 'OTHER'); remember(id, $(id).value); });
-        }
+        $('runCurrency').addEventListener('change', onCurrencyChange);
+        $('paymentMethod').addEventListener('change', renderRoute);
+        $('refreshDash').addEventListener('click', async () => { await api('/api/dashboard/refresh', { method: 'POST' }); loadRouting(); });
+        $('loadMerchants').addEventListener('click', loadMerchants);
         $('testSearch').addEventListener('input', renderCatalog);
         $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
         $('clearSelection').addEventListener('click', () => { state.selected.clear(); saveSelection(); renderCatalog(); });
         for (const input of document.querySelectorAll('#viewSwitch input')) input.addEventListener('change', () => setView(input.value));
         $('history').addEventListener('change', () => showReport($('history').value));
         $('run').addEventListener('click', startRun);
+        $('payCard').addEventListener('change', renderSelectionState);
+        $('downloadTemplate').addEventListener('click', () => { const c = currentCategory(); if (c) window.location.href = `/api/test-cases/template.xlsx?category=${c.id}&env=${state.env}`; });
+        $('importFile').addEventListener('change', () => previewFile($('importFile').files[0]));
+        const drop = $('importDrop');
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+        drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); previewFile(e.dataTransfer.files[0]); });
+        $('appendCases').addEventListener('click', appendImport);
+        $('loadRegexRules').addEventListener('click', loadRegexRules);
+        $('cancelImport').addEventListener('click', () => { state.importCases = []; renderImport(); say('importMsg', ''); });
+        loadCustom();
         $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));
         $('newProfile').addEventListener('click', () => editProfile(null));
         $('saveProfile').addEventListener('click', saveProfile);
@@ -813,12 +1314,6 @@
         $('resetCards').addEventListener('click', () => { state.editingCard = null; resetSettings(`cards.${state.env}`, 'cardsMsg'); });
         $('saveAuth').addEventListener('click', () => saveSettings('auth', { apiKeyHeader: $('aHeader').value.trim(), apiKeyPrefix: $('aPrefix').value.trim(), tokenPath: $('aToken').value.trim() }, 'advMsg'));
         $('resetAuth').addEventListener('click', () => resetSettings('auth', 'advMsg'));
-        $('saveMethods').addEventListener('click', () => saveSettings('paymentMethods', $('methods').value.split(',').map((m) => m.trim().toUpperCase()).filter(Boolean), 'advMsg'));
-        $('resetMethods').addEventListener('click', () => resetSettings('paymentMethods', 'advMsg'));
-        $('saveCurrencies').addEventListener('click', () => saveSettings('currencies', $('currencies').value.split(',').map((m) => m.trim().toUpperCase()).filter(Boolean), 'advMsg'));
-        $('resetCurrencies').addEventListener('click', () => resetSettings('currencies', 'advMsg'));
-        $('saveBanks').addEventListener('click', () => saveSettings(`banks.${state.env}`, $('banks').value.split(',').map((m) => m.trim()).filter(Boolean), 'advMsg'));
-        $('resetBanks').addEventListener('click', () => resetSettings(`banks.${state.env}`, 'advMsg'));
         $('saveRun').addEventListener('click', () => saveSettings('run', { ...eff().run, logLevel: $('logLevel').value, trace: $('trace').value, logHttpBodies: $('logBodies').checked }, 'advMsg'));
         $('resetRun').addEventListener('click', () => resetSettings('run', 'advMsg'));
         renderStatus(state.options.run);

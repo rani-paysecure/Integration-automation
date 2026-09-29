@@ -1,3 +1,4 @@
+import { test } from '@playwright/test';
 import { getSettings } from '@config/settings';
 import type { TestEnvironment } from '@app-types/config.types';
 import type { CashierCard, CashierCardScenario } from '@app-types/cashier.types';
@@ -33,6 +34,7 @@ export function cashierCardScenarios(env: TestEnvironment): CashierCardScenario[
         expiry: card.expiry,
         cvv: card.cvv,
         holderName: card.holderName,
+        challenge: card.challenge,
       },
       expected: { outcome: card.expectedOutcome, statuses: card.expectedStatuses },
     }));
@@ -73,7 +75,44 @@ export function findCardScenario(
   return {
     id: card.id,
     label: card.label,
-    card: { number: card.number, expiry: card.expiry, cvv: card.cvv, holderName: card.holderName },
+    card: {
+      number: card.number,
+      expiry: card.expiry,
+      cvv: card.cvv,
+      holderName: card.holderName,
+      challenge: card.challenge,
+    },
     expected: { outcome: card.expectedOutcome, statuses: card.expectedStatuses },
   };
+}
+
+/**
+ * Card for an uploaded PSP / edge case: the case's own card, otherwise the
+ * "pay with" card selected on the Run tab. Undefined → the test is skipped.
+ */
+export function resolveCaseCard(
+  env: TestEnvironment,
+  caseCard: string | undefined,
+  runCard: string | undefined,
+): { scenario?: CashierCardScenario; problem?: string } {
+  const id = caseCard ?? runCard;
+  if (id === undefined || id === '') {
+    return {
+      problem: 'No card: set "Card" in the sheet or choose a "pay with" card on the Run tab',
+    };
+  }
+  const scenario = findCardScenario(env, id);
+  return scenario ? { scenario } : { problem: `Test card "${id}" is not on the Test cards tab` };
+}
+
+/** Like `resolveCaseCard`, but skips the running test when no card can be used. */
+export function requireCaseCard(
+  env: TestEnvironment,
+  caseCard: string | undefined,
+  runCard: string | undefined,
+): CashierCardScenario {
+  const { scenario, problem } = resolveCaseCard(env, caseCard, runCard);
+  if (scenario !== undefined) return scenario;
+  test.skip(true, problem);
+  throw new Error(problem);
 }

@@ -92,7 +92,10 @@ export function summarizePsp(
   purchaseId: string,
   trx: BackofficeTransaction,
   bank: BankTransaction | undefined,
-  options: { readonly expectedBank?: string | undefined } = {},
+  options: {
+    readonly expectedBank?: string | undefined;
+    readonly expectedMid?: string | undefined;
+  } = {},
 ): PspSummary {
   const status = trx.status.toUpperCase();
   const attempted = bank !== undefined || !NOT_ATTEMPTED_STATUSES.has(status);
@@ -152,6 +155,19 @@ export function summarizePsp(
         passed: (bank?.bankName ?? '').toLowerCase() === options.expectedBank.toLowerCase(),
         expected: options.expectedBank,
         actual: bank?.bankName ?? '',
+      });
+    }
+    if (options.expectedMid !== undefined) {
+      // Limits/Charges may route one combination to several MIDs (comma-separated).
+      const allowed = options.expectedMid
+        .split(',')
+        .map((m) => m.trim().toLowerCase())
+        .filter(Boolean);
+      checks.push({
+        name: 'Routed to configured MID',
+        passed: allowed.includes((bank?.midName ?? '').trim().toLowerCase()),
+        expected: options.expectedMid,
+        actual: bank?.midName ?? '',
       });
     }
     if (status === 'PAID') {

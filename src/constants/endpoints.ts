@@ -18,6 +18,7 @@ export const Endpoints = {
     transactions: '/trans/getAllTrans',
     /** PSP request/response + bank transaction for one purchase. */
     bankTransaction: '/trans/getBankTrans',
+    fieldValidationRules: '/admin/getFieldValidationRules',
   },
   purchases: {
     /** Trailing slash is part of the contract. */
