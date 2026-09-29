@@ -398,7 +398,7 @@ function listTests(env) {
         tests.push({
           key: '@psp-by-id',
           title: 'PSP check for existing purchase IDs (enter IDs below)',
-          group: 'PSP check (read-only)',
+          group: 'PSP check – existing purchase IDs (read-only)',
           transaction: false,
           needsPurchaseIds: true,
           expectation: '',
