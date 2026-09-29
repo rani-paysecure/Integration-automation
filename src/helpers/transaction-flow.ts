@@ -25,6 +25,7 @@ export interface TransactionInput {
   readonly card: CashierCard;
   readonly redirects: RedirectUrls;
   readonly expectedBank?: string | undefined;
+  readonly expectedMid?: string | undefined;
 }
 
 export interface TransactionResult {
@@ -39,6 +40,8 @@ export interface TransactionDeps {
   readonly backoffice: BackofficeClient;
   /** Opens a fresh browser page (the browser is only started when a payment is made). */
   readonly openPage: () => Promise<Page>;
+  /** Browser is visible – a "manual" 3DS challenge waits for the tester. Default: RUN_HEADED. */
+  readonly headed?: boolean;
 }
 
 async function waitForFinalStatus(api: PurchaseApiClient, purchaseId: string): Promise<string> {
@@ -89,7 +92,10 @@ export async function executeTransaction(
     const cashierPage = new CashierPage(page);
     await cashierPage.open(input.checkoutUrl);
     await cashierPage.enterCard(input.card);
-    const result = await cashierPage.pay(input.redirects);
+    const result = await cashierPage.pay(input.redirects, {
+      challenge: input.card.challenge,
+      headed: deps.headed ?? process.env.RUN_HEADED === '1',
+    });
     await testInfo.attach('after-pay.png', {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -97,6 +103,12 @@ export async function executeTransaction(
     await page.close();
     return result;
   });
+  if (cashier.challenge) {
+    testInfo.annotations.push({
+      type: '3ds challenge',
+      description: `${cashier.challenge.host}: ${cashier.challenge.detail}`,
+    });
+  }
   testInfo.annotations.push({
     type: 'cashier outcome',
     description:
@@ -117,7 +129,10 @@ export async function executeTransaction(
       input.purchaseId,
       cashier.outcome === 'rejected' ? 1 : 6,
     );
-    const psp = summarizePsp(input.purchaseId, trx, bank, { expectedBank: input.expectedBank });
+    const psp = summarizePsp(input.purchaseId, trx, bank, {
+      expectedBank: input.expectedBank,
+      expectedMid: input.expectedMid,
+    });
     await recordPspResult(testInfo, psp, bank);
     return { cashier, finalStatus, psp, bank };
   });

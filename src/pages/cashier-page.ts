@@ -1,5 +1,6 @@
 import type { Frame, Page, Response } from '@playwright/test';
-import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
+import type { CashierCard, CashierPaymentResult, ChallengeSetting } from '../types/cashier.types';
+import { watchForChallenge } from './three-ds-challenge';
 
 export interface RedirectUrls {
   readonly success: string;
@@ -23,6 +24,8 @@ function externalPages(urls: readonly string[], targets: readonly string[]): str
   return [...new Set(hosts)];
 }
 const PAYMENT_TIMEOUT_MS = 90_000;
+/** A tester completing a challenge by hand gets more time. */
+const MANUAL_CHALLENGE_TIMEOUT_MS = 300_000;
 
 /**
  * Hosted checkout page (`checkout_url` from the purchase response).
@@ -65,8 +68,15 @@ export class CashierPage {
    * API rejects the payment. A page that never redirects (e.g. a 3DS challenge
    * waiting for input) ends as `other-page`.
    */
-  async pay(redirects: RedirectUrls): Promise<CashierPaymentResult> {
+  async pay(
+    redirects: RedirectUrls,
+    options: { readonly challenge?: ChallengeSetting | undefined; readonly headed?: boolean } = {},
+  ): Promise<CashierPaymentResult> {
     const targets = [redirects.success, redirects.failure, redirects.pending];
+    const manual = options.challenge?.action === 'manual' && options.headed === true;
+    const timeout = manual ? MANUAL_CHALLENGE_TIMEOUT_MS : PAYMENT_TIMEOUT_MS;
+    const cashierHost = new URL(this.page.url()).host;
+    let finished = false;
     const visited: string[] = [];
     const onNavigate = (frame: Frame): void => {
       if (frame === this.page.mainFrame()) visited.push(frame.url());
@@ -80,11 +90,14 @@ export class CashierPage {
       .catch(() => undefined);
     const redirected = this.page
       .waitForURL((url) => targets.some((target) => url.toString().startsWith(target)), {
-        timeout: PAYMENT_TIMEOUT_MS,
+        timeout,
         waitUntil: 'commit',
       })
       .then(() => true)
-      .catch(() => false);
+      .catch(() => false)
+      .finally(() => {
+        finished = true;
+      });
 
     try {
       await this.payButton().click();
@@ -100,9 +113,21 @@ export class CashierPage {
           };
         }
       }
+      const challenge = watchForChallenge(this.page, options.challenge, {
+        cashierHost,
+        headed: options.headed === true,
+        isFinished: () => finished,
+        deadline: Date.now() + timeout,
+      });
       await redirected;
-      return { ...this.classify(redirects), visitedPages: externalPages(visited, targets) };
+      const shown = await challenge;
+      return {
+        ...this.classify(redirects),
+        visitedPages: externalPages(visited, targets),
+        ...(shown ? { challenge: shown } : {}),
+      };
     } finally {
+      finished = true;
       this.page.off('framenavigated', onNavigate);
     }
   }

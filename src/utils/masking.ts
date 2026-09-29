@@ -1,6 +1,7 @@
 import {
   EMAIL_KEYS,
   FULLY_MASKED_KEYS,
+  FULLY_MASKED_KEY_FRAGMENTS,
   MASK,
   PARTIALLY_MASKED_KEYS,
 } from '../constants/sensitive-fields';
@@ -56,7 +57,9 @@ export function maskString(value: string): string {
 function maskValueForKey(key: string, value: unknown, depth: number): unknown {
   const normalised = normaliseKey(key);
   if (value === null || value === undefined) return value;
-  if (FULL.has(normalised)) return MASK;
+  if (FULL.has(normalised) || FULLY_MASKED_KEY_FRAGMENTS.some((f) => normalised.includes(f))) {
+    return MASK;
+  }
   if (typeof value === 'string' || typeof value === 'number') {
     if (PARTIAL.has(normalised)) return maskKeepLast4(String(value));
     if (EMAIL.has(normalised)) return maskEmail(String(value));

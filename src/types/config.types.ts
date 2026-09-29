@@ -62,11 +62,15 @@ export interface TestConfig {
     readonly currency: string | undefined;
     /** Bank / PSP the purchase is expected to be routed to (RUN_BANK); undefined = not checked. */
     readonly expectedBank: string | undefined;
+    /** MID the purchase is expected to be routed to (RUN_MID); undefined = not checked. */
+    readonly expectedMid: string | undefined;
   };
   /** Transaction options for the run. */
   readonly transaction: {
-    /** Test-card id (settings) used to complete payments for accepted cases (RUN_PAY_CARD). */
+    /** Test-card id (settings) for regex / PSP / edge cases without their own card (RUN_PAY_CARD). */
     readonly payCardId: string | undefined;
+    /** Also pay for ACCEPTED field-validation cases with that card (RUN_PAY_FIELD_CASES=1). */
+    readonly payFieldCases: boolean;
     /** Show the cashier browser (RUN_HEADED=1). */
     readonly headed: boolean;
   };

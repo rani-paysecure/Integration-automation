@@ -17,6 +17,7 @@ import { test } from '@fixtures/api.fixture';
 import { fieldTestCases } from '@test-data/cashier-purchase/api-field-cases';
 import { findCardScenario } from '@test-data/cashier-purchase/cashier-cards';
 import type { EnvironmentTestData } from '@test-data/environments';
+import { loadUploadedFieldCases } from '@test-data/uploaded-cases/uploaded-cases';
 import {
   buildPurchaseRequest,
   type MerchantContext,
@@ -24,9 +25,10 @@ import {
 
 /**
  * Cashier purchase – stage 1: Paysecure API field validation.
- * One test per row of "field_test_cases 1.xlsx" against POST /v1/purchases/.
+ * One test per row of "field_test_cases 1.xlsx" against POST /v1/purchases/,
+ * plus the cases uploaded in the launcher (uploaded-cases/field-validation.json).
  *
- * When the run selects a "pay with" card (launcher → Complete transaction),
+ * When the run enables "Also pay for accepted field cases" (launcher),
  * every ACCEPTED case continues into a real transaction: cashier → PSP →
  * back-office checks – validating that valid requests reach the PSP.
  */
@@ -44,7 +46,14 @@ async function completeTransactionIfSelected(
   testInfo: TestInfo,
 ): Promise<void> {
   const cardId = deps.testConfig.transaction.payCardId;
-  if (cardId === undefined || testCase.expectation !== 'accepted' || !response.ok) return;
+  if (
+    !deps.testConfig.transaction.payFieldCases ||
+    cardId === undefined ||
+    testCase.expectation !== 'accepted' ||
+    !response.ok
+  ) {
+    return;
+  }
   const scenario = findCardScenario(deps.testConfig.env, cardId);
   if (scenario === undefined) throw new Error(`Test card "${cardId}" not found in settings`);
   testInfo.annotations.push({ type: 'card scenario', description: scenario.label });
@@ -60,6 +69,7 @@ async function completeTransactionIfSelected(
         pending: deps.envData.purchase.pending_redirect,
       },
       expectedBank: deps.merchant.expectedBank,
+      expectedMid: deps.merchant.expectedMid,
     },
     testInfo,
   );
@@ -70,7 +80,8 @@ test.describe(
   'Cashier purchase › 1. API field validation',
   { tag: ['@cashier', '@field-validation'] },
   () => {
-    for (const testCase of fieldTestCases) {
+    // Built-in cases (FT-xxx) + cases uploaded in the launcher (FV-xxx).
+    for (const testCase of [...fieldTestCases, ...loadUploadedFieldCases()]) {
       test(
         `${testCase.id} ${testCase.parameter} – ${testCase.title}`,
         {

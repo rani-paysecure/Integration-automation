@@ -3,7 +3,7 @@
 Playwright + TypeScript framework for testing Paysecure **integrations, APIs and end-to-end flows**
 (session, cashier purchase, S2S purchase).
 
-> **Environments:** only `uat` (test4) and `local` (a Paysecure stack on your machine). There is
+> **Environments:** only `uat` and `local` – both point to test4 (`https://test4.paymentsclub.net`) by default. There is
 > intentionally no production configuration, and the framework refuses to run against anything that
 > looks like one (see [Safety guards](#safety-guards)).
 
@@ -35,8 +35,13 @@ npx cross-env TEST_PROFILE=rani PAYMENT_METHOD=VISA npm run test:cashier:fields
 
 **Run tab – select, click Run test, read the result:**
 
-1. **Configuration** – environment (top right: UAT / LOCAL), tester (brand ID + API key, or
-   one-off credentials), currency, payment method (VISA, MASTERCARD, …) and bank / PSP.
+1. **Configuration** – environment (top right: UAT / LOCAL), tester (brand ID + API key), then
+   **Currency → Payment method** exactly as configured for the tester's merchant in the dashboard's
+   **Limits/Charges** page; the **MID** that combination routes to is read from the same
+   configuration and shown next to it ("Routes to"), and checked after a transaction. Values are
+   the internal ones (`VISA`, `MASTER`, …). Set the tester's merchant once in the Testers tab.
+   Without dashboard access the dropdowns offer the template currency and VISA / MASTER, and
+   routing is not checked.
 2. **Test cases** – searchable list of every case (e.g. search `zip` → FT-058…FT-063), card
    transaction scenarios, the PSP check for existing purchase IDs and the framework self-tests.
    Tick exactly what to run.
@@ -50,8 +55,9 @@ npx cross-env TEST_PROFILE=rani PAYMENT_METHOD=VISA npm run test:cashier:fields
    and the PSP response. Earlier runs stay in the history dropdown (`reports/ui/history/`).
 
 How selections are applied: currency overrides the purchase template, payment method is sent as
-`paymentMethod`, bank is compared with the bank/PSP of the PSP record after a transaction, brand
-ID + API key come from the tester.
+`paymentMethod`, the MID from Limits/Charges is compared with the PSP record after a transaction
+("Routed to configured MID"), brand ID + API key come from the tester. Loading the routing logs the
+tester's dashboard user in (one session per user – it ends their browser session).
 
 Other tabs:
 
@@ -84,7 +90,6 @@ committed. Template: `profiles.example.json`.
     {
       "id": "rani",
       "name": "Rani",
-      "paymentMethod": "VISA",
       "environments": {
         "uat": { "brandId": "<uat brand id>", "apiKey": "<uat secret key>" },
         "local": { "brandId": "<local brand id>", "apiKey": "<local secret key>" }
@@ -96,11 +101,11 @@ committed. Template: `profiles.example.json`.
 
 Resolution order for each run:
 
-| Value          | 1st                      | 2nd                               | 3rd    |
-| -------------- | ------------------------ | --------------------------------- | ------ |
-| API key        | profile (`TEST_PROFILE`) | `UAT_API_KEY` / `LOCAL_API_KEY`   | –      |
-| Brand ID       | profile (`TEST_PROFILE`) | `UAT_BRAND_ID` / `LOCAL_BRAND_ID` | –      |
-| Payment method | `PAYMENT_METHOD`         | profile `paymentMethod`           | `VISA` |
+| Value          | 1st                                               | 2nd                               | 3rd    |
+| -------------- | ------------------------------------------------- | --------------------------------- | ------ |
+| API key        | profile (`TEST_PROFILE`)                          | `UAT_API_KEY` / `LOCAL_API_KEY`   | –      |
+| Brand ID       | profile (`TEST_PROFILE`)                          | `UAT_BRAND_ID` / `LOCAL_BRAND_ID` | –      |
+| Payment method | selected in Run (from the MID) / `PAYMENT_METHOD` | –                                 | `VISA` |
 
 Every result row (CSV + HTML report annotations) records environment, tester, payment method and
 brand ID, so runs from different QAs are never mixed up.
@@ -244,6 +249,80 @@ npm run test:cashier:fields -- --grep FT-01  # filter by case id / title
 - `cashier.full_name` rows are sent as `client.full_name`; cashier-page validation (popup, Pay
   blocked, cardholder name) belongs to a future browser suite.
 - Auth: `Authorization: Bearer <API key of the selected profile>` (`API_KEY_HEADER=Authorization`, `API_KEY_PREFIX=Bearer`).
+
+## Uploading test cases by category (launcher → Test cases)
+
+Each category has its own template (**Download template**: a "Test Cases" sheet with examples and
+dropdowns, plus a short "Guide" sheet). Fill it in, upload it, check the preview, then click **Add
+selected cases**. Cases that already exist or have problems are flagged and can't be ticked. IDs are
+never reused, even after a delete.
+
+| Category               | IDs      | Stored in (`tests/test-data/uploaded-cases/`) | What runs                                                                                                                                   |
+| ---------------------- | -------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Field validation       | `FV-xxx` | `field-validation.json`                       | One request field changed; API response must match the expectation (next to the built-in `FT-xxx`).                                         |
+| Regex validation       | `RX-xxx` | `regex-validation.json`                       | Real transaction per value; the bank's field regex (dashboard) decides: matching value must reach the PSP unchanged, non-matching must not. |
+| PSP request / response | `PR-xxx` | `psp-validation.json`                         | Real transaction; fields of the PSP request/response (dashboard log) checked: equals / not equals / contains / matches / present / absent.  |
+| Custom & edge cases    | `EC-xxx` | `edge-cases.json`                             | Real transaction with optional request changes; cashier result, final status and error message compared.                                    |
+
+- **Regex rules come from the dashboard:** PaymentBankJsonData → Field Regex, per bank
+  (`GET /admin/getFieldValidationRules?bank_name=…`). On test4 a value that breaks the rule is not
+  rejected – it is replaced before the PSP call (e.g. `full_name` → cardholder name, `city` → a
+  default). In the launcher choose **Regex validation → From the dashboard**: the bank is suggested
+  from the Limits/Charges routing of the Run tab, **Load rules** lists the field regexes and proposes
+  valid / invalid / boundary values for each field. The live regex is re-read at run time. Rules that
+  are a country list (e.g. `phone`) are recorded as OBSERVED.
+- **PSP fields** are found at any depth by name (`currencyCode`) or path (`billingDetails.zip`).
+  Expected values can use `{purchaseId}` `{amount}` `{amountMinor}` (cents) `{currency}` `{email}`
+  `{country}` `{city}` `{zip}` `{phone}` `{fullName}`. Rows with the same Test Case are one transaction.
+- **Card:** regex, PSP and edge cases always pay – with the card in the sheet, or else the **Card for payments** chosen on the Run
+  tab; without either they are skipped.
+- **Field / regex values:** `Field not sent` removes the field, `""` sends an empty string,
+  `256 characters` generates a long value, `110001 with country=IN` also sets the country.
+- Commit the JSON files so the whole team gets the cases. They are validated when tests load.
+
+## 3DS challenge (bank OTP page)
+
+Between PAY and the merchant redirect the bank may show a challenge page (OTP / password, usually
+inside an iframe). Each test card has a **3DS challenge** setting (Test cards tab):
+
+| Setting                     | What happens                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Nothing – frictionless card | No input; a challenge that appears ends the payment as "Stayed on another page".                                        |
+| Enter the OTP automatically | Finds the code field in any frame, types the OTP and presses Submit. Empty OTP = read "(OTP: 1234)" from the test page. |
+| Wait for me to enter it     | With **Show browser while paying**, waits up to 5 minutes for the tester to complete it.                                |
+
+The report shows what happened (e.g. "0merchantacsstag.cardinalcommerce.com: OTP read from the page
+entered, SUBMIT pressed"). Team default cards (Paysafe sandbox,
+[test cards](https://developer.paysafe.com/en/api-docs/3ds/test-and-go-live/test-cards/)):
+
+| Card               | 3DS              | Result on test4          |
+| ------------------ | ---------------- | ------------------------ |
+| `4000000000002503` | challenge → Y    | success redirect · PAID  |
+| `4000000000002370` | challenge → N    | failure redirect · ERROR |
+| `4000000000002719` | frictionless → A | success redirect · PAID  |
+| `4530910000012345` | frictionless → U | failure redirect · ERROR |
+
+Note: the Paysafe sandbox declines some amounts on purpose (a 2.00 purchase is declined "by the
+issuing bank"), so the team default purchase amount is 10.00.
+
+## Execution report (launcher → Report)
+
+Each run is shown grouped by category (Field validation, Regex validation, PSP request / response,
+Custom & edge cases, Card transactions). Every test is a card with a PASSED (green) / FAILED (red)
+badge, a **Positive** (success expected) or **Negative** (rejection / failure expected) tag, Expected vs
+Actual side by side, and the Purchase / PSP transaction IDs. Filters: result, category, positive /
+negative, free text.
+
+**Download report (Excel)** gives one workbook to share, for the latest or any earlier run:
+
+- **Summary** – overall result, totals and pass rate, run details, results per category, all failed
+  tests with Expected vs Actual, and a short legend.
+- **Results** – every test (category, case, type, colour-coded result, expected, actual, IDs,
+  duration, error), with filters and a frozen header.
+
+Payments: **Card for payments** on the Run tab is used by regex / PSP / edge cases (unless the sheet
+names a card). Field-validation cases only pay when **Also pay for accepted field-validation cases**
+is ticked.
 
 ## Cashier purchase – pay on the cashier (end to end)
 

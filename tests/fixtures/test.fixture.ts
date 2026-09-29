@@ -50,14 +50,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
   merchant: [
     async ({ testConfig }, use) => {
-      const { brandId, paymentMethod, currency, expectedBank } = testConfig.merchant;
+      const { brandId, paymentMethod, currency, expectedBank, expectedMid } = testConfig.merchant;
       if (brandId === undefined) {
         const env = testConfig.env.toUpperCase();
         throw new ConfigurationError(
           `No brand ID for ${env}. Select a tester profile (TEST_PROFILE / launcher) or set ${env}_BRAND_ID in .env.`,
         );
       }
-      await use({ brandId, paymentMethod, currency, expectedBank });
+      await use({ brandId, paymentMethod, currency, expectedBank, expectedMid });
     },
     { scope: 'worker' },
   ],
@@ -156,6 +156,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       }
       if (testConfig.merchant.expectedBank !== undefined) {
         testInfo.annotations.push({ type: 'bank', description: testConfig.merchant.expectedBank });
+      }
+      if (testConfig.merchant.expectedMid !== undefined) {
+        testInfo.annotations.push({ type: 'mid', description: testConfig.merchant.expectedMid });
       }
       if (testConfig.merchant.brandId !== undefined) {
         testInfo.annotations.push({ type: 'brand id', description: testConfig.merchant.brandId });

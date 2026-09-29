@@ -45,6 +45,7 @@ test.describe(
                 pending: envData.purchase.pending_redirect,
               },
               expectedBank: merchant.expectedBank,
+              expectedMid: merchant.expectedMid,
             },
             testInfo,
           );

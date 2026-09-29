@@ -50,6 +50,7 @@ test.describe(
           const bank = await backoffice.getBankTransaction(purchaseId);
           const summary = summarizePsp(purchaseId, trx, bank, {
             expectedBank: merchant.expectedBank,
+            expectedMid: merchant.expectedMid,
           });
           testInfo.annotations.push({ type: 'purchase id', description: purchaseId });
           await recordPspResult(testInfo, summary, bank);

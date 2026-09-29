@@ -17,15 +17,9 @@
       "apiBaseUrl": "https://test4.paymentsclub.net/api"
     },
     "local": {
-      "baseUrl": "",
-      "apiBaseUrl": ""
+      "baseUrl": "https://test4.paymentsclub.net",
+      "apiBaseUrl": "https://test4.paymentsclub.net/api"
     }
-  },
-  "paymentMethods": ["VISA", "MASTERCARD"],
-  "currencies": ["EUR", "USD", "GBP", "INR", "AUD", "CAD", "BRL"],
-  "banks": {
-    "uat": ["paysafe_payfac"],
-    "local": []
   },
   "purchase": {
     "uat": {
@@ -45,10 +39,10 @@
         "products": [
           {
             "name": "Gaming Cards",
-            "price": 2
+            "price": 10
           }
         ],
-        "total": 2
+        "total": 10
       },
       "platform": "woocommerce",
       "send_receipt": false,
@@ -76,10 +70,10 @@
         "products": [
           {
             "name": "Gaming Cards",
-            "price": 2
+            "price": 10
           }
         ],
-        "total": 2
+        "total": 10
       },
       "platform": "woocommerce",
       "send_receipt": false,
@@ -102,7 +96,12 @@
         "holderName": "Test Risk",
         "expectedOutcome": "failure-redirect",
         "expectedStatuses": ["ERROR"],
-        "enabled": true
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
       },
       {
         "id": "invalid-card-details",
@@ -113,9 +112,143 @@
         "holderName": "Test Invalid",
         "expectedOutcome": "rejected",
         "expectedStatuses": ["CREATED"],
-        "enabled": true
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-challenge-pass",
+        "label": "Visa 3DS challenge – correct OTP",
+        "number": "4000000000002503",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Challenge Pass",
+        "expectedOutcome": "success-redirect",
+        "expectedStatuses": ["PAID"],
+        "enabled": true,
+        "challenge": {
+          "action": "otp",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-challenge-decline",
+        "label": "Visa 3DS challenge – authentication declined",
+        "number": "4000000000002370",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Challenge Decline",
+        "expectedOutcome": "failure-redirect",
+        "expectedStatuses": ["ERROR"],
+        "enabled": true,
+        "challenge": {
+          "action": "otp",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-frictionless",
+        "label": "Visa 3DS frictionless – authenticated",
+        "number": "4000000000002719",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Frictionless Pass",
+        "expectedOutcome": "success-redirect",
+        "expectedStatuses": ["PAID"],
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
       }
     ],
-    "local": []
+    "local": [
+      {
+        "id": "risk-rule-3ds-u",
+        "label": "Visa – risk rule fails (3DS result U)",
+        "number": "4530910000012345",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Test Risk",
+        "expectedOutcome": "failure-redirect",
+        "expectedStatuses": ["ERROR"],
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "invalid-card-details",
+        "label": "Visa 4111… rejected by cashier",
+        "number": "4111111111111111",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Test Invalid",
+        "expectedOutcome": "rejected",
+        "expectedStatuses": ["CREATED"],
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-challenge-pass",
+        "label": "Visa 3DS challenge – correct OTP",
+        "number": "4000000000002503",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Challenge Pass",
+        "expectedOutcome": "success-redirect",
+        "expectedStatuses": ["PAID"],
+        "enabled": true,
+        "challenge": {
+          "action": "otp",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-challenge-decline",
+        "label": "Visa 3DS challenge – authentication declined",
+        "number": "4000000000002370",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Challenge Decline",
+        "expectedOutcome": "failure-redirect",
+        "expectedStatuses": ["ERROR"],
+        "enabled": true,
+        "challenge": {
+          "action": "otp",
+          "otp": "",
+          "submit": ""
+        }
+      },
+      {
+        "id": "visa-3ds-frictionless",
+        "label": "Visa 3DS frictionless – authenticated",
+        "number": "4000000000002719",
+        "expiry": "12/30",
+        "cvv": "123",
+        "holderName": "Frictionless Pass",
+        "expectedOutcome": "success-redirect",
+        "expectedStatuses": ["PAID"],
+        "enabled": true,
+        "challenge": {
+          "action": "none",
+          "otp": "",
+          "submit": ""
+        }
+      }
+    ]
   }
 }

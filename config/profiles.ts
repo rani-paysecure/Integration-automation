@@ -21,6 +21,8 @@ const credentialsSchema = z.object({
   apiKey: z.string().trim().min(1, 'apiKey is required'),
   /** Back-office (dashboard) login – used to read transactions and PSP logs. */
   dashboard: dashboardSchema.optional(),
+  /** Dashboard merchant the brand belongs to – limits currencies / payment methods per MID. */
+  merchant: z.object({ id: z.number().int(), name: z.string() }).optional(),
 });
 
 const environmentsShape = Object.fromEntries(
@@ -30,8 +32,6 @@ const environmentsShape = Object.fromEntries(
 export const testerProfileSchema = z.object({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'id must be lowercase letters, digits or "-"'),
   name: z.string().trim().min(1),
-  /** Default card scheme for this tester, e.g. VISA. */
-  paymentMethod: z.string().trim().min(1).optional(),
   environments: z.object(environmentsShape),
 });
 

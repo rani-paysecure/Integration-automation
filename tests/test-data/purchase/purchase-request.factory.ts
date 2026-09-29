@@ -9,6 +9,8 @@ export interface MerchantContext {
   readonly currency?: string | undefined;
   /** Bank / PSP the purchase should be routed to (checked after payment). */
   readonly expectedBank?: string | undefined;
+  /** MID the purchase should be routed to (checked after payment). */
+  readonly expectedMid?: string | undefined;
 }
 
 /**
