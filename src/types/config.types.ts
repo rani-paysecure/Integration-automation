@@ -86,6 +86,16 @@ export interface TestConfig {
   };
   /** KYC module (POST /kyc/create …). Enabled per merchant in Dashboard → KYC configuration. */
   readonly kyc: {
+    /** Merchant API key with KYC enabled (<ENV>_KYC_API_KEY); undefined = the run's merchant. */
+    readonly apiKey: string | undefined;
+    /** Brand ID of that merchant (<ENV>_KYC_BRAND_ID); undefined = the run's brand. */
+    readonly brandId: string | undefined;
+    /** Dashboard merchant ID of that merchant (<ENV>_KYC_MERCHANT_ID) – for the provider lookup. */
+    readonly merchantId: number | undefined;
+    /** `{provider}` of /kyc/webhook/{provider} (KYC_PROVIDER); undefined = from the dashboard. */
+    readonly provider: string | undefined;
+    /** Webhook signing secret (<ENV>_KYC_WEBHOOK_SECRET); undefined = from the dashboard. Never logged. */
+    readonly webhookSecret: string | undefined;
     /** Country sent on every KYC create (KYC_COUNTRY, default US). */
     readonly country: string;
     /** Optional second merchant for the cross-merchant isolation case. */

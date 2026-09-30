@@ -11,7 +11,7 @@
  *   npm run cases -- check <category> <file.xlsx|csv> [--env local]         validate exactly like the launcher upload
  *   npm run cases -- sync-pgs <path to PGS repo>             refresh config/pgs/country-validation-regex.json
  *
- * Categories: field, regex, psp, edge. Output is JSON / text on stdout.
+ * Categories: field, regex, psp, edge, kyc. Output is JSON / text on stdout.
  */
 'use strict';
 
@@ -50,7 +50,7 @@ function settings() {
 
 function category(id) {
   const c = caseImport.CATEGORIES[id];
-  if (!c) fail(`Unknown category "${id}" – use field, regex, psp or edge`);
+  if (!c) fail(`Unknown category "${id}" – use field, regex, psp, edge or kyc`);
   return c;
 }
 

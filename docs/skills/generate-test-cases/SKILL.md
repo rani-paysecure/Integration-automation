@@ -11,7 +11,8 @@ added on its **Test cases** tab by uploading a filled template. This skill write
 ## 1. Clarify (only if not given)
 
 - **Category**: `field` (request field rules) · `regex` (a bank's field regexes) · `psp` (checks on
-  the PSP request/response) · `edge` (end-to-end scenarios with a card and expected outcome).
+  the PSP request/response) · `edge` (end-to-end scenarios with a card and expected outcome) ·
+  `kyc` (POST /kyc/create: customer, request changes, auth variant → HTTP, code, KYC status).
 - **How many**: min and max number of cases (default 10–20; PSP counts test cases, not rows).
 - **Environment**: `local` (default) or `uat` – both are test4.
 - For `regex`: the **bank** name as in the dashboard (e.g. `paysafe_payfac`, `paywise`).
@@ -61,6 +62,14 @@ Per category:
 - **edge** – `card` = a card ID from `spec` (or empty for the run's card), `changes` like
   `purchase.total=0.5; client.country=IN`, and at least one of `cashier` / `status` / `error`.
   The Paysafe sandbox declines a 2.00 purchase by design and approves 10.00.
+
+- **kyc** – `customer` = New customer / New customer (merchant_cust_id) / Unknown customer_id /
+  Unknown merchant_cust_id / No customer id; `changes` like `country=GB; link_ttl_minutes=5;
+country not sent; customer.fullName="Ann Lee"; customer.phoneNo not sent` (never `test`);
+  `auth` = Valid / No Authorization header / Key without Bearer / Unknown key / No Brand-Id /
+  Brand not owned; `http` required (200, 400, 401, 403, 404, 409); `code` for failures
+  (country_required, customer_required, customer_not_found, authentication_failed, access_denied);
+  `status` on success (AWAITING_USER). Rules: docs/pgs-behaviour.md § 6.
 
 Save the rows as a JSON array of objects keyed by the column `key`s, e.g. `generated-regex.json`.
 

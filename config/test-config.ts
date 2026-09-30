@@ -183,6 +183,12 @@ export function getTestConfig(): TestConfig {
         selected?.credentials.dashboard?.password ?? readEnv(`${prefix}_DASHBOARD_PASSWORD`),
     }),
     kyc: Object.freeze({
+      // A merchant with a KYC provider MID. Defaults to the run's merchant (tester profile).
+      apiKey: readEnv(`${prefix}_KYC_API_KEY`)?.replace(/^bearer\s+/i, ''),
+      brandId: readEnv(`${prefix}_KYC_BRAND_ID`),
+      merchantId: readIntEnv(`${prefix}_KYC_MERCHANT_ID`),
+      provider: readEnv('KYC_PROVIDER'),
+      webhookSecret: readEnv(`${prefix}_KYC_WEBHOOK_SECRET`),
       country: (readEnv('KYC_COUNTRY') ?? 'US').toUpperCase(),
       secondApiKey: readEnv(`${prefix}_KYC_API_KEY_2`)?.replace(/^bearer\s+/i, ''),
       secondBrandId: readEnv(`${prefix}_KYC_BRAND_ID_2`),

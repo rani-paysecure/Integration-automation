@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Test Launcher</title>
+    <title>Test Launcher · Paysecure</title>
+    <link rel="icon" type="image/png" href="/assets/paysecure-mark.png" />
     <style>
       :root {
         --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --text: #1c1c22; --muted: #6b6b76;
@@ -11,13 +12,11 @@
         --warn: #9a6700; --log-bg: #15151a; --log-text: #e4e4ea; --radius: 10px; color-scheme: light;
         --pass-bg: #ecf7f0; --fail-bg: #fdeeec; --warn-bg: #fdf6e3; --pos: #1d4ed8; --neg: #b45309;
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
+      :root[data-mode='dark'] {
           --bg: #111114; --surface: #1b1b20; --surface-2: #24242b; --text: #ececf1; --muted: #9a9aa6;
           --border: #33333c; --accent: #8b6cf0; --accent-text: #0f0f12; --pass: #4ac07e; --fail: #f07064;
           --warn: #e0b24a; --log-bg: #0b0b0e; color-scheme: dark;
           --pass-bg: #13261b; --fail-bg: #2c1614; --warn-bg: #2a2313; --pos: #7aa2ff; --neg: #f0a35e;
-        }
       }
       * { box-sizing: border-box; }
       body { margin: 0; font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
@@ -218,25 +217,161 @@
       .rcard-foot button { margin-left: auto; }
       .rcard .detail { border-top: 1px solid var(--border); margin-top: 10px; }
       @media (max-width: 640px) { .ea { grid-template-columns: 1fr; } }
+
+      /* ── Paysecure launcher design – one look, light & dark ─────────────── */
+      :root {
+        --brand: #5b4cf0; --brand-strong: #4636d8; --brand-2: #8b7bff; --brand-soft: #eeecfe; --brand-soft-2: #f7f6ff;
+        --bg: #f2f1fa; --surface: #ffffff; --surface-2: #f5f4fc; --text: #1c1a37; --muted: #6d6a8f; --border: #e6e3f4;
+        --accent: var(--brand); --accent-text: #ffffff; --info: #3b82f6;
+        --pass: #0f9f6e; --pass-bg: #e9f9f2; --fail: #e11d48; --fail-bg: #fdecf0; --warn: #c2700a; --warn-bg: #fff6e6;
+        --side-bg: #ffffff; --side-text: #58557a; --side-active: linear-gradient(135deg, #6d5dfc, #8b7bff);
+        --shadow: 0 1px 2px rgba(28, 22, 88, 0.05), 0 12px 32px -20px rgba(28, 22, 88, 0.28);
+        --radius: 14px;
+      }
+      :root[data-mode='dark'] {
+        --brand: #7b6cff; --brand-strong: #9486ff; --brand-2: #a89dff; --brand-soft: #2d2766; --brand-soft-2: #1a173d;
+        --bg: #0f0c29; --surface: #1d1a43; --surface-2: #26225a; --text: #eceaff; --muted: #9c97cc; --border: #2f2a66;
+        --accent: var(--brand); --accent-text: #ffffff; --info: #60a5fa; --log-bg: #0b0920; --log-text: #e4e2ff;
+        --pass: #34d399; --pass-bg: #0f2e2c; --fail: #fb7185; --fail-bg: #3a1532; --warn: #fbbf24; --warn-bg: #33260f;
+        --side-bg: #18153a; --side-text: #b3aee0; color-scheme: dark;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 16px 40px -24px rgba(0, 0, 0, 0.9);
+      }
+      body { background: var(--bg); font-size: 14px; }
+      body, section, aside, .topbar, input, select, textarea, button { transition: background-color 0.2s, color 0.2s, border-color 0.2s; }
+      .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 20px; padding: 20px; min-height: 100vh; }
+
+      /* sidebar */
+      .sidebar { position: sticky; top: 20px; align-self: start; height: calc(100vh - 40px); display: flex; flex-direction: column;
+        background: var(--side-bg); border: 1px solid var(--border); border-radius: 20px; padding: 22px 16px; box-shadow: var(--shadow); }
+      .side-brand { padding: 2px 8px 22px; }
+      .brand-logo { height: 32px; width: auto; max-width: 100%; object-fit: contain; display: block; }
+      [data-mode='dark'] .brand-logo { background: #fff; border-radius: 10px; padding: 5px 9px; height: 38px; }
+      .side-label { font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 12px; margin: 4px 0 8px; }
+      nav#tabs { display: flex; flex-direction: column; gap: 4px; margin: 0; overflow: visible; }
+      nav#tabs button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; border-radius: 12px;
+        padding: 11px 14px; background: none; color: var(--side-text); font-weight: 500; font-size: 14px; }
+      nav#tabs button svg { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+      nav#tabs button:hover { background: var(--brand-soft-2); color: var(--text); }
+      nav#tabs button.active { background: var(--side-active); color: #fff; font-weight: 600; box-shadow: 0 10px 24px -12px rgba(109, 93, 252, 0.9); }
+      .side-card { margin-top: auto; border-radius: 16px; padding: 16px; color: #fff;
+        background: radial-gradient(120px 90px at 100% 0, rgba(255, 255, 255, 0.22), transparent 70%), linear-gradient(145deg, #6d5dfc, #8b5cf6 60%, #a855f7); }
+      .side-card b { display: block; font-size: 16px; margin-bottom: 4px; }
+      .side-card span { font-size: 12px; opacity: 0.88; line-height: 1.45; display: block; }
+
+      /* top bar */
+      .content { min-width: 0; }
+      .topbar { position: sticky; top: 20px; z-index: 20; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--border);
+        border-radius: 20px; padding: 14px 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+      .page-title h1 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+      .page-title .sub { color: var(--muted); font-size: 12px; }
+      .topbar .env { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      main { padding: 0; max-width: none; }
+
+      /* cards & controls */
+      section { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 20px 22px; }
+      h2 { color: var(--text); font-size: 13px; letter-spacing: 0.02em; text-transform: none; font-weight: 700; }
+      h2::before { content: ''; width: 4px; height: 16px; border-radius: 4px; background: linear-gradient(180deg, #6d5dfc, #a855f7); flex: none; }
+      input, select, textarea { border-radius: 10px; background: var(--surface); }
+      [data-mode='dark'] input, [data-mode='dark'] select, [data-mode='dark'] textarea { background: var(--surface-2); }
+      input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--brand) 55%, transparent); border-color: var(--brand); }
+      button { border-radius: 10px; }
+      button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+      button.primary { background: linear-gradient(135deg, #6d5dfc, #8b7bff); border: 0; color: #fff; box-shadow: 0 10px 22px -12px rgba(109, 93, 252, 0.95); }
+      button.primary:hover:not(:disabled) { background: linear-gradient(135deg, #5b4cf0, #7b6cff); }
+      .segmented label { background: var(--surface); border-radius: 10px; }
+      [data-mode='dark'] .segmented label { background: var(--surface-2); }
+      .segmented label:has(input:checked) { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+      [data-mode='dark'] .segmented label:has(input:checked) { color: #fff; }
+      .catalog { background: var(--brand-soft-2); border-color: var(--border); border-radius: 14px; }
+      .catalog details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; margin: 6px 0; }
+      .catalog details:last-child { border-bottom: 1px solid var(--border); }
+      .catalog details[open] > summary { color: var(--brand); }
+      .tag.transaction { color: var(--brand); background: var(--brand-soft); }
+      [data-mode='dark'] .tag.transaction { color: #c9c2ff; }
+      a:not(.download-btn) { color: var(--brand); }
+      .pill { background: var(--brand-soft); }
+      .pill.running { color: var(--info); background: color-mix(in srgb, var(--info) 16%, transparent); }
+      .pill.passed { background: var(--pass-bg); } .pill.failed, .pill.stopped { background: var(--fail-bg); }
+      th { background: var(--brand-soft-2); }
+      table { border-radius: 12px; overflow: hidden; }
+      pre#log { border: 1px solid #262338; border-radius: 14px; }
+
+      /* report KPI tiles – gradient cards with a progress ring (passed · failed · observed · skipped = share of executed) */
+      .stat-row { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 10px; }
+      .stat { position: relative; overflow: hidden; border: 0; border-radius: 16px; padding: 14px 16px; min-height: 92px; color: #fff;
+        background: linear-gradient(135deg, #6d5dfc, #4f46e5); box-shadow: 0 14px 28px -18px rgba(79, 70, 229, 0.9); }
+      .stat::after { content: ''; position: absolute; right: -30px; top: -40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+      .stat b { font-size: 26px; color: #fff !important; }
+      .stat span { color: rgba(255, 255, 255, 0.85); font-weight: 500; display: block; padding-right: 44px; }
+      .stat.pass { background: linear-gradient(135deg, #10b981, #06b6d4); box-shadow: 0 14px 28px -18px rgba(6, 182, 212, 0.9); }
+      .stat.fail { background: linear-gradient(135deg, #f43f5e, #d946ef); box-shadow: 0 14px 28px -18px rgba(217, 70, 239, 0.9); }
+      .stat.obs { background: linear-gradient(135deg, #f59e0b, #f97316); box-shadow: 0 14px 28px -18px rgba(249, 115, 22, 0.9); }
+      .stat.skip { background: linear-gradient(135deg, #8b5cf6, #c026d3); box-shadow: 0 14px 28px -18px rgba(192, 38, 211, 0.9); }
+      .stat .ring { position: absolute; right: 10px; bottom: 10px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+        background: conic-gradient(#fff calc(var(--p, 0) * 1%), rgba(255, 255, 255, 0.28) 0); }
+      .stat .ring i { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; font: 700 9px/1 system-ui, sans-serif; font-style: normal;
+        background: rgba(0, 0, 0, 0.18); color: #fff; backdrop-filter: blur(2px); }
+
+      /* light / dark toggle */
+      .mode-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 3px; background: var(--surface-2); }
+      .mode-toggle button { border: 0; background: none; border-radius: 999px; padding: 5px 12px; font-size: 12px; color: var(--muted); }
+      .mode-toggle button[aria-pressed='true'] { background: linear-gradient(135deg, #6d5dfc, #8b7bff); color: #fff; box-shadow: none; }
+
+      @media (max-width: 980px) {
+        .app { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+        .sidebar { position: static; height: auto; padding: 14px; }
+        nav#tabs { flex-direction: row; flex-wrap: wrap; }
+        nav#tabs button { width: auto; }
+        .side-card, .side-label { display: none; }
+        .topbar { position: static; }
+      }
     </style>
+    <script>
+      // Light / dark before first paint (no flash): light, dark or system.
+      (function () {
+        var mode = null;
+        try { mode = localStorage.getItem('launcher.mode'); } catch (e) {}
+        mode = mode || 'system';
+        var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
-    <header>
-      <div class="top">
-        <h1>Test Launcher</h1>
-        <span class="sub">Integration QA Automation · LOCAL / UAT only</span>
-        <div class="env"><span class="hint">Environment</span><div class="segmented" id="envs"></div></div>
-      </div>
-      <nav id="tabs">
-        <button data-tab="run" class="active">Run</button>
-        <button data-tab="testers">Testers</button>
-        <button data-tab="environments">Environments</button>
-        <button data-tab="purchase">Purchase data</button>
-        <button data-tab="cards">Test cards</button>
-        <button data-tab="cases">Test cases</button>
-        <button data-tab="advanced">Advanced</button>
-      </nav>
-    </header>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="side-brand"><img class="brand-logo" src="/assets/paysecure-logo.png" alt="Paysecure" /></div>
+        <div class="side-label">Menu</div>
+        <nav id="tabs">
+          <button data-tab="run" class="active"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg><span>Run</span></button>
+          <button data-tab="testers"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.6.1 4.6 1.5 5.3 4.3"/></svg><span>Testers</span></button>
+          <button data-tab="environments"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Environments</span></button>
+          <button data-tab="purchase"><svg viewBox="0 0 24 24"><path d="M4 5h2l2 11h10l2-8H7"/><circle cx="10" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg><span>Purchase data</span></button>
+          <button data-tab="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span>Test cards</span></button>
+          <button data-tab="cases"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5v2h6v-2M9 11l2 2 4-4M9 16.5h6"/></svg><span>Test cases</span></button>
+          <button data-tab="advanced"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Advanced</span></button>
+        </nav>
+        <div class="side-card">
+          <b>Test Launcher</b>
+          <span>Integration QA Automation · LOCAL / UAT only. Nothing here can reach production.</span>
+        </div>
+      </aside>
+      <div class="content">
+        <header class="topbar">
+          <div class="page-title">
+            <h1 id="pageTitle">Run</h1>
+            <span class="sub">Integration QA Automation · Paysecure</span>
+          </div>
+          <div class="env">
+            <div class="mode-toggle" role="group" aria-label="Light or dark mode">
+              <button type="button" data-mode="light" title="Light mode">☀ Light</button>
+              <button type="button" data-mode="dark" title="Dark mode">☾ Dark</button>
+              <button type="button" data-mode="system" title="Follow the computer's setting">Auto</button>
+            </div>
+            <span class="hint">Environment</span><div class="segmented" id="envs"></div>
+          </div>
+        </header>
 
     <main>
       <!-- RUN -->
@@ -340,7 +475,7 @@
         <section>
           <h2>Tester profiles</h2>
           <p class="hint">Stored only on this computer in <span class="mono">profiles.local.json</span> (never committed). Keys and passwords are never shown again after saving.</p>
-          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th>Merchant</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
+          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th>Merchant</th><th>KYC</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
           <div class="row"><button id="newProfile" type="button">+ New tester</button></div>
         </section>
         <section>
@@ -355,6 +490,12 @@
           </div>
           <label for="pMerchant">Merchant <span class="hint">(its Limits/Charges routing gives currency, payment method and MID on the Run tab)</span></label>
           <div style="display: flex; gap: 8px"><select id="pMerchant"><option value="">Save the dashboard login, then load merchants</option></select><button id="loadMerchants" class="small" type="button" style="white-space: nowrap">Load merchants</button></div>
+          <label>KYC verification <span class="hint">(merchant configuration: Merchant Details → Kyc Configuration → Bank MID)</span></label>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+            <label class="check" style="margin: 0"><input id="pKyc" type="checkbox" /> KYC enabled for this merchant – offer the KYC cases on the Run tab</label>
+            <button id="checkKyc" class="small" type="button" style="white-space: nowrap">Check dashboard</button>
+          </div>
+          <div class="hint" id="pKycInfo"></div>
           <div class="row">
             <button id="saveProfile" class="primary" type="button">Save tester</button>
             <button id="deleteProfile" class="danger hidden" type="button">Delete</button>
@@ -594,6 +735,8 @@
         </section>
       </div>
     </main>
+      </div>
+    </div>
 
     <script>
       const TOKEN = '__LAUNCHER_TOKEN__';
@@ -611,6 +754,18 @@
       }
       const remember = (k, v) => { try { localStorage.setItem(`launcher.${k}`, v); } catch {} };
       const recall = (k) => { try { return localStorage.getItem(`launcher.${k}`); } catch { return null; } };
+
+      // ── appearance: light / dark / auto and theme (remembered per browser) ──
+      const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      function applyAppearance() {
+        const mode = recall('mode') || 'system';
+        const dark = mode === 'dark' || (mode === 'system' && darkQuery.matches);
+        document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+        for (const b of document.querySelectorAll('.mode-toggle button')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+      }
+      for (const b of document.querySelectorAll('.mode-toggle button')) b.addEventListener('click', () => { remember('mode', b.dataset.mode); applyAppearance(); });
+      darkQuery.addEventListener('change', applyAppearance);
+      applyAppearance();
       function option(value, label) { const el = document.createElement('option'); el.value = value; el.textContent = label; return el; }
       function el(tag, props = {}, ...children) {
         const node = document.createElement(tag);
@@ -641,6 +796,8 @@
       // ── tabs & environment ────────────────────────────────────────────────
       function showTab(name) {
         for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('active', b.dataset.tab === name);
+        const active = document.querySelector(`#tabs button[data-tab="${name}"]`);
+        if (active) $('pageTitle').textContent = active.textContent.trim();
         for (const p of document.querySelectorAll('[data-panel]')) p.classList.toggle('hidden', p.dataset.panel !== name);
         remember('tab', name);
       }
@@ -673,6 +830,7 @@
         const c = profile?.environments[state.env];
         $('credSummary').textContent = c ? `Brand ID ${c.brandId} · API key ${c.apiKeyHint}${c.dashboardUsername ? ` · dashboard ${c.dashboardUsername}` : ' · no dashboard login'}` : '';
         loadRouting();
+        if (state.tests) renderCatalog();
       }
       // ── bank → MID → currency / payment method (from the dashboard) ───────
       function fill(select, items, placeholder, preferred) {
@@ -770,22 +928,37 @@
         const q = $('testSearch').value.trim().toLowerCase();
         return state.tests.filter((t) => !q || `${t.key} ${t.title} ${t.group}`.toLowerCase().includes(q));
       }
+      const isKycKey = (key) => /^@(KYC|KV)-/.test(key);
+      /** KYC cases only for a tester whose merchant has KYC enabled (Testers tab); one-off credentials: allowed. */
+      function kycAllowed() {
+        const value = $('runProfile')?.value;
+        if (!value || value === CUSTOM) return true;
+        const p = state.options?.profiles?.find((x) => x.id === value);
+        return Boolean(p?.environments?.[state.env]?.kyc?.enabled);
+      }
       function renderCatalog() {
         const box = $('catalog'); box.replaceChildren();
+        const kycOk = kycAllowed();
+        if (!kycOk) for (const k of [...state.selected]) if (isKycKey(k)) state.selected.delete(k);
         const groups = new Map();
         for (const t of visibleTests()) { if (!groups.has(t.group)) groups.set(t.group, []); groups.get(t.group).push(t); }
         for (const [group, tests] of groups) {
           const all = tests.every((t) => state.selected.has(t.key));
-          const head = el('input', { type: 'checkbox', checked: all, onchange: () => { for (const t of tests) head.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderCatalog(); } });
+          const locked = !kycOk && tests.every((t) => isKycKey(t.key));
+          const head = el('input', { type: 'checkbox', checked: all && !locked, disabled: locked, onchange: () => { for (const t of tests) if (kycOk || !isKycKey(t.key)) head.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderCatalog(); } });
           const details = el('details', { open: tests.length <= 12 || $('testSearch').value !== '' },
 
-            el('summary', {}, head, ` ${group} `, el('span', { class: 'hint' }, `(${tests.filter((t) => state.selected.has(t.key)).length}/${tests.length})`)));
+            el('summary', {}, head, ` ${group} `, el('span', { class: 'hint' }, locked ? '(KYC off for this tester)' : `(${tests.filter((t) => state.selected.has(t.key)).length}/${tests.length})`)));
+          if (locked) details.append(el('div', { class: 'empty-group' }, el('span', { class: 'hint' }, 'KYC is off for this tester – enable it on the Testers tab (the merchant needs a KYC Bank MID in Merchant Details → Kyc Configuration).')));
           for (const t of tests) {
-            const box2 = el('input', { type: 'checkbox', checked: state.selected.has(t.key), onchange: () => { box2.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderSelectionState(); } });
+            const box2 = el('input', { type: 'checkbox', checked: state.selected.has(t.key), disabled: !kycOk && isKycKey(t.key), onchange: () => { box2.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderSelectionState(); } });
             const tags = [];
             if (t.expectation) tags.push(el('span', { class: `tag ${t.expectation}` }, t.expectation));
+            if (t.section) tags.push(el('span', { class: 'tag', title: 'Section of the KYC suite' }, t.section.replace(/^\d+\.\s*/, '').replace(/\s@\w+/g, '')));
             if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
-            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '')), ...tags));
+            if (t.slow) tags.push(el('span', { class: 'tag transaction', title: 'Waits several minutes on the KYC expiry poller' }, 'slow'));
+            if (t.provider) tags.push(el('span', { class: 'tag transaction', title: "Drives the provider's own UI – may break when Sumsub changes it" }, 'provider UI'));
+            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
           }
           details.dataset.group = group;
           box.append(details);
@@ -793,7 +966,7 @@
         // Uploaded categories without cases still show – inside their suite group when it exists
         // (e.g. PSP cases belong to "3. PSP request/response validation"), otherwise as their own row.
         if (!$('testSearch').value) {
-          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases' };
+          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases', kyc: 'KYC verification' };
           for (const c of state.categories || []) {
             if (c.cases.length > 0 || c.id === 'field') continue;
             const go = el('button', { type: 'button', class: 'small' }, 'Add cases →');
@@ -801,7 +974,7 @@
             const hint = el('div', { class: 'empty-group' }, el('span', { class: 'hint' }, `No uploaded ${c.prefix}-xxx cases yet – add them on the Test cases tab.`), go);
             const home = [...box.querySelectorAll('details')].find((d) => d.dataset.group?.endsWith(GROUP_OF[c.id]));
             if (home) home.append(hint);
-            else box.append(el('div', { class: 'empty-group standalone' }, el('b', {}, `Cashier purchase › ${GROUP_OF[c.id]}`), ...hint.childNodes));
+            else box.append(el('div', { class: 'empty-group standalone' }, el('b', {}, c.id === 'kyc' ? GROUP_OF[c.id] : `Cashier purchase › ${GROUP_OF[c.id]}`), ...hint.childNodes));
           }
         }
         if (!groups.size && !box.childElementCount) box.append(el('p', { class: 'hint' }, 'No test cases match.'));
@@ -876,12 +1049,12 @@
         return td;
       }
       // ── report view ─────────────────────────────────────────────────────────
-      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'psp-check', 'other'];
-      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'kyc', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
       const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
       function categoryFromKey(key) {
         if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
-        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
       }
       /** Older reports have no category / items – derive what we can. */
       function normaliseRow(t) {
@@ -902,7 +1075,7 @@
       function reportCard(t) {
         const card = el('div', { class: `rcard ${t.verdict}` });
         const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
-        const title = t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '');
+        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '');
         const head = el('div', { class: 'rcard-head' },
           el('span', { class: `badge-v ${t.verdict}` }, VERDICT_TEXT[t.verdict] || t.verdict),
           ...(caseId ? [el('span', { class: 'case-id' }, caseId)] : []),
@@ -931,10 +1104,12 @@
         catch { view.replaceChildren(el('p', { class: 'hint' }, 'No report yet – select test cases and click Run test.')); return; }
         const tests = report.tests.map(normaliseRow);
         const c = report.config || {}; const s = report.summary || {};
-        const stat = (cls, n, label) => el('div', { class: `stat ${cls}` }, el('b', {}, String(n ?? 0)), el('span', {}, label));
+        const pct = (n) => (s.total ? Math.round(((n ?? 0) / s.total) * 100) : 0);
+        const stat = (cls, n, label, p) => el('div', { class: `stat ${cls}` }, el('b', {}, String(n ?? 0)), el('span', {}, label),
+          ...(p === undefined ? [] : [el('div', { class: 'ring', style: `--p: ${p}` }, el('i', {}, `${p}%`))]));
         const byCat = CATEGORY_ORDER.map((id) => ({ id, rows: tests.filter((t) => t.category === id) })).filter((g) => g.rows.length);
         const header = el('div', { class: 'report-head' },
-          el('div', { class: 'stat-row' }, stat('', s.total, 'executed'), stat('pass', s.passed, 'passed'), stat('fail', s.failed, 'failed'), stat('obs', s.observed, 'observed'), stat('', s.skipped, 'skipped')),
+          el('div', { class: 'stat-row' }, stat('', s.total, 'executed'), stat('pass', s.passed, 'passed', pct(s.passed)), stat('fail', s.failed, 'failed', pct(s.failed)), stat('obs', s.observed, 'observed', pct(s.observed)), stat('skip', s.skipped, 'skipped', pct(s.skipped))),
           el('div', { class: 'cat-summary' }, ...byCat.map((g) => el('span', { class: 'cat-chip' }, `${CATEGORY_NAMES[g.id]}  `,
             el('span', { class: 'ok' }, `✓ ${g.rows.filter((t) => t.verdict === 'PASS').length}`), '  ',
             el('span', { class: 'ko' }, `✗ ${g.rows.filter((t) => t.verdict === 'FAIL').length}`)))),
@@ -1003,9 +1178,10 @@
             el('td', {}, p.name), el('td', { class: 'mono' }, c ? c.brandId : '—'), el('td', { class: 'mono' }, c ? c.apiKeyHint : '—'),
             el('td', {}, c?.dashboardUsername ? `${c.dashboardUsername}${c.hasDashboardPassword ? ' ✓' : ''}` : '—'),
             el('td', {}, c?.merchant ? c.merchant.name : '—'),
+            el('td', {}, c?.kyc?.enabled ? `On${c.kyc.mid ? ` · ${c.kyc.mid}` : ''}` : 'Off'),
             el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editProfile(p.id) }))));
         }
-        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 6, class: 'hint' }, 'No testers yet.')));
+        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 7, class: 'hint' }, 'No testers yet.')));
         editProfile(state.editingProfile);
       }
       function editProfile(id) {
@@ -1020,6 +1196,8 @@
         $('pDashHint').textContent = c?.hasDashboardPassword ? 'saved' : '';
         const m = c?.merchant;
         $('pMerchant').replaceChildren(m ? option(String(m.id), m.name) : option('', c?.hasDashboardPassword ? 'Click "Load merchants"' : 'Save the dashboard login, then load merchants'));
+        $('pKyc').checked = Boolean(c?.kyc?.enabled); state.kycMid = c?.kyc?.mid || '';
+        $('pKycInfo').textContent = c?.kyc?.enabled ? `Enabled${c.kyc.mid ? ` – Bank MID ${c.kyc.mid}` : ''}.` : 'Off – KYC cases are not offered for this tester.';
         $('deleteProfile').classList.toggle('hidden', !p); $('profileMsg').textContent = '';
       }
       async function saveProfile() {
@@ -1027,7 +1205,8 @@
           const { id, profiles } = await api('/api/profiles', { method: 'POST', body: JSON.stringify({
             id: state.editingProfile || undefined, name: $('pName').value, env: state.env, brandId: $('pBrand').value, apiKey: $('pKey').value,
             dashboardUsername: $('pDashUser').value, dashboardPassword: $('pDashPass').value,
-            merchantId: $('pMerchant').value, merchantName: $('pMerchant').selectedOptions[0]?.textContent || '' }) });
+            merchantId: $('pMerchant').value, merchantName: $('pMerchant').selectedOptions[0]?.textContent || '',
+            kycEnabled: $('pKyc').checked, kycMid: $('pKyc').checked ? state.kycMid || '' : '' }) });
           state.options.profiles = profiles; state.editingProfile = id; renderProfiles(); renderRunProfiles();
           say('profileMsg', `Saved for ${state.env.toUpperCase()}.`);
         } catch (error) { say('profileMsg', error.message, false); }
@@ -1042,6 +1221,18 @@
           if (current) $('pMerchant').value = current;
           say('profileMsg', `${merchants.length} merchants loaded – pick the merchant of this brand and save.`);
         } catch (error) { say('profileMsg', error.message, false); }
+      }
+      /** Reads the merchant's Kyc Configuration from the dashboard and sets the switch accordingly (not saved yet). */
+      async function checkKyc() {
+        if (!state.editingProfile) { say('profileMsg', 'Save the tester with its dashboard login and merchant first.', false); return; }
+        $('pKycInfo').textContent = 'Reading Merchant Details → Kyc Configuration…';
+        try {
+          const r = await api(`/api/dashboard/kyc?env=${state.env}&profileId=${encodeURIComponent(state.editingProfile)}`);
+          $('pKyc').checked = r.enabled; state.kycMid = r.enabled ? [r.provider, r.mid].filter(Boolean).join(' - ') : '';
+          $('pKycInfo').textContent = r.enabled
+            ? `Dashboard: ${r.merchant} has KYC Bank MID ${state.kycMid}. Click "Save tester" to keep it.`
+            : `Dashboard: ${r.merchant} has no KYC Bank MID – select one in Merchant Details → Kyc Configuration, then check again. KYC cases would fail with kyc_not_enabled.`;
+        } catch (error) { $('pKycInfo').textContent = error.message; }
       }
       async function deleteProfile() {
         const b = $('deleteProfile');
@@ -1165,7 +1356,7 @@
       }
 
       // ── test cases (upload by category) ─────────────────────────────────────
-      const CASE_KEY = /^@(FT|FV|RX|PR|EC)-/;
+      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|KYC|KV)-/;
       function currentCategory() { return (state.categories || []).find((c) => c.id === state.category) || (state.categories || [])[0]; }
       async function readFileBase64(file) {
         const bytes = new Uint8Array(await file.arrayBuffer()); let bin = '';
@@ -1278,6 +1469,7 @@
         regex: 'e.g. length boundaries, unicode names, forbidden characters',
         psp: 'e.g. amount and currency, order reference, billing address',
         edge: 'e.g. amount boundaries with the approved and 3DS cards',
+        kyc: 'e.g. auth headers, missing country / customer, link TTL and expiry values, incomplete customer data',
       };
       async function loadAiStatus() {
         try {
@@ -1317,10 +1509,10 @@
           renderCategories();
         } catch (error) { say('customMsg', error.message, false); }
       }
-      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'] };
+      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'], kyc: ['Customer · auth', 'Request changes', 'Expected'] };
       function renderCustom() {
         const c = currentCategory(); if (!c) return;
-        const cols = ['ID', 'Test case', ...LIST_COLUMNS[c.id], 'Source', ''];
+        const cols = ['ID', 'Test case', ...(LIST_COLUMNS[c.id] || ['Details', 'Changes', 'Expected']), 'Source', ''];
         $('customHead').replaceChildren(el('tr', {}, ...cols.map((h) => el('th', {}, h))));
         const body = $('customRows'); body.replaceChildren();
         $('customCount').textContent = String(c.cases.length);
@@ -1355,8 +1547,9 @@
         $('paymentMethod').addEventListener('change', renderRoute);
         $('refreshDash').addEventListener('click', async () => { await api('/api/dashboard/refresh', { method: 'POST' }); loadRouting(); });
         $('loadMerchants').addEventListener('click', loadMerchants);
+        $('checkKyc').addEventListener('click', checkKyc);
         $('testSearch').addEventListener('input', renderCatalog);
-        $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
+        $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) if (kycAllowed() || !isKycKey(t.key)) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
         $('clearSelection').addEventListener('click', () => { state.selected.clear(); saveSelection(); renderCatalog(); });
         for (const input of document.querySelectorAll('#viewSwitch input')) input.addEventListener('change', () => setView(input.value));
         $('history').addEventListener('change', () => showReport($('history').value));

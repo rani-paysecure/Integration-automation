@@ -6,6 +6,7 @@
  *   regex-validation.json  RX-xxx   bank field regex         → 02-regex-validation.spec.ts
  *   psp-validation.json    PR-xxx   PSP request/response     → 04-psp-field-checks.spec.ts
  *   edge-cases.json        EC-xxx   end-to-end scenarios     → 05-edge-cases.spec.ts
+ *   kyc-validation.json    KV-xxx   KYC create cases         → kyc/20-uploaded-kyc-cases.spec.ts
  *
  * Every file is validated on load, so a broken entry fails fast with its id.
  */
@@ -110,6 +111,28 @@ const edgeCase = z.object({
   source,
 });
 
+const kycCase = z.object({
+  id: z.string().regex(/^KV-\d{3,}$/),
+  title: z.string().min(1),
+  /** new = customer created first and sent as customer_id; by-merchant-id sends merchant_cust_id. */
+  customer: z.enum(['new', 'by-merchant-id', 'unknown-customer-id', 'unknown-merchant-id', 'none']),
+  auth: z.enum(['valid', 'none', 'no-bearer', 'invalid-key', 'no-brand', 'other-brand']),
+  /** KYC create body changes (snake_case, dotted paths allowed: metadata.order). */
+  set: z.record(fieldPath, z.unknown()).optional(),
+  remove: z.array(fieldPath).optional(),
+  /** Customer record changes (camelCase, e.g. fullName). */
+  customerSet: z.record(z.string(), z.unknown()).optional(),
+  customerRemove: z.array(z.string()).optional(),
+  expected: z.object({
+    http: z.number().int(),
+    code: z.string().optional(),
+    statuses: z.array(z.string()).optional(),
+    messageContains: z.string().optional(),
+  }),
+  source,
+});
+
+export type KycCase = z.infer<typeof kycCase>;
 export type RegexCase = z.infer<typeof regexCase>;
 export type PspFieldCheck = z.infer<typeof pspCase>['checks'][number];
 export type PspCase = z.infer<typeof pspCase>;
@@ -159,3 +182,5 @@ export const loadUploadedPspCases = (file = 'psp-validation.json'): PspCase[] =>
   load(file, pspCase);
 export const loadUploadedEdgeCases = (file = 'edge-cases.json'): EdgeCase[] =>
   load(file, edgeCase) as EdgeCase[];
+export const loadUploadedKycCases = (file = 'kyc-validation.json'): KycCase[] =>
+  load(file, kycCase);

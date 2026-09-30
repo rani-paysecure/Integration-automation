@@ -23,6 +23,8 @@ const credentialsSchema = z.object({
   dashboard: dashboardSchema.optional(),
   /** Dashboard merchant the brand belongs to – limits currencies / payment methods per MID. */
   merchant: z.object({ id: z.number().int(), name: z.string() }).optional(),
+  /** KYC runs are offered for this merchant (it has a KYC Bank MID in Merchant Details → Kyc Configuration). */
+  kyc: z.object({ enabled: z.boolean(), mid: z.string().optional() }).optional(),
 });
 
 const environmentsShape = Object.fromEntries(

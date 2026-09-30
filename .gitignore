@@ -35,3 +35,6 @@ npm-debug.log*
 !.vscode/settings.json
 .DS_Store
 Thumbs.db
+
+# KYC sandbox sample document (uploaded to the provider by KYC-34) – local only
+tests/test-data/kyc/*.jpg

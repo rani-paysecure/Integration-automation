@@ -97,3 +97,37 @@ The Paysafe sandbox declines 2.00 by design; 10.00 is approved.
   400 "Refund can not be initiated .Please contact Administrator.", entry ERROR, "refund_failed amt: x".
 - test4 Paysafe: refund right after payment → PSP 3406 "The settlement you are attempting to refund
   has not been batched yet" (cancelInfo = `{amount: 300, merchantRefNum: <refundId>}`).
+
+## 6. KYC – `service/kyc/controller/KycController`, `KycOrchestrationService`
+
+Endpoints (environment root, not `/api`): `POST /kyc/create`, `GET /kyc/{kycId}`,
+`GET /kyc/redirect/{kycId}` (hosted page, no auth – the kycId is the capability),
+`GET|POST /kyc/return/{kycId}`, `POST /kyc/webhook/{provider}` (unauthenticated, HMAC-SHA256 over the
+raw body in `x-payload-digest`), legacy `GET /api/v1/customer/{id}/kyc` (202, ApiError, camelCase customer).
+
+- Headers: `Authorization: Bearer <merchant key>` (no prefix / unknown key → 401 `authentication_failed`)
+  and `Brand-Id` (missing / not owned → 403 `access_denied`). The legacy customer API reads `brandid`.
+- Merchant without a KYC provider MID (Dashboard → Merchant → KYC configuration) → 403 `kyc_not_enabled`.
+- Create body is snake_case, unknown fields are ignored. Guard order in `findOrCreate`: product
+  (defaulted) → blank `country` → 400 `country_required` → neither `customer_id` nor `merchant_cust_id`
+  → 400 `customer_required` ("Provide either 'customer_id' or 'merchant_cust_id'.") → routing → unknown
+  customer → 404 `customer_not_found` (message echoes the field that was sent).
+- Personal data comes from the stored customer (`POST /api/v1/customer`, 202; `fullName` required).
+- An in-flight record (CREATED, AWAITING_USER, KYC_PENDING, KYC_IN_PROCESS, MANUAL_REVIEW) is reused –
+  same kyc_id, provider_reference_id and link; `created_at` / the expiry deadline do not move.
+  `test` is part of the record identity. KYC_REJECTED → 409 `already_decided`; terminal → `record_terminal`;
+  RESUBMISSION_REQUIRED → a new kyc_id.
+- `link_ttl_minutes` ≤ 0 → default `kyc.redirect.ttlMinutes` (30); capped at 1440. Default product `kyc.product.default` (IDV); record expiry default 1440 min. `kyc_expiry_in_minutes` anchors the
+  poll deadline to `created_at`; expiry needs `kyc.poll.enabled=true` (test profile only).
+- Opening the link: AWAITING_USER → KYC_PENDING, `verification_url_opened_at` stamped once (absent, not
+  null, until then). Expired link → 302 to `failure_redirect`.
+- Return: verdict re-fetched from the provider; query string ignored (a forged `status=KYC_APPROVED`
+  still lands on `pending_redirect`). **Bug (still in code):** with no redirect configured,
+  `returnFromProvider` builds `Map.of("kycId", …, "status", …, "status", …)` – duplicate key → 500
+  instead of 200 (test KYC-25 is `test.fail()` until fixed).
+- Merchant callbacks (`KycCallbackService.targetUrl`): KYC_APPROVED → success_callback; KYC_IN_PROCESS,
+  MANUAL_REVIEW → pending_callback; everything else (incl. RESUBMISSION_REQUIRED) → failure_callback.
+- Errors: every `/kyc/*` failure is `{status:"fail", code, message}` (KycExceptionHandler).
+- Confirmed on test4 (Sumsub sandbox): a customer created **without `phoneNo`** → `POST /kyc/create`
+  answers HTTP 200 with status `KYC_FAILED`, message "Input list cannot be null." (the provider config
+  cannot build the applicant) – the customer API accepts the customer, so the failure only shows at KYC.

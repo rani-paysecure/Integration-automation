@@ -53,6 +53,7 @@ const FOCUS_HINTS = {
     'values just inside and just outside every pattern: length boundaries, allowed vs forbidden characters, leading/trailing spaces, unicode letters, look-alike characters, words the pattern blocks',
   psp: 'amount (major vs minor units), currency, order reference = purchase ID, customer / billing data, 3DS fields, status and IDs in the response',
   edge: 'amount boundaries, currency / country mismatches, missing optional customer data, different test cards (approved, declined, 3DS challenge)',
+  kyc: 'auth variants (no key, no Bearer, unknown key, no / foreign Brand-Id), missing or blank country, missing / unknown customer ids, merchant_cust_id vs customer_id, link_ttl_minutes and kyc_expiry_in_minutes boundaries, incomplete customer records (customer.* not sent), unknown extra fields',
 };
 
 /** Field names seen in PSP requests / responses of earlier runs (keys only, values never). */
@@ -111,7 +112,13 @@ function templateFields(template) {
 }
 
 /** Sections of docs/pgs-behaviour.md (read from the PGS backend) relevant to each category. */
-const PGS_SECTIONS = { field: ['1.'], edge: ['1.', '4.'], regex: ['2.'], psp: ['3.', '4.'] };
+const PGS_SECTIONS = {
+  field: ['1.'],
+  edge: ['1.', '4.'],
+  regex: ['2.'],
+  psp: ['3.', '4.'],
+  kyc: ['6.'],
+};
 function pgsBehaviour(categoryId) {
   let text;
   try {
@@ -192,6 +199,20 @@ function buildContext(categoryId, ctx) {
       'PSP response fields seen in earlier runs:',
       keys.response.length ? keys.response.join(', ') : '(none recorded yet – e.g. status, id)',
       'Placeholders for Expected Value: {purchaseId} {amount} {amountMinor} {currency} {email} {country} {city} {zip} {phone} {fullName}',
+    );
+  }
+  if (categoryId === 'kyc') {
+    lines.push(
+      'KYC create request (POST /kyc/create, snake_case; test=true is always sent and cannot be changed):',
+      '- country (required), customer_id or merchant_cust_id (one required – set by the Customer column)',
+      '- success_redirect, pending_redirect, failure_redirect, success_callback, pending_callback, failure_callback, redirect_base_url',
+      '- link_ttl_minutes (number), kyc_expiry_in_minutes (number), metadata.<key>; unknown fields are ignored',
+      'Customer record fields (camelCase, change with customer.<field>=value or "customer.<field> not sent"):',
+      '- merchantCustomerId, fullName, emailId, phoneNo, dateOfBirth (yyyy-mm-dd), address, city, stateCode, zipCode, country',
+      'The standard customer is complete dummy data (Ada Lovelace, US, +14155550123, 1990-01-15).',
+      'Customer column: New customer | New customer (merchant_cust_id) | Unknown customer_id | Unknown merchant_cust_id | No customer id',
+      'Authentication column: Valid | No Authorization header | Key without Bearer | Unknown key | No Brand-Id | Brand not owned',
+      'Expected HTTP is required; Expected Code for failures (e.g. country_required, customer_required, customer_not_found, authentication_failed, access_denied); Expected KYC Status on success (AWAITING_USER for a new verification).',
     );
   }
   const behaviour = pgsBehaviour(categoryId);

@@ -12,6 +12,8 @@
     "test:uat": "cross-env TEST_ENV=uat playwright test",
     "test:cashier": "playwright test --project=cashier-purchase",
     "test:cashier:fields": "playwright test --project=cashier-purchase --grep @field-validation",
+    "test:kyc": "playwright test --project=kyc",
+    "test:kyc:all": "cross-env KYC_INCLUDE_SLOW=1 playwright test --project=kyc",
     "test:s2s": "playwright test --project=s2s-purchase",
     "test:session": "playwright test --project=session",
     "test:framework": "playwright test --project=framework",

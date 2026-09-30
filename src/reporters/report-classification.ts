@@ -8,7 +8,7 @@ import type { PspSummary } from '../helpers/psp-validation';
  * labelled lines instead of one long string.
  */
 export type CategoryId =
-  'field' | 'regex' | 'psp' | 'edge' | 'card' | 'refund' | 'psp-check' | 'other';
+  'field' | 'regex' | 'psp' | 'edge' | 'card' | 'refund' | 'kyc' | 'psp-check' | 'other';
 export type Polarity = 'positive' | 'negative' | 'neutral';
 
 export interface ReportItem {
@@ -23,6 +23,7 @@ export const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   edge: 'Custom & edge cases',
   card: 'Card transactions',
   refund: 'Refunds',
+  kyc: 'KYC verification',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
 };
@@ -34,6 +35,7 @@ export function categoryOf(key: string): CategoryId {
   if (key.startsWith('@EC-')) return 'edge';
   if (key.startsWith('@card-')) return 'card';
   if (key.startsWith('@RF-')) return 'refund';
+  if (key.startsWith('@KYC-') || key.startsWith('@KV-')) return 'kyc';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';
 }
@@ -95,6 +97,13 @@ function polarityOf(category: CategoryId, input: ClassifyInput): Polarity {
       return 'positive';
     case 'refund':
       return /rejected|error/i.test(expected) ? 'negative' : 'positive';
+    case 'kyc':
+      // Built-in KYC titles say "then it returns 4xx …"; uploaded cases carry the expected HTTP.
+      return /\b[45]\d\d\b|rejected|refuse|forged|ignored|unknown/i.test(
+        `${expected} ${input.values.title ?? ''}`,
+      )
+        ? 'negative'
+        : 'positive';
     case 'edge':
     case 'card':
       return /success|PAID/i.test(expected) ? 'positive' : 'negative';
@@ -112,6 +121,7 @@ export function expectedParts(text: string): ReportItem[] {
     .map((part): ReportItem => {
       const outcome = OUTCOMES[part];
       if (outcome !== undefined) return { label: 'Cashier', value: outcome };
+      if (/^HTTP \d{3}$/.test(part)) return { label: 'HTTP', value: part.slice(5) };
       if (/^status /i.test(part)) return { label: 'Final status', value: part.slice(7) };
       if (/^error contains /i.test(part))
         return { label: 'Message contains', value: part.slice(15) };
@@ -202,6 +212,8 @@ export function classify(input: ClassifyInput): Classification {
     for (const note of psp.notes.slice(0, 4)) actualItems.push({ label: 'Note', value: note });
   }
   actualItems.push(
+    ...item('KYC', values['kyc result'] ?? values['kyc response']),
+    ...item('KYC id', values['kyc id']),
     ...item('Refund', values.refund),
     ...item('Refund history', values['refund history']),
   );
