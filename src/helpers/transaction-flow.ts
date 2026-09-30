@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { BackofficeClient } from '../clients/backoffice-client';
 import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import { CashierPage, type RedirectUrls } from '../pages/cashier-page';
+import { currentDevice, deviceLabel } from '../pages/devices';
 import type { BankTransaction } from '../schemas/backoffice.schema';
 import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
 import { recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
@@ -87,6 +88,7 @@ export async function executeTransaction(
   input: TransactionInput,
   testInfo: TestInfo,
 ): Promise<TransactionResult> {
+  testInfo.annotations.push({ type: 'device', description: deviceLabel(currentDevice()) });
   const cashier = await test.step('pay on cashier', async () => {
     const page = await deps.openPage();
     const cashierPage = new CashierPage(page);
@@ -103,6 +105,23 @@ export async function executeTransaction(
     await page.close();
     return result;
   });
+  if (cashier.browserData) {
+    const { sent, screen } = cashier.browserData;
+    const fp = (key: string): string => sent[key] ?? '–';
+    testInfo.annotations.push({
+      type: 'device data to PGS',
+      description:
+        `screen ${fp('sw')}×${fp('sh')} · colour depth ${fp('cd')} · pixel depth ${fp('pd')} · ` +
+        `timezone offset ${fp('uo')} min · java ${fp('ije')}`,
+    });
+    // PGS forwards these to PSPs that need 3DS browser data – they must be the device's real values.
+    expect
+      .soft(
+        `${fp('sw')}×${fp('sh')}`,
+        `screen size sent to PGS should be the device screen ${String(screen.width)}×${String(screen.height)}`,
+      )
+      .toBe(`${String(screen.width)}×${String(screen.height)}`);
+  }
   if (cashier.challenge) {
     testInfo.annotations.push({
       type: '3ds challenge',

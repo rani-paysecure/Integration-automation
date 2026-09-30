@@ -44,6 +44,8 @@ export interface CashierPaymentResult {
   readonly apiMessage: string;
   /** Hosts passed through after PAY, e.g. a 3DS / PSP authentication page. */
   readonly visitedPages: readonly string[];
+  /** Browser data the cashier sent to PGS with PAY (query of POST /npv/…) and the real screen. */
+  readonly browserData?: BrowserData;
   /** Present when a 3DS challenge page was shown. */
   readonly challenge?: ChallengeResult;
 }
@@ -58,4 +60,12 @@ export interface CashierCardScenario {
     /** Accepted final purchase statuses, e.g. ['PAID']. */
     readonly statuses: readonly string[];
   };
+}
+
+/** Device data the cashier collects in the browser and sends to PGS (forwarded to PSPs for 3DS). */
+export interface BrowserData {
+  /** Values sent on PAY: sw/sh screen, cd colour depth, pd pixel depth, uo timezone offset (min), ije Java enabled. */
+  readonly sent: Readonly<Record<string, string>>;
+  /** window.screen of the (emulated) device, read just before PAY. */
+  readonly screen: { readonly width: number; readonly height: number };
 }

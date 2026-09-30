@@ -20,6 +20,7 @@ export interface RunMeta {
   readonly mid?: string;
   readonly paymentMethod?: string;
   readonly payWithCard?: string;
+  readonly device?: string;
   readonly selection?: string;
 }
 

@@ -6,6 +6,7 @@ import { BackofficeClient } from '@clients/backoffice-client';
 import { HealthApiClient } from '@clients/health-api-client';
 import { PaymentApiClient } from '@clients/payment-api-client';
 import { PurchaseApiClient } from '@clients/purchase-api-client';
+import { currentDevice, deviceContextOptions } from '@pages/devices';
 import { expect, test as baseTest } from './test.fixture';
 
 interface ApiClientFixtures {
@@ -33,7 +34,8 @@ export const test = baseTest.extend<ApiClientFixtures, WorkerClientFixtures>({
         headless: !testConfig.transaction.headed,
         ...(process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {}),
       });
-      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      // Device chosen on the launcher's Run tab (RUN_DEVICE) – desktop by default.
+      const context = await browser.newContext(deviceContextOptions(currentDevice()));
       return context.newPage();
     });
     await browser?.close();

@@ -288,6 +288,14 @@
               <label for="payCard">Card for payments</label>
               <select id="payCard"></select>
               <p class="hint" style="margin-top: 6px">Regex, PSP and edge cases always pay (real transaction: cashier → PAY → PSP → dashboard log) – with the card from the sheet, otherwise this one. Card scenarios use their own card.</p>
+              <label for="device">Device <span class="hint">(cashier browser – screen size, user agent and touch as on that device)</span></label>
+              <select id="device">
+                <option value="desktop">Desktop – Chrome, 1280×900</option>
+                <option value="tablet-ipad">Tablet – iPad</option>
+                <option value="tablet-android">Tablet – Galaxy Tab S4</option>
+                <option value="phone-iphone">Phone – iPhone 14</option>
+                <option value="phone-android">Phone – Pixel 7</option>
+              </select>
               <label class="check"><input id="payFieldCases" type="checkbox" /> Also pay for accepted field-validation cases</label>
               <p class="hint" id="cardWarning"></p>
               <label class="check"><input id="headed" type="checkbox" /> Show browser while paying</label>
@@ -573,7 +581,9 @@
       const state = { options: null, settings: null, env: 'uat', editingProfile: null, editingCard: null };
 
       async function api(path, init = {}) {
-        const res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) } });
+        let res;
+        try { res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) } }); }
+        catch { throw new Error('The launcher is not responding – check its terminal window (an error is printed there), then start it again with npm run launcher and reload this page.'); }
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
         return body;
@@ -720,6 +730,7 @@
         // Default to the first card so regex / PSP / edge cases can run straight away.
         pc.value = [...pc.options].some((o) => o.value === prev && prev !== '') ? prev : cards[0]?.id || '';
         $('payFieldCases').checked = recall('payFieldCases') === '1';
+        const dev = recall('device'); if (dev && [...$('device').options].some((o) => o.value === dev)) $('device').value = dev;
       }
 
       // test catalog
@@ -790,12 +801,12 @@
         if (!choice.currency || !choice.paymentMethod) { say('runMsg', 'Select currency and payment method.', false); return; }
         const value = $('runProfile').value;
         const payload = {
-          env: state.env, testKeys: [...state.selected], ...runChoice(), payCard: $('payCard').value, payFieldCases: $('payFieldCases').checked,
+          env: state.env, testKeys: [...state.selected], ...runChoice(), payCard: $('payCard').value, payFieldCases: $('payFieldCases').checked, device: $('device').value,
           purchaseIds: $('purchaseIds').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
         };
         if (value === CUSTOM) Object.assign(payload, { brandId: $('ooBrand').value, apiKey: $('ooKey').value, dashboardUsername: $('ooDashUser').value, dashboardPassword: $('ooDashPass').value });
         else payload.profileId = value;
-        remember('payCard', $('payCard').value); remember('payFieldCases', $('payFieldCases').checked ? '1' : '');
+        remember('payCard', $('payCard').value); remember('payFieldCases', $('payFieldCases').checked ? '1' : ''); remember('device', $('device').value);
         try { $('log').textContent = ''; setView('log'); await api('/api/runs', { method: 'POST', body: JSON.stringify(payload) }); }
         catch (error) { say('runMsg', error.message, false); setView('report'); }
       }
@@ -906,7 +917,7 @@
             el('span', { class: 'ok' }, `✓ ${g.rows.filter((t) => t.verdict === 'PASS').length}`), '  ',
             el('span', { class: 'ko' }, `✗ ${g.rows.filter((t) => t.verdict === 'FAIL').length}`)))),
           el('div', { class: 'kv-grid' }, kv('Environment', c.environment), kv('Tester', c.tester), kv('Brand ID', c.brandId), kv('API key', c.apiKey),
-            kv('Currency', c.currency), kv('Payment method', c.paymentMethod), kv('MID', c.mid || c.bank), kv('Pay with card', c.payWithCard),
+            kv('Currency', c.currency), kv('Payment method', c.paymentMethod), kv('MID', c.mid || c.bank), kv('Pay with card', c.payWithCard), kv('Device', c.device || 'Desktop'),
             kv('Finished', `${new Date(report.finishedAt).toLocaleString()} · ${Math.round(report.durationMs / 1000)} s`)));
         const fVerdict = el('select', {}, option('', 'All results'), option('FAIL', 'Failed'), option('PASS', 'Passed'), option('OBSERVED', 'Observed'), option('SKIPPED', 'Skipped'));
         const fCat = el('select', {}, option('', 'All categories'), ...byCat.map((g) => option(g.id, CATEGORY_NAMES[g.id])));
