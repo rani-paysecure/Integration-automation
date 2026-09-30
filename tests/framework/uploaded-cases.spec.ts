@@ -38,6 +38,7 @@ interface RegexCasesModule {
   casesForBank(
     bank: string,
     rules: Record<string, string>,
+    options?: { country?: string },
   ): {
     rules: { kind: string }[];
     cases: { data: { field: string; value: string; expectation: string } }[];
@@ -127,18 +128,33 @@ test.describe('Uploaded test cases – import', () => {
   });
 
   test('regex cases from dashboard rules: values classified by the bank regex', () => {
-    const { rules, cases } = regexCases.casesForBank('paywise', {
-      full_name: '^(?i)(?!n/?a$|null$).{2,120}$',
-      phone: '["IN", "US", "default"]',
-      loyalty_id: '^\\d+$',
-    });
+    const { rules, cases } = regexCases.casesForBank(
+      'paywise',
+      {
+        full_name: '^(?i)(?!n/?a$|null$).{2,120}$',
+        phone: '["IN", "US", "default"]',
+        loyalty_id: '^\\d+$',
+      },
+      { country: 'AT' },
+    );
     expect(rules.map((r) => r.kind)).toEqual(['regex', 'country-list', 'regex']);
     const byValue = new Map(cases.map((c) => [c.data.value, c.data.expectation]));
     expect(byValue.get('John123')).toBe('valid');
     expect(byValue.get('N/A')).toBe('invalid');
     expect(byValue.get('null')).toBe('invalid');
     expect(byValue.get('A'.padEnd(1, 'A'))).toBe('invalid');
-    expect([...byValue.values()].filter((v) => v === 'observe').length).toBeGreaterThan(0);
+    // Per-country phone rule: judged with the PGS catalog for the case's country.
+    const indian = cases.filter(
+      (c) => c.data.field === 'phone' && (c.data as { country?: string }).country === 'IN',
+    );
+    expect(new Map(indian.map((c) => [c.data.value, c.data.expectation]))).toEqual(
+      new Map([
+        ['9876543210', 'valid'],
+        ['+919876543210', 'valid'],
+        ['+929876543210', 'valid'],
+        ['987654321', 'invalid'],
+      ]),
+    );
     expect(cases.every((c) => c.data.field !== 'loyalty_id')).toBe(true);
     expect(regexCases.bankForMid('paysafe_payfac_mid', ['paysafe', 'paysafe_payfac'])).toBe(
       'paysafe_payfac',

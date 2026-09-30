@@ -37,7 +37,12 @@ module.exports = tseslint.config(
       'playwright/expect-expect': [
         'warn',
         {
-          assertFunctionNames: ['expectApiError', 'expectRequiredFields', 'verifyFieldExpectation'],
+          assertFunctionNames: [
+            'expectApiError',
+            'expectRequiredFields',
+            'verifyFieldExpectation',
+            'refundAndVerify',
+          ],
         },
       ],
       // Fixtures use Playwright's `use` callback, not React hooks.

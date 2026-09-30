@@ -19,11 +19,23 @@ export const Endpoints = {
     /** PSP request/response + bank transaction for one purchase. */
     bankTransaction: '/trans/getBankTrans',
     fieldValidationRules: '/admin/getFieldValidationRules',
+    /** Webhooks PGS sent to the merchant for a purchase (Transaction log → Webhook out). */
+    merchantWebhooks: '/admin/getWebhookResponse',
+    /** Webhooks PGS received from PSPs (PSP Webhook log → Webhook in). */
+    pspWebhooks: '/admin/pspWebhookLog/data',
+    /** Purchase with refund history (Reports → transaction → refunds). */
+    /** Merchant → KYC configuration: `{ bankMidId }` of the KYC provider MID (null = KYC off). */
+    kycConfig: '/admin/getKycConfig',
+    /** KYC provider MIDs (Sumsub …) selectable in the KYC configuration. */
+    kycMids: '/admin/getPaymentBankMIDForKYC',
+    refundDetails: (purchaseId: string) => `/trans/getPurchaseRefundDetails/${encode(purchaseId)}`,
   },
   purchases: {
     /** Trailing slash is part of the contract. */
     collection: '/v1/purchases/',
     byId: (purchaseId: string) => `/v1/purchases/${encode(purchaseId)}/`,
+    /** GET = full refund, POST {amount, reason} = partial (or full) refund. */
+    refund: (purchaseId: string) => `/v1/purchases/${encode(purchaseId)}/refund`,
   },
   payments: {
     collection: '/v1/payments',

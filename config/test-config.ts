@@ -29,6 +29,16 @@ const BLOCKED_HOST_LABELS = new Set(['prod', 'production', 'prd', 'live']);
 
 export { ConfigurationError };
 
+function readIntEnv(name: string): number | undefined {
+  const raw = readEnv(name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new ConfigurationError(`${name} must be a positive whole number (dashboard merchant ID).`);
+  }
+  return value;
+}
+
 function isSupportedEnvironment(value: string): value is TestEnvironment {
   return (SUPPORTED_ENVIRONMENTS as readonly string[]).includes(value);
 }
@@ -153,6 +163,8 @@ export function getTestConfig(): TestConfig {
     }),
     merchant: Object.freeze({
       brandId: selected?.credentials.brandId ?? readFirstEnv(`${prefix}_BRAND_ID`, 'BRAND_ID'),
+      id: selected?.credentials.merchant?.id ?? readIntEnv(`${prefix}_MERCHANT_ID`),
+      name: selected?.credentials.merchant?.name,
       paymentMethod,
       currency: readEnv('RUN_CURRENCY')?.toUpperCase(),
       expectedBank: readEnv('RUN_BANK'),
@@ -169,6 +181,12 @@ export function getTestConfig(): TestConfig {
         selected?.credentials.dashboard?.username ?? readEnv(`${prefix}_DASHBOARD_USERNAME`),
       password:
         selected?.credentials.dashboard?.password ?? readEnv(`${prefix}_DASHBOARD_PASSWORD`),
+    }),
+    kyc: Object.freeze({
+      country: (readEnv('KYC_COUNTRY') ?? 'US').toUpperCase(),
+      secondApiKey: readEnv(`${prefix}_KYC_API_KEY_2`)?.replace(/^bearer\s+/i, ''),
+      secondBrandId: readEnv(`${prefix}_KYC_BRAND_ID_2`),
+      callbackUrl: readEnv('KYC_CALLBACK_URL'),
     }),
     profile:
       selected === undefined

@@ -25,6 +25,30 @@ export class PurchaseApiClient extends BaseApiClient {
     });
   }
 
+  /**
+   * Partial (or full, when amount = total) refund – POST {amount, reason}.
+   * Both fields are mandatory for PGS; the body is sent as given so negative
+   * cases can leave one out. Makes a REAL refund.
+   */
+  refundPurchase(
+    purchaseId: string,
+    body: { readonly amount?: number | string; readonly reason?: string },
+    options: CallOptions = {},
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    return this.post<Record<string, unknown>>(Endpoints.purchases.refund(purchaseId), {
+      ...options,
+      data: body,
+    });
+  }
+
+  /** Full refund – GET /v1/purchases/{pid}/refund. Makes a REAL refund. */
+  fullRefundPurchase(
+    purchaseId: string,
+    options: CallOptions = {},
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    return this.get<Record<string, unknown>>(Endpoints.purchases.refund(purchaseId), options);
+  }
+
   getPurchase(
     purchaseId: string,
     options: CallOptions = {},

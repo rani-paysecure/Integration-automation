@@ -27,6 +27,7 @@ const { DashboardClient, DashboardError } = require('./dashboard');
 const caseImport = require('./test-case-import');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
+const ai = require('./ai-generate');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -361,7 +362,48 @@ function cardIdsFor(url, envOverride) {
 }
 
 function childEnvFor(env) {
-  return { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
+  const childEnv = { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
+  delete childEnv.ANTHROPIC_API_KEY; // tests never need it
+  return childEnv;
+}
+
+/** Everything the AI needs to know for one category (no secrets, no card numbers). */
+async function aiContext(category, env, profileId, bank) {
+  const settings = effectiveSettings();
+  const cards = settings.cards[env] || [];
+  const ctx = {
+    cards: cards.map((c) => ({
+      id: c.id,
+      label: c.label,
+      expectedOutcome: c.expectedOutcome,
+      expectedStatuses: c.expectedStatuses,
+      challenge: c.challenge,
+    })),
+    cardIds: cards.map((c) => c.id),
+    purchaseTemplate: settings.purchase[env],
+    existing: [],
+  };
+  if (category === 'field') {
+    for (const c of caseImport.builtinFieldCases()) {
+      const v = c.mutation?.type === 'set' ? JSON.stringify(c.mutation.value) : c.mutation?.type;
+      ctx.existing.push(`${c.path} = ${String(v).slice(0, 40)} → ${c.expectation}`);
+    }
+    for (const c of caseImport.loadCases('field')) ctx.existing.push(`${c.path} – ${c.title}`);
+  } else if (category === 'regex') {
+    if (!/^[\w .-]{1,80}$/.test(bank)) throw new HttpError(400, 'Choose a bank first');
+    const { client } = dashboardFor(env, profileId);
+    ctx.bank = bank;
+    ctx.country = settings.purchase[env]?.client?.country || 'AT';
+    ctx.rules = await fromDashboard(() => client.fieldRules(bank));
+    if (Object.keys(ctx.rules).length === 0)
+      throw new HttpError(400, `${bank} has no field regexes configured`);
+    for (const c of caseImport.loadCases('regex')) {
+      if (!c.bank || c.bank === bank) ctx.existing.push(`${c.field} = ${c.value}`);
+    }
+  } else {
+    for (const c of caseImport.loadCases(category)) ctx.existing.push(c.title);
+  }
+  return ctx;
 }
 
 /** Lists the tests of the flow projects (cached per environment for a short time). */
@@ -390,7 +432,7 @@ function listTests(env) {
           for (const spec of suite.specs || []) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
-            const key = tags.find((t) => /^@(FT-|FV-|RX-|PR-|EC-|card-|backoffice-smoke)/.test(t));
+            const key = tags.find((t) => /^@(FT-|FV-|RX-|PR-|EC-|RF-|card-|backoffice-smoke)/.test(t));
             if (!key) continue;
             tests.push({
               key,
@@ -532,6 +574,11 @@ function startRun(input) {
   }
   if (purchaseIds.length > 50) throw new HttpError(400, 'At most 50 purchase IDs per run');
   childEnv.PSP_PURCHASE_IDS = purchaseIds.join(',');
+  const refundPurchaseId = String(input.refundPurchaseId || '').trim();
+  if (refundPurchaseId && !/^[A-Za-z0-9_-]{6,64}$/.test(refundPurchaseId)) {
+    throw new HttpError(400, 'The purchase ID to refund may only contain letters, digits, "-" and "_"');
+  }
+  childEnv.REFUND_PURCHASE_ID = refundPurchaseId;
 
   const payWith = settings.cards[env].find((c) => c.id === payCard);
   childEnv.RUN_META = JSON.stringify({
@@ -753,7 +800,9 @@ const server = http.createServer(async (req, res) => {
         if (!/^[\w .-]{1,80}$/.test(bank)) throw new HttpError(400, 'Choose a bank');
         const { client } = dashboardFor(env, profileId);
         const rules = await fromDashboard(() => client.fieldRules(bank));
-        const generated = regexCases.casesForBank(bank, rules);
+        const generated = regexCases.casesForBank(bank, rules, {
+          country: effectiveSettings().purchase[env]?.client?.country,
+        });
         return send(res, 200, {
           bank,
           rules: generated.rules,
@@ -845,6 +894,27 @@ const server = http.createServer(async (req, res) => {
         );
       } catch (error) {
         throw new HttpError(400, error.message);
+      }
+    }
+    if (method === 'GET' && url.pathname === '/api/ai/status') {
+      return send(res, 200, ai.aiStatus());
+    }
+    if (method === 'POST' && url.pathname === '/api/test-cases/generate') {
+      const body = await readJson(req);
+      const category = String(body.category || '');
+      if (!caseImport.CATEGORIES[category]) throw new HttpError(400, 'Choose a category');
+      const env = String(body.env || '');
+      if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
+      const ctx = await aiContext(
+        category,
+        env,
+        String(body.profileId || ''),
+        String(body.bank || '').trim(),
+      );
+      try {
+        return send(res, 200, await ai.generateCases(category, body, ctx));
+      } catch (error) {
+        throw new HttpError(502, error.message);
       }
     }
     if (method === 'POST' && url.pathname === '/api/test-cases/append') {

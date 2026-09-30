@@ -7,7 +7,8 @@ import type { PspSummary } from '../helpers/psp-validation';
  * to, whether it is a positive or negative case, and Expected / Actual as
  * labelled lines instead of one long string.
  */
-export type CategoryId = 'field' | 'regex' | 'psp' | 'edge' | 'card' | 'psp-check' | 'other';
+export type CategoryId =
+  'field' | 'regex' | 'psp' | 'edge' | 'card' | 'refund' | 'psp-check' | 'other';
 export type Polarity = 'positive' | 'negative' | 'neutral';
 
 export interface ReportItem {
@@ -21,6 +22,7 @@ export const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   psp: 'PSP request / response',
   edge: 'Custom & edge cases',
   card: 'Card transactions',
+  refund: 'Refunds',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
 };
@@ -31,6 +33,7 @@ export function categoryOf(key: string): CategoryId {
   if (key.startsWith('@PR-')) return 'psp';
   if (key.startsWith('@EC-')) return 'edge';
   if (key.startsWith('@card-')) return 'card';
+  if (key.startsWith('@RF-')) return 'refund';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';
 }
@@ -90,6 +93,8 @@ function polarityOf(category: CategoryId, input: ClassifyInput): Polarity {
           : 'neutral';
     case 'psp':
       return 'positive';
+    case 'refund':
+      return /rejected|error/i.test(expected) ? 'negative' : 'positive';
     case 'edge':
     case 'card':
       return /success|PAID/i.test(expected) ? 'positive' : 'negative';
@@ -190,6 +195,18 @@ export function classify(input: ClassifyInput): Classification {
       label: 'PSP checks',
       value: `${String(psp.checks.filter((c) => c.passed).length)}/${String(psp.checks.length)} passed${psp.pspStatus ? ` · PSP status ${psp.pspStatus}` : ''}`,
     });
+    // Failed checks by name (masking, mapping, webhooks …) so the reader sees WHAT failed.
+    for (const check of psp.checks.filter((c) => !c.passed).slice(0, 8)) {
+      actualItems.push({ label: `✗ ${check.name}`, value: check.actual || '(empty)' });
+    }
+    for (const note of psp.notes.slice(0, 4)) actualItems.push({ label: 'Note', value: note });
+  }
+  actualItems.push(
+    ...item('Refund', values.refund),
+    ...item('Refund history', values['refund history']),
+  );
+  for (const note of (values.note ?? '').split('\n').filter(Boolean)) {
+    actualItems.push({ label: 'Note', value: note });
   }
 
   return {

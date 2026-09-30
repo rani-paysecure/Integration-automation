@@ -3,8 +3,14 @@ import type { BackofficeClient } from '../clients/backoffice-client';
 import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import { CashierPage, type RedirectUrls } from '../pages/cashier-page';
 import { currentDevice, deviceLabel } from '../pages/devices';
-import type { BankTransaction } from '../schemas/backoffice.schema';
+import type { BankTransaction, MerchantWebhook } from '../schemas/backoffice.schema';
 import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
+import {
+  merchantWebhookChecks,
+  pspWebhookChecks,
+  WEBHOOK_STATUSES,
+  type ComplianceResult,
+} from './psp-compliance';
 import { recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
 
 const FINAL_STATUS_TIMEOUT_MS = 90_000;
@@ -27,6 +33,8 @@ export interface TransactionInput {
   readonly redirects: RedirectUrls;
   readonly expectedBank?: string | undefined;
   readonly expectedMid?: string | undefined;
+  /** Purchase request that was sent – enables the purchase ↔ PSP mapping and webhook URL checks. */
+  readonly request?: object | undefined;
 }
 
 export interface TransactionResult {
@@ -75,6 +83,63 @@ async function waitForBankRecord(
     await sleep(3_000);
   }
   return undefined;
+}
+
+const WEBHOOK_WAIT_MS = 30_000;
+
+/** Merchant webhooks are sent asynchronously (webhook queue) – wait for the one of `status`. */
+export async function waitForMerchantWebhooks(
+  backoffice: BackofficeClient,
+  purchaseId: string,
+  status: string,
+  timeoutMs = WEBHOOK_WAIT_MS,
+): Promise<MerchantWebhook[]> {
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    const webhooks = await backoffice.getMerchantWebhooks(purchaseId);
+    const found = webhooks.some(
+      (w) => (w.transactionStatus ?? '').toLowerCase() === status.toLowerCase(),
+    );
+    if (found || Date.now() > until) return webhooks;
+    await sleep(3_000);
+  }
+}
+
+/** Callback PGS uses for a status (PurchaseService.callWebhook); other statuses use the dashboard URL. */
+export function callbackFor(status: string, request: object | undefined): string | undefined {
+  const s = status.toLowerCase();
+  const pick = (key: string): string | undefined => {
+    const value = (request as Record<string, unknown> | undefined)?.[key];
+    return typeof value === 'string' && value !== '' ? value : undefined;
+  };
+  if (['paid', 'partial_paid', 'over_paid'].includes(s)) return pick('success_callback');
+  if (['error', 'expired'].includes(s)) return pick('failure_callback');
+  return undefined;
+}
+
+/** Webhook in (PSP → PGS) and webhook out (PGS → merchant) for the final status. */
+export async function webhookResults(
+  backoffice: BackofficeClient,
+  purchaseId: string,
+  status: string,
+  options: {
+    readonly request?: object | undefined;
+    readonly pspTransId?: string | undefined;
+  },
+): Promise<ComplianceResult> {
+  const results: ComplianceResult[] = [];
+  if (WEBHOOK_STATUSES.has(status.toLowerCase())) {
+    const out = await waitForMerchantWebhooks(backoffice, purchaseId, status);
+    results.push(
+      merchantWebhookChecks(out, { status, callbackUrl: callbackFor(status, options.request) }),
+    );
+  }
+  const incoming = await backoffice.getPspWebhooks([purchaseId, options.pspTransId ?? '']);
+  results.push(pspWebhookChecks(incoming));
+  return {
+    checks: results.flatMap((r) => r.checks),
+    notes: results.flatMap((r) => r.notes),
+  };
 }
 
 /**
@@ -148,10 +213,23 @@ export async function executeTransaction(
       input.purchaseId,
       cashier.outcome === 'rejected' ? 1 : 6,
     );
-    const psp = summarizePsp(input.purchaseId, trx, bank, {
+    const summary = summarizePsp(input.purchaseId, trx, bank, {
       expectedBank: input.expectedBank,
       expectedMid: input.expectedMid,
+      request: input.request,
+      card: input.card,
     });
+    const webhooks = summary.attempted
+      ? await webhookResults(deps.backoffice, input.purchaseId, finalStatus, {
+          request: input.request,
+          pspTransId: bank?.paymentTransId,
+        })
+      : { checks: [], notes: [] };
+    const psp: PspSummary = {
+      ...summary,
+      checks: [...summary.checks, ...webhooks.checks],
+      notes: [...summary.notes, ...webhooks.notes],
+    };
     await recordPspResult(testInfo, psp, bank);
     return { cashier, finalStatus, psp, bank };
   });

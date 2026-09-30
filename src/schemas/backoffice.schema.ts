@@ -52,13 +52,64 @@ export const bankTransactionSchema = z.looseObject({
   currency: z.string().optional(),
   amt: z.union([z.number(), z.string()]).optional(),
   matchedRuleName: z.string().optional(),
+  /** Masked request of the payment call (Main.createPayload, transaction call). */
   paymentInfo: z.unknown().optional(),
+  /** Masked request of the refund call. */
+  cancelInfo: z.unknown().optional(),
   response: z.unknown().optional(),
+  allOtherRequest3ds: z.array(z.unknown()).optional(),
+  refundamt: z.union([z.number(), z.string()]).optional(),
   response3ds: z.array(z.unknown()).optional(),
   allOtherRequest: z.array(z.unknown()).optional(),
   beforeCasCading: z.array(z.unknown()).optional(),
   previousRetry: z.array(z.unknown()).optional(),
 });
 
+/** Webhook PGS sent to the merchant (GET /admin/getWebhookResponse?pid=…). */
+export const merchantWebhookSchema = z.looseObject({
+  purchaseId: z.string().optional(),
+  callback_url: z.string().optional(),
+  transactionStatus: z.string().optional(),
+  callTime: z.number().optional(),
+  /** "Successful", "Fail-<http code>", "Error", "Error-Processing". */
+  callStatus: z.string().optional(),
+  channel: z.string().optional(),
+});
+
+/**
+ * Refund history of a purchase (GET /trans/getPurchaseRefundDetails/<pid>).
+ * The raw answer is the whole purchase incl. customer PII – only these
+ * fields are kept.
+ */
+export const refundDetailsSchema = z.object({
+  status: z.string().optional(),
+  status_history: z
+    .array(z.looseObject({ status: z.string().optional(), timestamp: z.number().optional() }))
+    .optional(),
+  totalRefunded: z.number().nullish(),
+  refundable_amount: z.number().nullish(),
+  refund_availability: z.unknown().optional(),
+  refunds: z
+    .array(
+      z.looseObject({
+        refundId: z.string().nullish(),
+        amount: z.number().nullish(),
+        status: z.string().nullish(),
+        reason: z.string().nullish(),
+        createdOn: z.number().nullish(),
+      }),
+    )
+    .nullish(),
+});
+
+export type MerchantWebhook = z.infer<typeof merchantWebhookSchema>;
+export type RefundDetails = z.infer<typeof refundDetailsSchema>;
+/** PSP webhook received by PGS – headers and body are never kept (they hold signatures). */
+export interface PspWebhook {
+  readonly pspName: string;
+  /** consumed / Already_Consumed / zombied */
+  readonly status: string;
+  readonly receiveTime: string;
+}
 export type BackofficeTransaction = z.infer<typeof backofficeTransactionSchema>;
 export type BankTransaction = z.infer<typeof bankTransactionSchema>;

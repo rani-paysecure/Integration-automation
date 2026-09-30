@@ -1,5 +1,6 @@
 import type { BankTransaction } from '../schemas/backoffice.schema';
 import { maskSensitiveData } from '../utils/masking';
+import { looksMasked } from './psp-compliance';
 
 /**
  * Checks on fields of the PSP request / response recorded by the dashboard
@@ -7,7 +8,15 @@ import { maskSensitiveData } from '../utils/masking';
  * several calls (token, payment, inquiry…), so a field is searched at any
  * depth in every call; the check passes when ANY occurrence satisfies it.
  */
-export type PspCheckType = 'equals' | 'not equals' | 'contains' | 'matches' | 'present' | 'absent';
+export type PspCheckType =
+  | 'equals'
+  | 'not equals'
+  | 'contains'
+  | 'matches'
+  | 'present'
+  | 'absent'
+  /** Field is stored masked (***) wherever it appears – for card data, e-mail, phone. */
+  | 'masked';
 
 export interface PspFieldCheckInput {
   readonly source: 'request' | 'response';
@@ -126,6 +135,9 @@ export function evaluatePspFieldChecks(
       case 'absent':
         passed = bank !== undefined && present.length === 0;
         break;
+      case 'masked':
+        passed = values.length > 0 && values.every((v) => looksMasked(asText(v)));
+        break;
       case 'equals':
         passed = values.some((v) => sameValue(v, expectedValue));
         break;
@@ -142,7 +154,7 @@ export function evaluatePspFieldChecks(
       }
     }
     const shownExpected =
-      c.check === 'present' || c.check === 'absent'
+      c.check === 'present' || c.check === 'absent' || c.check === 'masked'
         ? c.check
         : `${c.check} ${reportable(c.field, expectedValue)}${expectedValue !== c.value ? ` (${c.value})` : ''}`;
     return { name: `${where} · ${c.field}`, passed, expected: shownExpected, actual };

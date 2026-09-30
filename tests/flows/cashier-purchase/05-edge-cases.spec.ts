@@ -56,6 +56,7 @@ test.describe(
               purchaseId: created.body.purchaseId,
               checkoutUrl: created.body.checkout_url,
               card: scenario.card,
+              request,
               redirects: {
                 success: envData.purchase.success_redirect,
                 failure: envData.purchase.failure_redirect,
