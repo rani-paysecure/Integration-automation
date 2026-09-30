@@ -4,16 +4,19 @@ import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import { CashierPage, type RedirectUrls } from '../pages/cashier-page';
 import { currentDevice, deviceLabel } from '../pages/devices';
 import type { BankTransaction, MerchantWebhook } from '../schemas/backoffice.schema';
-import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
+import type { CashierCard, CashierOutcome, CashierPaymentResult } from '../types/cashier.types';
 import {
   merchantWebhookChecks,
   pspWebhookChecks,
   WEBHOOK_STATUSES,
   type ComplianceResult,
 } from './psp-compliance';
+import { maskString } from '../utils/masking';
 import { recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
 
 const FINAL_STATUS_TIMEOUT_MS = 90_000;
+/** Added to the test timeout when the 3DS page re-opens and the OTP is entered again. */
+const RESHOWN_EXTRA_MS = 30_000;
 const PENDING = new Set([
   'CREATED',
   'VIEWED',
@@ -53,22 +56,26 @@ export interface TransactionDeps {
   readonly headed?: boolean;
 }
 
-async function waitForFinalStatus(api: PurchaseApiClient, purchaseId: string): Promise<string> {
-  let status = '';
+async function waitForFinalStatus(
+  api: PurchaseApiClient,
+  purchaseId: string,
+  seen: { status: string },
+  timeoutMs: number = FINAL_STATUS_TIMEOUT_MS,
+): Promise<string> {
   await expect
     .poll(
       async () => {
-        status = (await api.getPurchase(purchaseId)).body.status.toUpperCase();
-        return PENDING.has(status) ? 'pending' : 'final';
+        seen.status = (await api.getPurchase(purchaseId)).body.status.toUpperCase();
+        return PENDING.has(seen.status) ? 'pending' : 'final';
       },
       {
-        timeout: FINAL_STATUS_TIMEOUT_MS,
+        timeout: timeoutMs,
         intervals: [2_000, 3_000, 5_000],
         message: 'final purchase status',
       },
     )
     .toBe('final');
-  return status;
+  return seen.status;
 }
 
 /** The bank/PSP record is written asynchronously – give it a moment. */
@@ -135,7 +142,10 @@ export async function webhookResults(
     );
   }
   const incoming = await backoffice.getPspWebhooks([purchaseId, options.pspTransId ?? '']);
-  results.push(pspWebhookChecks(incoming));
+  // Reports → Transaction Log shows every webhook:IN; if it cannot be read the PSP webhook log decides.
+  const log = await backoffice.getTransactionLog(purchaseId).catch(() => undefined);
+  const loggedIn = log?.filter((entry) => entry.event === 'webhook:IN').length;
+  results.push(pspWebhookChecks(incoming, loggedIn));
   return {
     checks: results.flatMap((r) => r.checks),
     notes: results.flatMap((r) => r.notes),
@@ -162,6 +172,15 @@ export async function executeTransaction(
     const result = await cashierPage.pay(input.redirects, {
       challenge: input.card.challenge,
       headed: deps.headed ?? process.env.RUN_HEADED === '1',
+      // Never wait for a redirect longer than the test can still run (keeps room for the checks after).
+      timeBudget: () =>
+        testInfo.timeout > 0
+          ? Math.max(15_000, testInfo.timeout - testInfo.duration - 20_000)
+          : Infinity,
+      // Entering the OTP a second time needs extra time on top of the normal budget.
+      onChallengeReshown: () => {
+        if (testInfo.timeout > 0) testInfo.setTimeout(testInfo.timeout + RESHOWN_EXTRA_MS);
+      },
     });
     await testInfo.attach('after-pay.png', {
       body: await page.screenshot(),
@@ -187,6 +206,32 @@ export async function executeTransaction(
       )
       .toBe(`${String(screen.width)}×${String(screen.height)}`);
   }
+  for (const item of cashier.reshownEvidence ?? []) {
+    const name = `otp-reopened-${String(item.attempt)}`;
+    if (item.screenshot) {
+      await testInfo.attach(`${name}.png`, { body: item.screenshot, contentType: 'image/png' });
+    }
+    await testInfo.attach(`${name}.json`, {
+      body: JSON.stringify(
+        {
+          attempt: item.attempt,
+          at: item.at,
+          pageUrl: maskString(item.pageUrl),
+          frameUrl: maskString(item.frameUrl),
+          text: maskString(item.text),
+        },
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    });
+  }
+  if (cashier.reshownEvidence?.length) {
+    testInfo.annotations.push({
+      type: 'otp page reopened',
+      description: `${String(cashier.reshownEvidence.length)}× after submit – artifacts: ${cashier.reshownEvidence.map((e) => `otp-reopened-${String(e.attempt)}.png/.json`).join(', ')}`,
+    });
+  }
   if (cashier.challenge) {
     testInfo.annotations.push({
       type: '3ds challenge',
@@ -200,10 +245,26 @@ export async function executeTransaction(
       (cashier.visitedPages.length ? ` (via ${cashier.visitedPages.join(', ')})` : ''),
   });
 
-  const finalStatus = await test.step('final purchase status', async () =>
-    cashier.outcome === 'rejected'
-      ? (await deps.purchaseApi.getPurchase(input.purchaseId)).body.status.toUpperCase()
-      : waitForFinalStatus(deps.purchaseApi, input.purchaseId));
+  const finalStatus = await test.step('final purchase status', async () => {
+    if (cashier.outcome === 'rejected') {
+      return (await deps.purchaseApi.getPurchase(input.purchaseId)).body.status.toUpperCase();
+    }
+    const seen = { status: '' };
+    // Stay inside the test timeout so a still-pending purchase is reported
+    // (last status seen) instead of the test being killed with no result.
+    const remaining =
+      testInfo.timeout > 0 ? testInfo.timeout - testInfo.duration - 5_000 : Infinity;
+    const budget = Math.max(5_000, Math.min(FINAL_STATUS_TIMEOUT_MS, remaining));
+    try {
+      return await waitForFinalStatus(deps.purchaseApi, input.purchaseId, seen, budget);
+    } catch (error) {
+      testInfo.annotations.push({
+        type: 'final status',
+        description: `${seen.status || 'unknown'} (not final after ${String(Math.round(budget / 1000))} s)`,
+      });
+      throw error;
+    }
+  });
   testInfo.annotations.push({ type: 'final status', description: finalStatus });
 
   return test.step('PSP request/response (back-office)', async () => {
@@ -233,6 +294,53 @@ export async function executeTransaction(
     await recordPspResult(testInfo, psp, bank);
     return { cashier, finalStatus, psp, bank };
   });
+}
+
+/**
+ * The 3DS page re-opened after the OTP was submitted (the OTP was entered
+ * again) and the purchase still ended as expected. That is an observation for
+ * the report, not a pass or a failure: the payment is fine, the bank page
+ * behaved unexpectedly. A wrong final status is still a failure.
+ */
+export function challengeReshownObserved(
+  result: TransactionResult,
+  expected: {
+    readonly outcome?: CashierOutcome | string | undefined;
+    readonly statuses?: readonly string[] | undefined;
+  },
+): boolean {
+  if (result.cashier.challengeReshown !== true) return false;
+  const statusGiven = expected.statuses !== undefined && expected.statuses.length > 0;
+  const statusOk = !statusGiven || (expected.statuses?.includes(result.finalStatus) ?? false);
+  const outcomeOk = expected.outcome === undefined || result.cashier.outcome === expected.outcome;
+  return statusOk && (outcomeOk || statusGiven);
+}
+
+/** Records the observation so the report shows OBSERVED with the reason. */
+export function markChallengeReshown(result: TransactionResult, testInfo: TestInfo): void {
+  const times = result.cashier.reshownEvidence?.length ?? 1;
+  testInfo.annotations.push(
+    { type: 'verdict', description: 'observe' },
+    {
+      type: 'error message',
+      description:
+        `3DS OTP page re-opened after submit (${String(times)}×), same OTP entered again → ` +
+        `cashier ${result.cashier.outcome}, final status ${result.finalStatus}`,
+    },
+  );
+  // PSP checks are not asserted for an observed case (the OTP was entered twice, which can
+  // affect them); the ones that did not pass stay visible in the report details.
+  const notMet = result.psp.checks.filter((check) => !check.passed);
+  if (notMet.length > 0) {
+    testInfo.annotations.push({
+      type: 'observed – checks not met',
+      description: notMet
+        .map(
+          (check) => `${check.name}: expected ${check.expected}, got ${check.actual || '(empty)'}`,
+        )
+        .join(' | '),
+    });
+  }
 }
 
 /** Soft-asserts every PSP check so all problems are reported together. */

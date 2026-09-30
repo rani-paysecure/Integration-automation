@@ -404,8 +404,7 @@ export function paymentInfoChecks(
   const leaves = pspLeaves(bank, ['paymentInfo']);
   const amounts = leaves.filter(
     (l) =>
-      /^(amount|amt|totalamount|transactionamount|value)$/.test(norm(l.key)) &&
-      !isMerchantLeaf(l),
+      /^(amount|amt|totalamount|transactionamount|value)$/.test(norm(l.key)) && !isMerchantLeaf(l),
   );
   const currencies = leaves.filter((l) => /^(currency|currencycode|curr)$/.test(norm(l.key)));
   const minor = Math.round(expectedAmount * 100);
@@ -537,9 +536,18 @@ export function merchantWebhookChecks(
   return { checks, notes };
 }
 
-/** PSP → PGS webhooks: when the PSP sent any, PGS must have consumed them. */
-export function pspWebhookChecks(webhooks: readonly PspWebhook[]): ComplianceResult {
-  if (webhooks.length === 0) {
+/**
+ * PSP → PGS webhooks (Webhook in): when the PSP sent any, they must be logged. Whether PGS
+ * consumed them is shown but not judged – a purchase that the redirect / the synchronous
+ * answer already completed does not consume the webhook (it stays e.g. `zombied`), and a
+ * PSP may post the same event to more than one webhook URL.
+ * `loggedIn` = number of `webhook:IN` lines in the Transaction Log (when it could be read).
+ */
+export function pspWebhookChecks(
+  webhooks: readonly PspWebhook[],
+  loggedIn?: number,
+): ComplianceResult {
+  if (webhooks.length === 0 && (loggedIn ?? 0) === 0) {
     return {
       checks: [],
       notes: [
@@ -547,16 +555,27 @@ export function pspWebhookChecks(webhooks: readonly PspWebhook[]): ComplianceRes
       ],
     };
   }
-  const bad = webhooks.filter((w) => !/^(already_)?consumed$/i.test(w.status));
+  const notConsumed = webhooks.filter((w) => !/^(already_)?consumed$/i.test(w.status));
   return {
     checks: [
       {
-        name: 'PSP webhook received and consumed',
-        passed: bad.length === 0,
-        expected: 'status consumed / Already_Consumed',
-        actual: webhooks.map((w) => `${w.pspName}: ${w.status}`).join(', '),
+        name: 'PSP webhook received (Webhook in)',
+        passed: true,
+        expected: 'webhook in logged for the purchase',
+        actual: [
+          loggedIn ? `${String(loggedIn)}× webhook:IN in Transaction Log` : '',
+          webhooks.length
+            ? `PSP webhook log: ${webhooks.map((w) => `${w.pspName}: ${w.status}`).join(', ')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
       },
     ],
-    notes: [],
+    notes: notConsumed.length
+      ? [
+          `Webhook in not consumed (${notConsumed.map((w) => `${w.pspName}: ${w.status}`).join(', ')}) – not judged: the redirect / synchronous answer already completed the purchase`,
+        ]
+      : [],
   };
 }
