@@ -816,6 +816,18 @@ const server = http.createServer(async (req, res) => {
       throw new HttpError(403, 'Invalid launcher token');
     }
 
+    // Branding images (logo, favicon) – only files that exist in tools/launcher/assets.
+    const asset = /^\/assets\/([a-z0-9-]+\.(?:png|svg))$/.exec(url.pathname);
+    if (method === 'GET' && asset) {
+      const file = path.join(__dirname, 'assets', asset[1]);
+      if (!fs.existsSync(file)) throw new HttpError(404, 'Not found');
+      res.writeHead(200, {
+        'content-type': CONTENT_TYPES[path.extname(file)],
+        'cache-control': 'max-age=3600',
+        'x-content-type-options': 'nosniff',
+      });
+      return fs.createReadStream(file).pipe(res);
+    }
     if (method === 'GET' && url.pathname === '/') {
       const html = fs.readFileSync(HTML_FILE, 'utf8').replace('__LAUNCHER_TOKEN__', TOKEN);
       return send(res, 200, html, 'text/html; charset=utf-8');
