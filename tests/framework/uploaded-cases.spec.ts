@@ -10,6 +10,7 @@ import { maskSensitiveData } from '@utils/masking';
 import {
   loadUploadedEdgeCases,
   loadUploadedFieldCases,
+  loadUploadedKycCases,
   loadUploadedPspCases,
   loadUploadedRegexCases,
 } from '@test-data/uploaded-cases/uploaded-cases';
@@ -220,8 +221,60 @@ test.describe('Uploaded test cases – import', () => {
     expect(cases[1]?.issues.join()).toContain('at least one expectation');
   });
 
+  test('KYC validation: customer, auth, request / customer changes and expectations', async () => {
+    const { cases } = await importer.previewImport(
+      'kyc',
+      csv([
+        [
+          'Test Case',
+          'Customer',
+          'Request Changes',
+          'Authentication',
+          'Expected HTTP',
+          'Expected Code',
+          'Expected KYC Status',
+          'Expected Message Contains',
+        ],
+        [
+          'Short link',
+          'New customer (merchant_cust_id)',
+          'link_ttl_minutes=5; country not sent; metadata.order=A1; customer.fullName="Ann Lee"; customer.phoneNo not sent',
+          '',
+          '400',
+          'country_required',
+          '',
+          'country',
+        ],
+        ['Bad brand', '', '', 'Brand not owned', '403', 'access_denied', '', ''],
+        ['Broken', 'Somebody', 'test=false', 'Maybe', 'ok', '', 'DONE', ''],
+      ]),
+      'kyc.csv',
+    );
+    expect(cases[0]?.data).toEqual({
+      title: 'Short link',
+      customer: 'by-merchant-id',
+      auth: 'valid',
+      set: { link_ttl_minutes: 5, 'metadata.order': 'A1' },
+      remove: ['country'],
+      customerSet: { fullName: 'Ann Lee' },
+      customerRemove: ['phoneNo'],
+      expected: { http: 400, code: 'country_required', messageContains: 'country' },
+    });
+    expect(cases[1]?.data).toMatchObject({
+      customer: 'new',
+      auth: 'other-brand',
+      expected: { http: 403 },
+    });
+    expect(cases[2]?.issues.join(' | ')).toMatch(
+      /Customer must be one of.*Authentication must be one of.*Expected HTTP.*Unknown KYC status.*"test" cannot be changed/,
+    );
+    expect(loadUploadedKycCases(path.join(os.tmpdir(), 'missing.json'))).toEqual([]);
+    const stored = writeCases({ cases: [{ id: 'KV-001', ...cases[1]?.data }] });
+    expect(loadUploadedKycCases(stored)[0]?.auth).toBe('other-brand');
+  });
+
   test('templates open again as valid uploads (examples parse cleanly)', async () => {
-    for (const category of ['field', 'regex', 'psp', 'edge']) {
+    for (const category of ['field', 'regex', 'psp', 'edge', 'kyc']) {
       const buffer = Buffer.from(await importer.templateBuffer(category, ['risk-rule-3ds-u']));
       const { cases } = await importer.previewImport(category, buffer, 'template.xlsx', [
         'risk-rule-3ds-u',

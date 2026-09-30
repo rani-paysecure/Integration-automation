@@ -236,6 +236,7 @@ function publicProfiles() {
           dashboardUsername: c.dashboard?.username || '',
           hasDashboardPassword: Boolean(c.dashboard?.password),
           merchant: c.merchant || null,
+          kyc: c.kyc || { enabled: false },
         },
       ]),
     ),
@@ -303,10 +304,20 @@ function saveProfile(input) {
             .slice(0, 120),
         }
       : existing?.merchant;
+  // KYC is merchant configuration (Merchant Details → Kyc Configuration): only a merchant with a
+  // KYC MID can run the KYC cases. The tester switch decides whether they are offered on the Run tab.
+  const kyc =
+    input.kycEnabled === undefined
+      ? existing?.kyc
+      : {
+          enabled: input.kycEnabled === true,
+          ...(input.kycEnabled === true && input.kycMid ? { mid: String(input.kycMid).slice(0, 120) } : {}),
+        };
   profile.environments[env] = {
     brandId,
     apiKey: apiKey || existingKey,
     ...(merchant ? { merchant } : {}),
+    ...(kyc ? { kyc } : {}),
     ...(dashboardUsername
       ? { dashboard: { username: dashboardUsername, password: keptPassword } }
       : {}),
@@ -414,8 +425,15 @@ function listTests(env) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      [PLAYWRIGHT_CLI, 'test', '--list', '--reporter=json', '--project=cashier-purchase'],
-      { cwd: ROOT, env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '' }, shell: false },
+      [
+        PLAYWRIGHT_CLI,
+        'test',
+        '--list',
+        '--reporter=json',
+        '--project=cashier-purchase',
+        '--project=kyc',
+      ],
+      { cwd: ROOT, env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '', KYC_INCLUDE_SLOW: '1' }, shell: false },
     );
     child.on('error', (error) =>
       reject(new HttpError(500, `Could not list tests: ${error.message}`)),
@@ -432,13 +450,33 @@ function listTests(env) {
           for (const spec of suite.specs || []) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
-            const key = tags.find((t) => /^@(FT-|FV-|RX-|PR-|EC-|RF-|card-|backoffice-smoke)/.test(t));
+            const key = tags.find((t) =>
+              /^@(FT-|FV-|RX-|PR-|EC-|RF-|KYC-|KV-|card-|backoffice-smoke)/.test(t),
+            );
             if (!key) continue;
+            // KYC and refund cases each form one group on the Run tab; the spec's section becomes a label.
+            const isKyc = /^@(KYC|KV)-/.test(key);
+            const isRefund = key.startsWith('@RF-');
+            const section = isKyc
+              ? String(group).replace(/^KYC verification › /, '')
+              : isRefund
+                ? /request validation/i.test(group)
+                  ? 'Request validation'
+                  : 'Refund flow'
+                : undefined;
             tests.push({
               key,
               title: spec.title,
-              group,
+              group: isKyc
+                ? 'KYC verification'
+                : isRefund
+                  ? 'Cashier purchase › 5. Refunds'
+                  : group,
+              ...(section ? { section } : {}),
               transaction: tags.includes('@transaction'),
+              // KYC: @slow waits minutes on the expiry poller, @sumsub drives the provider's UI.
+              slow: tags.includes('@slow'),
+              provider: tags.includes('@sumsub'),
               expectation:
                 tags
                   .find((t) => ['@accepted', '@rejected', '@observe', '@sanitized'].includes(t))
@@ -545,6 +583,14 @@ function startRun(input) {
     who = profile.name;
     brandId = creds.brandId;
     apiKeyHint = maskedKey(creds.apiKey);
+    const kycKeys = keys.filter((k) => /^@(KYC|KV)-/.test(k));
+    if (kycKeys.length > 0 && creds.kyc?.enabled !== true) {
+      throw new HttpError(
+        400,
+        `KYC is off for ${profile.name} (${prefix}) – ${kycKeys.length} KYC case(s) selected. ` +
+          'Enable KYC for this tester on the Testers tab (the merchant needs a KYC Bank MID in Merchant Details → Kyc Configuration), or unselect them.',
+      );
+    }
   } else {
     brandId = String(input.brandId || '').trim();
     const apiKey = String(input.apiKey || '').trim();
@@ -574,9 +620,14 @@ function startRun(input) {
   }
   if (purchaseIds.length > 50) throw new HttpError(400, 'At most 50 purchase IDs per run');
   childEnv.PSP_PURCHASE_IDS = purchaseIds.join(',');
+  // KYC @slow / @sumsub cases run when selected (the project skips them otherwise).
+  childEnv.KYC_INCLUDE_SLOW = '1';
   const refundPurchaseId = String(input.refundPurchaseId || '').trim();
   if (refundPurchaseId && !/^[A-Za-z0-9_-]{6,64}$/.test(refundPurchaseId)) {
-    throw new HttpError(400, 'The purchase ID to refund may only contain letters, digits, "-" and "_"');
+    throw new HttpError(
+      400,
+      'The purchase ID to refund may only contain letters, digits, "-" and "_"',
+    );
   }
   childEnv.REFUND_PURCHASE_ID = refundPurchaseId;
 
@@ -600,7 +651,7 @@ function startRun(input) {
   const args = [
     PLAYWRIGHT_CLI,
     'test',
-    `--project=${frameworkOnly ? 'framework' : 'cashier-purchase'}`,
+    ...(frameworkOnly ? ['--project=framework'] : ['--project=cashier-purchase', '--project=kyc']),
   ];
   if (!frameworkOnly) {
     const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));
@@ -784,6 +835,14 @@ const server = http.createServer(async (req, res) => {
         const { client } = dashboardFor(env, profileId);
         const merchants = await fromDashboard(() => client.merchants());
         return send(res, 200, { merchants: merchants.map((m) => ({ id: m.id, name: m.name })) });
+      }
+      if (what === 'kyc') {
+        const { client, creds } = dashboardFor(env, profileId);
+        if (!creds.merchant) {
+          throw new HttpError(400, 'Choose the merchant of this tester first (Load merchants)');
+        }
+        const setup = await fromDashboard(() => client.kycSetup(creds.merchant.id));
+        return send(res, 200, { merchant: creds.merchant.name, ...setup });
       }
       if (what === 'banks') {
         const { client } = dashboardFor(env, profileId);

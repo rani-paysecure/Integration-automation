@@ -451,6 +451,53 @@ or more earlier as **Settled purchase to refund**.
 user** – a run logs in once (shared by all workers, removed after the run) and **ends that user's
 browser session**. Use a dedicated automation dashboard user per QA to avoid being logged out.
 
+## KYC verification (`tests/flows/kyc`, project `kyc`)
+
+The former `paysecure-e2e` KYC suite, merged in as its own category. Launcher → Run → groups
+**KYC verification › …**; report category **KYC verification**. Manual test cases with the same
+IDs: [`docs/kyc-test-cases.md`](docs/kyc-test-cases.md); PGS rules: `docs/pgs-behaviour.md` § 6.
+
+```bash
+npm run test:kyc                      # API + hosted page (skips @slow and @sumsub)
+npm run test:kyc:all                  # + expiry poller (minutes) and the Sumsub WebSDK walk
+```
+
+| Group                        | Cases                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| 1 Create – happy path        | KYC-01, 02, 02a                                                                          |
+| 2 Reuse & idempotency        | KYC-04, 04a, 05, 05a, 05b, 06, 07a                                                       |
+| 3 Guards on existing records | KYC-07, 22a (`@slow`); 35a–d `fixme` (need an approved / rejected / resubmission record) |
+| 4 Validation & auth          | KYC-03, 08, 08a, 09, 10, 10a, 11a–e, 12, 12a                                             |
+| 5 Status read                | KYC-13, 13a–c, 14a; KYC-15 cross-merchant (needs a second merchant)                      |
+| 6 Customer KYC history       | KYC-16, 16a–c, 17, 17a, 18                                                               |
+| 7 Hosted verification page   | KYC-19, 19a, 19b, 21; KYC-22 (`@slow`)                                                   |
+| 8 Return from provider       | KYC-23, 23a, 23b, 24; **KYC-25 known PGS defect** (`test.fail()` – red until fixed)      |
+| 9 Provider webhook           | KYC-26, 26a, 27a, 27b, 28 (need the webhook secret); KYC-26b unsigned                    |
+| 10 Expiry (poller) `@slow`   | KYC-29, 30, 22b – need `kyc.poll.enabled=true` on the server                             |
+| 11 Merchant callbacks        | KYC-31a, 31b, 33, 33a; 31, 32, 32a `fixme` (need a sink + verdicts)                      |
+| 12 Sumsub WebSDK `@sumsub`   | KYC-34 – drives the provider's UI up to liveness                                         |
+| 20 Uploaded KYC validation   | KV-xxx from the Test cases tab (below)                                                   |
+
+**KYC on/off per tester:** KYC is merchant configuration, so each tester has a switch on the
+Testers tab – _KYC enabled for this merchant_ – with **Check dashboard** reading Merchant Details →
+Kyc Configuration (Bank MID) of the tester's merchant. Off = the KYC groups on the Run tab are greyed
+out ("KYC off for this tester") and a run with KYC cases is refused. One-off credentials may run them.
+
+**Merchant:** the tester profile's merchant must have a KYC provider MID (Dashboard → Merchant → KYC
+configuration) – otherwise every case fails fast with `kyc_not_enabled`. For another merchant set
+`LOCAL_KYC_API_KEY` / `LOCAL_KYC_BRAND_ID` (+ `LOCAL_KYC_MERCHANT_ID`) in `.env` – see `.env.example`.
+The webhook secret and provider name are read from that merchant's KYC configuration in the
+dashboard (or `LOCAL_KYC_WEBHOOK_SECRET` / `KYC_PROVIDER`); without them the signed webhook cases skip.
+Every create is sent with `test: true`; customers are created with complete dummy data (`E2E…` ids).
+
+**KYC validation category (Test cases tab, `KV-xxx`):** one row = one `POST /kyc/create`.
+Columns: Test Case · Customer (New customer / New customer (merchant_cust_id) / Unknown customer_id /
+Unknown merchant_cust_id / No customer id) · Request Changes (`country=GB; link_ttl_minutes=5;
+metadata.order=A1; country not sent; customer.fullName="Ann Lee"; customer.phoneNo not sent`) ·
+Authentication (Valid / No Authorization header / Key without Bearer / Unknown key / No Brand-Id /
+Brand not owned) · Expected HTTP · Expected Code · Expected KYC Status · Expected Message Contains.
+Upload a filled template or use **Generate with AI** like the other categories.
+
 ## Logging & sensitive data
 
 - Every request is logged as `METHOD url → status (ms)`; set `LOG_LEVEL=debug` for full

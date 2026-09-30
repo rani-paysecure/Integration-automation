@@ -123,7 +123,7 @@ export default class UiReportReporter implements Reporter {
 
     const key =
       test.tags.find((tag) =>
-        /^@(FT-|FV-|RX-|PR-|EC-|RF-|card-|psp-by-id|backoffice-smoke)/.test(tag),
+        /^@(FT-|FV-|RX-|PR-|EC-|RF-|KYC-|KV-|card-|psp-by-id|backoffice-smoke)/.test(tag),
       ) ?? test.id;
     const pspFieldChecks = (parseJson(values[PSP_FIELD_CHECKS_ANNOTATION]) ??
       []) as PspFieldCheckResult[];
@@ -131,6 +131,12 @@ export default class UiReportReporter implements Reporter {
       maskString(stripAnsi(e.message ?? e.value ?? '')).slice(0, 4000),
     );
 
+    // test.fail(): a known defect that is expected to fail – reported red, and labelled.
+    if (test.expectedStatus === 'failed') {
+      values.note = [values.note, 'Known defect – marked test.fail(); red until the bug is fixed']
+        .filter(Boolean)
+        .join('\n');
+    }
     let verdict = 'PASS';
     if (result.status === 'skipped') verdict = 'SKIPPED';
     else if (result.status !== 'passed') verdict = 'FAIL';
@@ -170,7 +176,14 @@ export default class UiReportReporter implements Reporter {
     ]);
     const rest = Object.fromEntries(Object.entries(values).filter(([type]) => !hidden.has(type)));
 
-    const classification = classify({ key, values, fieldCase, fieldResult, psp, pspFieldChecks });
+    const classification = classify({
+      key,
+      values: { ...values, title: test.title },
+      fieldCase,
+      fieldResult,
+      psp,
+      pspFieldChecks,
+    });
 
     this.rows.set(test.id, {
       ...classification,

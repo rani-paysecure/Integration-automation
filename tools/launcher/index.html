@@ -340,7 +340,7 @@
         <section>
           <h2>Tester profiles</h2>
           <p class="hint">Stored only on this computer in <span class="mono">profiles.local.json</span> (never committed). Keys and passwords are never shown again after saving.</p>
-          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th>Merchant</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
+          <table><thead><tr><th>Name</th><th>Brand ID</th><th>API key</th><th>Dashboard</th><th>Merchant</th><th>KYC</th><th></th></tr></thead><tbody id="profileRows"></tbody></table>
           <div class="row"><button id="newProfile" type="button">+ New tester</button></div>
         </section>
         <section>
@@ -355,6 +355,12 @@
           </div>
           <label for="pMerchant">Merchant <span class="hint">(its Limits/Charges routing gives currency, payment method and MID on the Run tab)</span></label>
           <div style="display: flex; gap: 8px"><select id="pMerchant"><option value="">Save the dashboard login, then load merchants</option></select><button id="loadMerchants" class="small" type="button" style="white-space: nowrap">Load merchants</button></div>
+          <label>KYC verification <span class="hint">(merchant configuration: Merchant Details → Kyc Configuration → Bank MID)</span></label>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+            <label class="check" style="margin: 0"><input id="pKyc" type="checkbox" /> KYC enabled for this merchant – offer the KYC cases on the Run tab</label>
+            <button id="checkKyc" class="small" type="button" style="white-space: nowrap">Check dashboard</button>
+          </div>
+          <div class="hint" id="pKycInfo"></div>
           <div class="row">
             <button id="saveProfile" class="primary" type="button">Save tester</button>
             <button id="deleteProfile" class="danger hidden" type="button">Delete</button>
@@ -673,6 +679,7 @@
         const c = profile?.environments[state.env];
         $('credSummary').textContent = c ? `Brand ID ${c.brandId} · API key ${c.apiKeyHint}${c.dashboardUsername ? ` · dashboard ${c.dashboardUsername}` : ' · no dashboard login'}` : '';
         loadRouting();
+        if (state.tests) renderCatalog();
       }
       // ── bank → MID → currency / payment method (from the dashboard) ───────
       function fill(select, items, placeholder, preferred) {
@@ -770,22 +777,37 @@
         const q = $('testSearch').value.trim().toLowerCase();
         return state.tests.filter((t) => !q || `${t.key} ${t.title} ${t.group}`.toLowerCase().includes(q));
       }
+      const isKycKey = (key) => /^@(KYC|KV)-/.test(key);
+      /** KYC cases only for a tester whose merchant has KYC enabled (Testers tab); one-off credentials: allowed. */
+      function kycAllowed() {
+        const value = $('runProfile')?.value;
+        if (!value || value === CUSTOM) return true;
+        const p = state.options?.profiles?.find((x) => x.id === value);
+        return Boolean(p?.environments?.[state.env]?.kyc?.enabled);
+      }
       function renderCatalog() {
         const box = $('catalog'); box.replaceChildren();
+        const kycOk = kycAllowed();
+        if (!kycOk) for (const k of [...state.selected]) if (isKycKey(k)) state.selected.delete(k);
         const groups = new Map();
         for (const t of visibleTests()) { if (!groups.has(t.group)) groups.set(t.group, []); groups.get(t.group).push(t); }
         for (const [group, tests] of groups) {
           const all = tests.every((t) => state.selected.has(t.key));
-          const head = el('input', { type: 'checkbox', checked: all, onchange: () => { for (const t of tests) head.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderCatalog(); } });
+          const locked = !kycOk && tests.every((t) => isKycKey(t.key));
+          const head = el('input', { type: 'checkbox', checked: all && !locked, disabled: locked, onchange: () => { for (const t of tests) if (kycOk || !isKycKey(t.key)) head.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderCatalog(); } });
           const details = el('details', { open: tests.length <= 12 || $('testSearch').value !== '' },
 
-            el('summary', {}, head, ` ${group} `, el('span', { class: 'hint' }, `(${tests.filter((t) => state.selected.has(t.key)).length}/${tests.length})`)));
+            el('summary', {}, head, ` ${group} `, el('span', { class: 'hint' }, locked ? '(KYC off for this tester)' : `(${tests.filter((t) => state.selected.has(t.key)).length}/${tests.length})`)));
+          if (locked) details.append(el('div', { class: 'empty-group' }, el('span', { class: 'hint' }, 'KYC is off for this tester – enable it on the Testers tab (the merchant needs a KYC Bank MID in Merchant Details → Kyc Configuration).')));
           for (const t of tests) {
-            const box2 = el('input', { type: 'checkbox', checked: state.selected.has(t.key), onchange: () => { box2.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderSelectionState(); } });
+            const box2 = el('input', { type: 'checkbox', checked: state.selected.has(t.key), disabled: !kycOk && isKycKey(t.key), onchange: () => { box2.checked ? state.selected.add(t.key) : state.selected.delete(t.key); saveSelection(); renderSelectionState(); } });
             const tags = [];
             if (t.expectation) tags.push(el('span', { class: `tag ${t.expectation}` }, t.expectation));
+            if (t.section) tags.push(el('span', { class: 'tag', title: 'Section of the KYC suite' }, t.section.replace(/^\d+\.\s*/, '').replace(/\s@\w+/g, '')));
             if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
-            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '')), ...tags));
+            if (t.slow) tags.push(el('span', { class: 'tag transaction', title: 'Waits several minutes on the KYC expiry poller' }, 'slow'));
+            if (t.provider) tags.push(el('span', { class: 'tag transaction', title: "Drives the provider's own UI – may break when Sumsub changes it" }, 'provider UI'));
+            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
           }
           details.dataset.group = group;
           box.append(details);
@@ -793,7 +815,7 @@
         // Uploaded categories without cases still show – inside their suite group when it exists
         // (e.g. PSP cases belong to "3. PSP request/response validation"), otherwise as their own row.
         if (!$('testSearch').value) {
-          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases' };
+          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases', kyc: 'KYC verification' };
           for (const c of state.categories || []) {
             if (c.cases.length > 0 || c.id === 'field') continue;
             const go = el('button', { type: 'button', class: 'small' }, 'Add cases →');
@@ -801,7 +823,7 @@
             const hint = el('div', { class: 'empty-group' }, el('span', { class: 'hint' }, `No uploaded ${c.prefix}-xxx cases yet – add them on the Test cases tab.`), go);
             const home = [...box.querySelectorAll('details')].find((d) => d.dataset.group?.endsWith(GROUP_OF[c.id]));
             if (home) home.append(hint);
-            else box.append(el('div', { class: 'empty-group standalone' }, el('b', {}, `Cashier purchase › ${GROUP_OF[c.id]}`), ...hint.childNodes));
+            else box.append(el('div', { class: 'empty-group standalone' }, el('b', {}, c.id === 'kyc' ? GROUP_OF[c.id] : `Cashier purchase › ${GROUP_OF[c.id]}`), ...hint.childNodes));
           }
         }
         if (!groups.size && !box.childElementCount) box.append(el('p', { class: 'hint' }, 'No test cases match.'));
@@ -876,12 +898,12 @@
         return td;
       }
       // ── report view ─────────────────────────────────────────────────────────
-      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'psp-check', 'other'];
-      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'kyc', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
       const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
       function categoryFromKey(key) {
         if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
-        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
       }
       /** Older reports have no category / items – derive what we can. */
       function normaliseRow(t) {
@@ -902,7 +924,7 @@
       function reportCard(t) {
         const card = el('div', { class: `rcard ${t.verdict}` });
         const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
-        const title = t.title.replace(/^(FT|FV|RX|PR|EC)-\S+\s/, '');
+        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '');
         const head = el('div', { class: 'rcard-head' },
           el('span', { class: `badge-v ${t.verdict}` }, VERDICT_TEXT[t.verdict] || t.verdict),
           ...(caseId ? [el('span', { class: 'case-id' }, caseId)] : []),
@@ -1003,9 +1025,10 @@
             el('td', {}, p.name), el('td', { class: 'mono' }, c ? c.brandId : '—'), el('td', { class: 'mono' }, c ? c.apiKeyHint : '—'),
             el('td', {}, c?.dashboardUsername ? `${c.dashboardUsername}${c.hasDashboardPassword ? ' ✓' : ''}` : '—'),
             el('td', {}, c?.merchant ? c.merchant.name : '—'),
+            el('td', {}, c?.kyc?.enabled ? `On${c.kyc.mid ? ` · ${c.kyc.mid}` : ''}` : 'Off'),
             el('td', {}, el('button', { class: 'small', type: 'button', textContent: 'Edit', onclick: () => editProfile(p.id) }))));
         }
-        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 6, class: 'hint' }, 'No testers yet.')));
+        if (!state.options.profiles.length) rows.append(el('tr', {}, el('td', { colSpan: 7, class: 'hint' }, 'No testers yet.')));
         editProfile(state.editingProfile);
       }
       function editProfile(id) {
@@ -1020,6 +1043,8 @@
         $('pDashHint').textContent = c?.hasDashboardPassword ? 'saved' : '';
         const m = c?.merchant;
         $('pMerchant').replaceChildren(m ? option(String(m.id), m.name) : option('', c?.hasDashboardPassword ? 'Click "Load merchants"' : 'Save the dashboard login, then load merchants'));
+        $('pKyc').checked = Boolean(c?.kyc?.enabled); state.kycMid = c?.kyc?.mid || '';
+        $('pKycInfo').textContent = c?.kyc?.enabled ? `Enabled${c.kyc.mid ? ` – Bank MID ${c.kyc.mid}` : ''}.` : 'Off – KYC cases are not offered for this tester.';
         $('deleteProfile').classList.toggle('hidden', !p); $('profileMsg').textContent = '';
       }
       async function saveProfile() {
@@ -1027,7 +1052,8 @@
           const { id, profiles } = await api('/api/profiles', { method: 'POST', body: JSON.stringify({
             id: state.editingProfile || undefined, name: $('pName').value, env: state.env, brandId: $('pBrand').value, apiKey: $('pKey').value,
             dashboardUsername: $('pDashUser').value, dashboardPassword: $('pDashPass').value,
-            merchantId: $('pMerchant').value, merchantName: $('pMerchant').selectedOptions[0]?.textContent || '' }) });
+            merchantId: $('pMerchant').value, merchantName: $('pMerchant').selectedOptions[0]?.textContent || '',
+            kycEnabled: $('pKyc').checked, kycMid: $('pKyc').checked ? state.kycMid || '' : '' }) });
           state.options.profiles = profiles; state.editingProfile = id; renderProfiles(); renderRunProfiles();
           say('profileMsg', `Saved for ${state.env.toUpperCase()}.`);
         } catch (error) { say('profileMsg', error.message, false); }
@@ -1042,6 +1068,18 @@
           if (current) $('pMerchant').value = current;
           say('profileMsg', `${merchants.length} merchants loaded – pick the merchant of this brand and save.`);
         } catch (error) { say('profileMsg', error.message, false); }
+      }
+      /** Reads the merchant's Kyc Configuration from the dashboard and sets the switch accordingly (not saved yet). */
+      async function checkKyc() {
+        if (!state.editingProfile) { say('profileMsg', 'Save the tester with its dashboard login and merchant first.', false); return; }
+        $('pKycInfo').textContent = 'Reading Merchant Details → Kyc Configuration…';
+        try {
+          const r = await api(`/api/dashboard/kyc?env=${state.env}&profileId=${encodeURIComponent(state.editingProfile)}`);
+          $('pKyc').checked = r.enabled; state.kycMid = r.enabled ? [r.provider, r.mid].filter(Boolean).join(' - ') : '';
+          $('pKycInfo').textContent = r.enabled
+            ? `Dashboard: ${r.merchant} has KYC Bank MID ${state.kycMid}. Click "Save tester" to keep it.`
+            : `Dashboard: ${r.merchant} has no KYC Bank MID – select one in Merchant Details → Kyc Configuration, then check again. KYC cases would fail with kyc_not_enabled.`;
+        } catch (error) { $('pKycInfo').textContent = error.message; }
       }
       async function deleteProfile() {
         const b = $('deleteProfile');
@@ -1165,7 +1203,7 @@
       }
 
       // ── test cases (upload by category) ─────────────────────────────────────
-      const CASE_KEY = /^@(FT|FV|RX|PR|EC)-/;
+      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|KYC|KV)-/;
       function currentCategory() { return (state.categories || []).find((c) => c.id === state.category) || (state.categories || [])[0]; }
       async function readFileBase64(file) {
         const bytes = new Uint8Array(await file.arrayBuffer()); let bin = '';
@@ -1278,6 +1316,7 @@
         regex: 'e.g. length boundaries, unicode names, forbidden characters',
         psp: 'e.g. amount and currency, order reference, billing address',
         edge: 'e.g. amount boundaries with the approved and 3DS cards',
+        kyc: 'e.g. auth headers, missing country / customer, link TTL and expiry values, incomplete customer data',
       };
       async function loadAiStatus() {
         try {
@@ -1317,10 +1356,10 @@
           renderCategories();
         } catch (error) { say('customMsg', error.message, false); }
       }
-      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'] };
+      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'], kyc: ['Customer · auth', 'Request changes', 'Expected'] };
       function renderCustom() {
         const c = currentCategory(); if (!c) return;
-        const cols = ['ID', 'Test case', ...LIST_COLUMNS[c.id], 'Source', ''];
+        const cols = ['ID', 'Test case', ...(LIST_COLUMNS[c.id] || ['Details', 'Changes', 'Expected']), 'Source', ''];
         $('customHead').replaceChildren(el('tr', {}, ...cols.map((h) => el('th', {}, h))));
         const body = $('customRows'); body.replaceChildren();
         $('customCount').textContent = String(c.cases.length);
@@ -1355,8 +1394,9 @@
         $('paymentMethod').addEventListener('change', renderRoute);
         $('refreshDash').addEventListener('click', async () => { await api('/api/dashboard/refresh', { method: 'POST' }); loadRouting(); });
         $('loadMerchants').addEventListener('click', loadMerchants);
+        $('checkKyc').addEventListener('click', checkKyc);
         $('testSearch').addEventListener('input', renderCatalog);
-        $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
+        $('selectVisible').addEventListener('click', () => { for (const t of visibleTests()) if (kycAllowed() || !isKycKey(t.key)) state.selected.add(t.key); state.selected.delete('@framework'); saveSelection(); renderCatalog(); });
         $('clearSelection').addEventListener('click', () => { state.selected.clear(); saveSelection(); renderCatalog(); });
         for (const input of document.querySelectorAll('#viewSwitch input')) input.addEventListener('change', () => setView(input.value));
         $('history').addEventListener('change', () => showReport($('history').value));

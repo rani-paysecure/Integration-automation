@@ -219,6 +219,24 @@ class DashboardClient {
     });
   }
 
+  /**
+   * KYC configuration of a merchant (Merchant Details → Kyc Configuration → Bank MID).
+   * Only the MID's id / provider / name leave this module – never its mid_auth_key.
+   */
+  async kycSetup(merchantId) {
+    const config = await this.getJson(`/admin/getKycConfig?mid=${encodeURIComponent(merchantId)}`);
+    const bankMidId = Number(config && config.bankMidId);
+    if (!Number.isInteger(bankMidId) || bankMidId <= 0) return { enabled: false };
+    const mids = await this.cached('kycMids', () => this.getJson('/admin/getPaymentBankMIDForKYC'));
+    const row = (Array.isArray(mids) ? mids : []).find((m) => Number(m.id) === bankMidId);
+    return {
+      enabled: true,
+      bankMidId,
+      provider: String((row && row.bankName) || '').trim(),
+      mid: String((row && (row.mid || row.mid_desc)) || '').trim(),
+    };
+  }
+
   /** Merchants with their allowed currencies / payment methods: [{ id, name, currencies, paymentMethods }] */
   merchants() {
     return this.cached('merchants', async () => {

@@ -88,6 +88,24 @@ export default defineConfig({
       },
     },
     {
+      // KYC module (/kyc/*): API cases need no browser; the hosted page and the
+      // Sumsub WebSDK cases open Chrome. Provider calls are synchronous (Sumsub: up
+      // to 3 hops at 60s read timeout), hence the longer test timeout.
+      name: 'kyc',
+      testDir: './tests/flows/kyc',
+      // @slow waits minutes on the expiry poller, @sumsub drives the provider's UI: only when asked
+      // (KYC_INCLUDE_SLOW=1 – set by the launcher, whose selection is explicit).
+      ...(process.env.KYC_INCLUDE_SLOW === '1' ? {} : { grepInvert: /@slow|@sumsub/ }),
+      timeout: Math.max(settings.timeouts.test, 90_000),
+      use: {
+        ...devices['Desktop Chrome'],
+        extraHTTPHeaders: { Accept: 'application/json' },
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+          : {}),
+      },
+    },
+    {
       name: 's2s-purchase',
       testDir: './tests/flows/s2s-purchase',
     },

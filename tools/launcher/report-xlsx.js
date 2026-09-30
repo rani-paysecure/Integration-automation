@@ -9,7 +9,17 @@
 
 const ExcelJS = require('exceljs');
 
-const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'psp-check', 'other'];
+const CATEGORY_ORDER = [
+  'field',
+  'regex',
+  'psp',
+  'edge',
+  'card',
+  'refund',
+  'kyc',
+  'psp-check',
+  'other',
+];
 const CATEGORY_NAMES = {
   field: 'Field validation',
   regex: 'Regex validation',
@@ -17,6 +27,7 @@ const CATEGORY_NAMES = {
   edge: 'Custom & edge cases',
   card: 'Card transactions',
   refund: 'Refunds',
+  kyc: 'KYC verification',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
 };
@@ -55,6 +66,7 @@ function categoryFromKey(key) {
   if (key.startsWith('@EC-')) return 'edge';
   if (key.startsWith('@card-')) return 'card';
   if (key.startsWith('@RF-')) return 'refund';
+  if (/^@(KYC|KV)-/.test(key)) return 'kyc';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';
 }
@@ -66,8 +78,8 @@ function normalise(t) {
     ...t,
     category,
     polarity: t.polarity || 'neutral',
-    caseId: /^@(FT|FV|RX|PR|EC)-/.test(t.key) ? t.key.slice(1) : '',
-    name: String(t.title).replace(/^(FT|FV|RX|PR|EC)-\S+\s/, ''),
+    caseId: /^@(FT|FV|RX|PR|EC|RF|KYC|KV)-/.test(t.key) ? t.key.slice(1) : '',
+    name: String(t.title).replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, ''),
     expectedItems: t.expectedItems?.length
       ? t.expectedItems
       : t.expected

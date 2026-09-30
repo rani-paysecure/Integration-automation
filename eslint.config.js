@@ -42,6 +42,8 @@ module.exports = tseslint.config(
             'expectRequiredFields',
             'verifyFieldExpectation',
             'refundAndVerify',
+            'expectKycError',
+            'expectRecordShape',
           ],
         },
       ],

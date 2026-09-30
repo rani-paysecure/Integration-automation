@@ -6,6 +6,7 @@
  *   regex  → Regex validation          (RX-xxx)  value vs regex + API behaviour
  *   psp    → PSP request / response    (PR-xxx)  checks on what was sent to / received from the PSP
  *   edge   → Custom & edge cases       (EC-xxx)  end-to-end scenarios with an expected outcome
+ *   kyc    → KYC validation            (KV-xxx)  POST /kyc/create: request / customer / auth → HTTP, code, status
  *
  * Each category has its own template (download from the launcher), parser and
  * JSON file under tests/test-data/uploaded-cases/. Nothing is saved on preview.
@@ -169,6 +170,97 @@ const describeContext = (context) =>
         .map(([k, v]) => `${k}=${v}`)
         .join(', ')
     : '';
+
+// ── KYC ──────────────────────────────────────────────────────────────────────
+/** Who the KYC create is for (the customer is created first with complete dummy data). */
+const KYC_CUSTOMERS = {
+  'new customer': 'new',
+  'new customer (merchant_cust_id)': 'by-merchant-id',
+  'unknown customer_id': 'unknown-customer-id',
+  'unknown merchant_cust_id': 'unknown-merchant-id',
+  'no customer id': 'none',
+};
+/** Authentication variant of the request. */
+const KYC_AUTH = {
+  valid: 'valid',
+  'no authorization header': 'none',
+  'key without bearer': 'no-bearer',
+  'unknown key': 'invalid-key',
+  'no brand-id': 'no-brand',
+  'brand not owned': 'other-brand',
+};
+const KYC_STATUSES = [
+  'CREATED',
+  'AWAITING_USER',
+  'KYC_PENDING',
+  'KYC_IN_PROCESS',
+  'MANUAL_REVIEW',
+  'KYC_APPROVED',
+  'KYC_REJECTED',
+  'RESUBMISSION_REQUIRED',
+  'KYC_EXPIRED',
+  'KYC_FAILED',
+  'KYC_CANCELLED',
+];
+const KYC_NUMERIC = new Set(['link_ttl_minutes', 'kyc_expiry_in_minutes']);
+/** Customer record fields (POST /api/v1/customer, camelCase) – `customer.<field>` in Request Changes. */
+const KYC_CUSTOMER_FIELDS = [
+  'merchantCustomerId',
+  'fullName',
+  'emailId',
+  'phoneNo',
+  'dateOfBirth',
+  'address',
+  'city',
+  'stateCode',
+  'zipCode',
+  'country',
+];
+const labelOf = (map, id) => {
+  const label = Object.keys(map).find((k) => map[k] === id) || id;
+  return label.replace(/^./, (c) => c.toUpperCase());
+};
+
+/** "country=GB; link_ttl_minutes=5; customer.fullName not sent" → kyc body / customer changes. */
+function parseKycChanges(raw, issues) {
+  const body = { set: {}, remove: [] };
+  const customer = { set: {}, remove: [] };
+  for (const part of String(raw || '').split(/[;\n]/)) {
+    const text = part.trim();
+    if (!text) continue;
+    const notSent = /^([A-Za-z_][\w.]*)\s+(not sent|removed?|missing)$/i.exec(text);
+    const m = notSent ? null : /^([A-Za-z_][\w.]*)\s*=\s*(.*)$/.exec(text);
+    if (!notSent && !m) {
+      issues.push(`Cannot read "${text}" – use field=value or "field not sent"`);
+      continue;
+    }
+    const field = (notSent || m)[1];
+    const isCustomer = field.startsWith('customer.');
+    const name = isCustomer ? field.slice('customer.'.length) : field;
+    if (isCustomer && !KYC_CUSTOMER_FIELDS.includes(name)) {
+      issues.push(`Unknown customer field "${name}" – use ${KYC_CUSTOMER_FIELDS.join(', ')}`);
+      continue;
+    }
+    if (!isCustomer && name === 'test') {
+      issues.push('"test" cannot be changed – every KYC case runs with test=true');
+      continue;
+    }
+    const target = isCustomer ? customer : body;
+    if (notSent) {
+      target.remove.push(name);
+      continue;
+    }
+    const parsed = parseValue(m[2], name);
+    if (parsed.mutation.type === 'remove') target.remove.push(name);
+    else if (parsed.mutation.type === 'set') {
+      let value = parsed.mutation.value;
+      if (KYC_NUMERIC.has(name) && typeof value === 'string' && /^-?\d+$/.test(value))
+        value = Number(value);
+      target.set[name] = value;
+    }
+  }
+  return { body, customer };
+}
 
 // ── categories ─────────────────────────────────────────────────────────────────
 
@@ -519,6 +611,133 @@ const CATEGORIES = {
       ],
     ],
   },
+  kyc: {
+    label: 'KYC validation',
+    prefix: 'KV',
+    file: 'kyc-validation.json',
+    description:
+      'POST /kyc/create with a customer, request changes and an auth variant; the answer (HTTP, code, KYC status) must match. Runs with test=true.',
+    columns: [
+      {
+        key: 'title',
+        header: 'Test Case',
+        required: true,
+        width: 34,
+        aliases: ['scenario', 'title'],
+        guide: 'Short name of the case',
+        example: 'Lowercase country is accepted',
+      },
+      {
+        key: 'customer',
+        header: 'Customer',
+        required: false,
+        width: 30,
+        aliases: ['customer id', 'subject'],
+        options: Object.keys(KYC_CUSTOMERS).map((k) => k.replace(/^./, (c) => c.toUpperCase())),
+        guide:
+          'Empty = New customer (created first, sent as customer_id). (merchant_cust_id) sends the merchant id instead',
+        example: 'New customer',
+      },
+      {
+        key: 'changes',
+        header: 'Request Changes',
+        required: false,
+        width: 40,
+        aliases: ['changes', 'request'],
+        guide:
+          'KYC fields: country=GB; link_ttl_minutes=5; kyc_expiry_in_minutes=30; success_redirect=https://…; metadata.order=A1; "country not sent". Customer record: customer.fullName="Ann Lee"; customer.phoneNo not sent',
+        example: 'country=gb',
+      },
+      {
+        key: 'auth',
+        header: 'Authentication',
+        required: false,
+        width: 24,
+        aliases: ['auth', 'headers'],
+        options: Object.keys(KYC_AUTH).map((k) => k.replace(/^./, (c) => c.toUpperCase())),
+        guide: 'Empty = Valid (merchant key + Brand-Id)',
+        example: 'Valid',
+      },
+      {
+        key: 'http',
+        header: 'Expected HTTP',
+        required: true,
+        width: 14,
+        aliases: ['http', 'http status', 'status code'],
+        guide: 'HTTP status of the answer, e.g. 200, 400, 401, 403, 404, 409',
+        example: '200',
+      },
+      {
+        key: 'code',
+        header: 'Expected Code',
+        required: false,
+        width: 24,
+        aliases: ['code', 'error code'],
+        guide: 'Error code of a failure, e.g. country_required, customer_not_found, access_denied',
+        example: '',
+      },
+      {
+        key: 'status',
+        header: 'Expected KYC Status',
+        required: false,
+        width: 22,
+        aliases: ['kyc status'],
+        guide: 'Status of the record on success, e.g. AWAITING_USER (several allowed with /)',
+        example: 'AWAITING_USER',
+      },
+      {
+        key: 'message',
+        header: 'Expected Message Contains',
+        required: false,
+        width: 30,
+        aliases: ['message', 'error message'],
+        guide: 'Text that must appear in the message',
+        example: '',
+      },
+    ],
+    examples: [
+      [
+        'New customer gets a verification link',
+        'New customer',
+        '',
+        'Valid',
+        '200',
+        '',
+        'AWAITING_USER',
+        '',
+      ],
+      [
+        'Blank country is rejected',
+        'New customer',
+        'country="   "',
+        'Valid',
+        '400',
+        'country_required',
+        '',
+        '',
+      ],
+      [
+        'Unknown merchant customer id',
+        'Unknown merchant_cust_id',
+        '',
+        'Valid',
+        '404',
+        'customer_not_found',
+        '',
+        'merchant_cust_id',
+      ],
+      [
+        'Brand the key does not own',
+        'New customer',
+        '',
+        'Brand not owned',
+        '403',
+        'access_denied',
+        '',
+        '',
+      ],
+    ],
+  },
 };
 
 const categoryOf = (id) => {
@@ -842,7 +1061,85 @@ function parseEdgeRows(rows, get, cardIds) {
   return cases;
 }
 
+function parseKycRows(rows, get) {
+  const cases = [];
+  for (const { row, cells } of rows) {
+    const v = get(cells);
+    if (!v.title && !v.changes && !v.http) continue;
+    const issues = [];
+    const warnings = [];
+    if (!v.title) issues.push('Test Case is empty');
+    const customer = v.customer ? KYC_CUSTOMERS[norm(v.customer)] : 'new';
+    if (!customer) issues.push(`Customer must be one of: ${Object.keys(KYC_CUSTOMERS).join(', ')}`);
+    const auth = v.auth ? KYC_AUTH[norm(v.auth)] : 'valid';
+    if (!auth) issues.push(`Authentication must be one of: ${Object.keys(KYC_AUTH).join(', ')}`);
+    const http = Number(v.http);
+    if (!Number.isInteger(http) || http < 100 || http > 599)
+      issues.push('Expected HTTP must be a status code, e.g. 200 or 400');
+    const statuses = String(v.status || '')
+      .split(/[/,|]/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    const unknown = statuses.filter((s) => !KYC_STATUSES.includes(s));
+    if (unknown.length)
+      issues.push(`Unknown KYC status ${unknown.join(', ')} – use ${KYC_STATUSES.join(', ')}`);
+    if (statuses.length && http >= 300)
+      warnings.push('A KYC status is only returned on success (HTTP 200)');
+    if (!['new', 'by-merchant-id'].includes(customer || '') && /customer\./.test(v.changes || ''))
+      warnings.push('customer.* changes only apply when a new customer is created');
+    const changes = parseKycChanges(v.changes, issues);
+    const data = {
+      title: v.title,
+      customer: customer || 'new',
+      auth: auth || 'valid',
+      ...(Object.keys(changes.body.set).length ? { set: changes.body.set } : {}),
+      ...(changes.body.remove.length ? { remove: changes.body.remove } : {}),
+      ...(Object.keys(changes.customer.set).length ? { customerSet: changes.customer.set } : {}),
+      ...(changes.customer.remove.length ? { customerRemove: changes.customer.remove } : {}),
+      expected: {
+        http,
+        ...(v.code ? { code: v.code.trim() } : {}),
+        ...(statuses.length ? { statuses } : {}),
+        ...(v.message ? { messageContains: v.message } : {}),
+      },
+    };
+    cases.push({
+      rows: [row],
+      data,
+      display: [
+        v.title,
+        `${labelOf(KYC_CUSTOMERS, data.customer)} · ${labelOf(KYC_AUTH, data.auth)}`,
+        describeKycChanges(data) || 'Standard request',
+        describeKycExpected(data.expected),
+      ],
+      issues,
+      warnings,
+    });
+  }
+  return cases;
+}
+
+const describeKycChanges = (c) =>
+  [
+    ...Object.entries(c.set || {}).map(([k, val]) => `${k}=${JSON.stringify(val)}`),
+    ...(c.remove || []).map((k) => `${k} not sent`),
+    ...Object.entries(c.customerSet || {}).map(
+      ([k, val]) => `customer.${k}=${JSON.stringify(val)}`,
+    ),
+    ...(c.customerRemove || []).map((k) => `customer.${k} not sent`),
+  ].join('; ');
+const describeKycExpected = (e) =>
+  [
+    `HTTP ${e.http}`,
+    e.code,
+    (e.statuses || []).join(' / '),
+    e.messageContains ? `message contains "${e.messageContains}"` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
 const PARSERS = {
+  kyc: parseKycRows,
   field: parseFieldRows,
   regex: parseRegexRows,
   psp: parsePspRows,
@@ -853,6 +1150,7 @@ const PREVIEW_COLUMNS = {
   regex: ['Bank', 'Field', 'Test data', 'Expected'],
   psp: ['Test case', 'Card', 'Checks'],
   edge: ['Test case', 'Card', 'Request changes', 'Expected'],
+  kyc: ['Test case', 'Customer · auth', 'Request changes', 'Expected'],
 };
 
 // ── duplicates ─────────────────────────────────────────────────────────────────
@@ -876,6 +1174,16 @@ function signature(categoryId, c) {
       ]);
     case 'psp':
       return JSON.stringify([c.card || '', [...c.checks].map((x) => JSON.stringify(x)).sort()]);
+    case 'kyc':
+      return JSON.stringify([
+        c.customer,
+        c.auth,
+        c.set || {},
+        [...(c.remove || [])].sort(),
+        c.customerSet || {},
+        [...(c.customerRemove || [])].sort(),
+        c.expected,
+      ]);
     default:
       return JSON.stringify([c.card || '', c.set || {}, [...(c.remove || [])].sort(), c.expected]);
   }
@@ -1112,6 +1420,42 @@ function validateCase(categoryId, d) {
           };
         }),
       };
+    case 'kyc': {
+      const e = d.expected || {};
+      need(Object.values(KYC_CUSTOMERS).includes(d.customer), 'invalid customer');
+      need(Object.values(KYC_AUTH).includes(d.auth), 'invalid authentication');
+      need(Number.isInteger(e.http) && e.http >= 100 && e.http <= 599, 'invalid expected HTTP');
+      const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+      const list = (x) => (Array.isArray(x) ? x.filter((k) => PATH_RE.test(k)) : []);
+      const set = obj(d.set);
+      for (const k of Object.keys(set))
+        need(PATH_RE.test(k) && k !== 'test', `invalid field "${k}"`);
+      const customerSet = obj(d.customerSet);
+      for (const k of Object.keys(customerSet))
+        need(KYC_CUSTOMER_FIELDS.includes(k), `invalid customer field "${k}"`);
+      const customerRemove = list(d.customerRemove).filter((k) => KYC_CUSTOMER_FIELDS.includes(k));
+      return {
+        title: str(d.title, 200),
+        customer: d.customer,
+        auth: d.auth,
+        ...(Object.keys(set).length ? { set } : {}),
+        ...(list(d.remove).length ? { remove: list(d.remove) } : {}),
+        ...(Object.keys(customerSet).length ? { customerSet } : {}),
+        ...(customerRemove.length ? { customerRemove } : {}),
+        expected: {
+          http: e.http,
+          ...(e.code ? { code: str(e.code, 60) } : {}),
+          ...(Array.isArray(e.statuses) && e.statuses.length
+            ? {
+                statuses: e.statuses
+                  .map((x) => str(x, 40).toUpperCase())
+                  .filter((x) => KYC_STATUSES.includes(x)),
+              }
+            : {}),
+          ...(e.messageContains ? { messageContains: str(e.messageContains, 300) } : {}),
+        },
+      };
+    }
     default: {
       const outcomes = Object.values(CASHIER_RESULTS);
       const e = d.expected || {};
@@ -1170,6 +1514,12 @@ function summarize(categoryId, c) {
         c.checks
           .map((x) => `${x.source} · ${x.field} ${x.check}${x.value ? ` ${x.value}` : ''}`)
           .join('\n'),
+      ];
+    case 'kyc':
+      return [
+        `${labelOf(KYC_CUSTOMERS, c.customer)} · ${labelOf(KYC_AUTH, c.auth)}`,
+        describeKycChanges(c) || 'Standard request',
+        describeKycExpected(c.expected),
       ];
     default:
       return [
