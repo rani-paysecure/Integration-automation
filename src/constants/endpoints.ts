@@ -23,6 +23,8 @@ export const Endpoints = {
     merchantWebhooks: '/admin/getWebhookResponse',
     /** Webhooks PGS received from PSPs (PSP Webhook log → Webhook in). */
     pspWebhooks: '/admin/pspWebhookLog/data',
+    /** Reports → Transaction Log: every logged call of a purchase (`webhook:IN`, `webhook:OUT:paid`, …). */
+    transLog: '/admin/v2/getTransLog',
     /** Purchase with refund history (Reports → transaction → refunds). */
     /** Merchant → KYC configuration: `{ bankMidId }` of the KYC provider MID (null = KYC off). */
     kycConfig: '/admin/getKycConfig',

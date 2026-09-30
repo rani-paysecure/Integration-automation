@@ -151,9 +151,13 @@ test.describe('PSP compliance checks', () => {
       actual: 'no webhook sent',
     });
     expect(pspWebhookChecks([]).checks).toEqual([]);
-    expect(
-      pspWebhookChecks([{ pspName: 'x', status: 'zombied', receiveTime: '' }]).checks[0]?.passed,
-    ).toBe(false);
+    // Received is what counts – a webhook the redirect / sync answer made redundant stays unconsumed.
+    const zombied = pspWebhookChecks([{ pspName: 'x', status: 'zombied', receiveTime: '' }]);
+    expect(zombied.checks[0]?.passed).toBe(true);
+    expect(zombied.notes[0]).toContain('x: zombied');
+    const fromLog = pspWebhookChecks([], 2);
+    expect(fromLog.checks[0]).toMatchObject({ passed: true });
+    expect(fromLog.checks[0]?.actual).toContain('2× webhook:IN');
   });
 
   test('sheet check "masked"', () => {

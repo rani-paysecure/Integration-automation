@@ -46,6 +46,42 @@ async function findOtpInput(page: Page, ignoreHost: string): Promise<{ frame: Fr
   return undefined;
 }
 
+/** Set on the challenge document right before the OTP is submitted (see `findReshownChallenge`). */
+const ANSWERED_MARK = '__psOtpAnswered';
+
+async function markDocument(frame: Frame): Promise<void> {
+  // String expression: the project compiles without DOM types.
+  await frame.evaluate(`window.${ANSWERED_MARK} = true`).catch(() => undefined);
+}
+
+export interface ChallengePageSnapshot {
+  readonly frameUrl: string;
+  readonly text: string;
+}
+
+/**
+ * The challenge page is visible again in a NEW document: the one that was
+ * answered carries the mark, a reloaded / re-opened page does not. Comparing
+ * documents (instead of watching the input disappear) also catches a page that
+ * reloads faster than we poll.
+ */
+export async function findReshownChallenge(
+  page: Page,
+  cashierHost: string,
+): Promise<ChallengePageSnapshot | undefined> {
+  const found = await findOtpInput(page, cashierHost);
+  if (!found) return undefined;
+  const sameDocument = await found.frame
+    .evaluate(`window.${ANSWERED_MARK} === true`)
+    .catch(() => true);
+  if (sameDocument) return undefined;
+  const text = await found.frame
+    .locator('body')
+    .innerText({ timeout: 2_000 })
+    .catch(() => '');
+  return { frameUrl: found.frame.url(), text: text.trim().slice(0, 1_500) };
+}
+
 async function readOtpHint(frame: Frame): Promise<string> {
   const text = await frame
     .locator('body')
@@ -125,6 +161,7 @@ export async function watchForChallenge(
         };
       }
       const input = found.frame.locator(OTP_INPUT).first();
+      await markDocument(found.frame);
       await input.fill(otp);
       const pressed = await pressSubmit(found.frame, setting?.submit ?? '');
       return {
@@ -132,6 +169,7 @@ export async function watchForChallenge(
         host,
         action,
         detail: `OTP ${configured === '' ? 'read from the page' : 'from card settings'} entered, "${pressed}" pressed`,
+        answered: true,
       };
     }
     await page.waitForTimeout(POLL_MS).catch(() => undefined);

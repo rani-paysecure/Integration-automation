@@ -111,5 +111,12 @@ export interface PspWebhook {
   readonly status: string;
   readonly receiveTime: string;
 }
+/** One line of the Transaction Log – only the event label is kept (the text holds customer data). */
+export interface TransLogEntry {
+  /** Epoch seconds. */
+  readonly at: number;
+  /** e.g. `webhook:IN`, `webhook:OUT:paid`, `custRedirect`, `getPurchase:OUT`. */
+  readonly event: string;
+}
 export type BackofficeTransaction = z.infer<typeof backofficeTransactionSchema>;
 export type BankTransaction = z.infer<typeof bankTransactionSchema>;

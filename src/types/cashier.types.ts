@@ -24,6 +24,8 @@ export interface ChallengeResult {
   readonly action: 'none' | 'otp' | 'manual';
   /** e.g. "OTP entered, Submit pressed" / "completed by tester" / "not handled". */
   readonly detail: string;
+  /** The OTP was typed and submitted (not just shown). */
+  readonly answered?: boolean;
 }
 
 /** Where the cashier sent the customer after PAY. */
@@ -48,6 +50,22 @@ export interface CashierPaymentResult {
   readonly browserData?: BrowserData;
   /** Present when a 3DS challenge page was shown. */
   readonly challenge?: ChallengeResult;
+  /** The challenge page was opened again after the OTP was submitted. */
+  readonly challengeReshown?: boolean;
+  /** One entry per time the challenge page re-opened (screenshot + page details), for the report. */
+  readonly reshownEvidence?: readonly ReshownEvidence[];
+}
+
+/** What the re-opened 3DS challenge page looked like (attached to the test as artifacts). */
+export interface ReshownEvidence {
+  /** 1 = re-opened after the first OTP submit, 2 = after the re-entered OTP. */
+  readonly attempt: number;
+  readonly at: string;
+  readonly pageUrl: string;
+  readonly frameUrl: string;
+  /** Visible text of the challenge page. */
+  readonly text: string;
+  readonly screenshot?: Buffer;
 }
 
 /** A card scenario to run through the cashier, with its expected result. */

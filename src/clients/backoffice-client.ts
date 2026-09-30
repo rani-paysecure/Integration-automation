@@ -10,6 +10,7 @@ import {
   type BankTransaction,
   type MerchantWebhook,
   type PspWebhook,
+  type TransLogEntry,
   type RefundDetails,
 } from '../schemas/backoffice.schema';
 import { BaseApiClient, type BaseApiClientOptions } from './base-api-client';
@@ -22,6 +23,10 @@ export interface DashboardCredentials {
 
 const HTML = { accept: 'text/html,application/xhtml+xml' } as const;
 const DAY_SECONDS = 86_400;
+/** Transaction Log pages read per purchase (100 lines each). */
+const MAX_TRANS_LOG_PAGES = 5;
+/** Event label at the start of a Transaction Log line: `webhook:IN`, `webhook:OUT:paid`, `custRedirect`. */
+const TRANS_LOG_EVENT = /^[A-Za-z]+(?::(?:IN|OUT))?(?::[A-Za-z_]+)?/;
 
 /** Hidden `_csrf` input of the login form. */
 export function extractLoginCsrf(html: string): string | undefined {
@@ -83,6 +88,11 @@ export class BackofficeClient extends BaseApiClient {
     private readonly store: SessionStore = new MemorySessionStore(),
     /** Set when the configuration is incomplete – reported on first use. */
     private readonly configurationProblem?: string,
+    /**
+     * Separate session on the host that serves Reports → Transaction Log (the React
+     * dashboard is attached to staging; a test4 login cannot open that section).
+     */
+    private readonly transLogSource?: BackofficeClient,
   ) {
     super({
       ...options,
@@ -330,6 +340,40 @@ export class BackofficeClient extends BaseApiClient {
     if (!response.ok) throw new Error(`Dashboard ${path} failed with HTTP ${response.status}`);
     const body: unknown = response.body;
     return typeof body === 'object' && body !== null ? body : undefined;
+  }
+
+  /**
+   * Reports → Transaction Log for one purchase (`webhook:IN` = received from the PSP,
+   * `webhook:OUT:<status>` = sent to the merchant). Only the event label of each line is
+   * returned – the log text contains customer data.
+   */
+  async getTransactionLog(purchaseId: string, lookbackDays = 3): Promise<TransLogEntry[]> {
+    if (this.transLogSource !== undefined) {
+      return this.transLogSource.getTransactionLog(purchaseId, lookbackDays);
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const entries: TransLogEntry[] = [];
+    for (let pageNo = 1; pageNo <= MAX_TRANS_LOG_PAGES; pageNo++) {
+      const body = await this.getData(Endpoints.backoffice.transLog, {
+        pid: purchaseId,
+        pageNo,
+        pageSize: 100,
+        download: 'false',
+        from_seconds: now - lookbackDays * DAY_SECONDS,
+        to_seconds: now + 3_600,
+      });
+      const { data, totalPage } = (body ?? {}) as { data?: unknown; totalPage?: unknown };
+      if (!Array.isArray(data)) break;
+      for (const row of data as Record<string, unknown>[]) {
+        const text = typeof row.text === 'string' ? row.text : '';
+        entries.push({
+          at: typeof row.currentTime === 'number' ? row.currentTime : 0,
+          event: TRANS_LOG_EVENT.exec(text)?.[0] ?? '',
+        });
+      }
+      if (typeof totalPage !== 'number' || pageNo >= totalPage) break;
+    }
+    return entries;
   }
 
   /** Transaction log → Webhook out: every webhook PGS sent to the merchant for the purchase. */
