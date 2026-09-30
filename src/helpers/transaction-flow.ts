@@ -2,7 +2,6 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { BackofficeClient } from '../clients/backoffice-client';
 import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import { CashierPage, type RedirectUrls } from '../pages/cashier-page';
-<<<<<<< Updated upstream
 import { currentDevice, deviceLabel } from '../pages/devices';
 import type { BankTransaction, MerchantWebhook } from '../schemas/backoffice.schema';
 import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
@@ -12,10 +11,6 @@ import {
   WEBHOOK_STATUSES,
   type ComplianceResult,
 } from './psp-compliance';
-=======
-import type { BankTransaction } from '../schemas/backoffice.schema';
-import type { CashierCard, CashierOutcome, CashierPaymentResult } from '../types/cashier.types';
->>>>>>> Stashed changes
 import { recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
 
 const FINAL_STATUS_TIMEOUT_MS = 90_000;
@@ -58,41 +53,22 @@ export interface TransactionDeps {
   readonly headed?: boolean;
 }
 
-async function waitForFinalStatus(
-  api: PurchaseApiClient,
-  purchaseId: string,
-  seen: { status: string },
-  timeoutMs: number = FINAL_STATUS_TIMEOUT_MS,
-): Promise<string> {
+async function waitForFinalStatus(api: PurchaseApiClient, purchaseId: string): Promise<string> {
+  let status = '';
   await expect
     .poll(
       async () => {
-        seen.status = (await api.getPurchase(purchaseId)).body.status.toUpperCase();
-        return PENDING.has(seen.status) ? 'pending' : 'final';
+        status = (await api.getPurchase(purchaseId)).body.status.toUpperCase();
+        return PENDING.has(status) ? 'pending' : 'final';
       },
       {
-        timeout: timeoutMs,
+        timeout: FINAL_STATUS_TIMEOUT_MS,
         intervals: [2_000, 3_000, 5_000],
         message: 'final purchase status',
       },
     )
     .toBe('final');
-  return seen.status;
-}
-
-/** Polls the purchase for a short while; true as soon as it has a final status. */
-async function isPurchaseFinal(
-  api: PurchaseApiClient,
-  purchaseId: string,
-  timeoutMs: number,
-): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const status = (await api.getPurchase(purchaseId)).body.status.toUpperCase();
-    if (!PENDING.has(status)) return true;
-    if (Date.now() >= deadline) return false;
-    await sleep(2_000);
-  }
+  return status;
 }
 
 /** The bank/PSP record is written asynchronously – give it a moment. */
@@ -186,8 +162,6 @@ export async function executeTransaction(
     const result = await cashierPage.pay(input.redirects, {
       challenge: input.card.challenge,
       headed: deps.headed ?? process.env.RUN_HEADED === '1',
-      // Only asked when the 3DS page comes back after the OTP (see CashierPage.pay).
-      isSettled: () => isPurchaseFinal(deps.purchaseApi, input.purchaseId, 10_000),
     });
     await testInfo.attach('after-pay.png', {
       body: await page.screenshot(),
@@ -226,26 +200,10 @@ export async function executeTransaction(
       (cashier.visitedPages.length ? ` (via ${cashier.visitedPages.join(', ')})` : ''),
   });
 
-  const finalStatus = await test.step('final purchase status', async () => {
-    if (cashier.outcome === 'rejected') {
-      return (await deps.purchaseApi.getPurchase(input.purchaseId)).body.status.toUpperCase();
-    }
-    const seen = { status: '' };
-    // Stay inside the test timeout so a still-pending purchase is reported
-    // (last status seen) instead of the test being killed with no result.
-    const remaining =
-      testInfo.timeout > 0 ? testInfo.timeout - testInfo.duration - 5_000 : Infinity;
-    const budget = Math.max(5_000, Math.min(FINAL_STATUS_TIMEOUT_MS, remaining));
-    try {
-      return await waitForFinalStatus(deps.purchaseApi, input.purchaseId, seen, budget);
-    } catch (error) {
-      testInfo.annotations.push({
-        type: 'final status',
-        description: `${seen.status || 'unknown'} (not final after ${String(Math.round(budget / 1000))} s)`,
-      });
-      throw error;
-    }
-  });
+  const finalStatus = await test.step('final purchase status', async () =>
+    cashier.outcome === 'rejected'
+      ? (await deps.purchaseApi.getPurchase(input.purchaseId)).body.status.toUpperCase()
+      : waitForFinalStatus(deps.purchaseApi, input.purchaseId));
   testInfo.annotations.push({ type: 'final status', description: finalStatus });
 
   return test.step('PSP request/response (back-office)', async () => {
@@ -275,38 +233,6 @@ export async function executeTransaction(
     await recordPspResult(testInfo, psp, bank);
     return { cashier, finalStatus, psp, bank };
   });
-}
-
-/**
- * The 3DS page came back after the OTP, so the merchant redirect was never
- * seen, yet the purchase reached one of the expected final statuses. That is
- * an observation (the payment itself is fine), not a failed payment.
- */
-export function redirectMissedButSettled(
-  result: TransactionResult,
-  expected: {
-    readonly outcome?: CashierOutcome | string | undefined;
-    readonly statuses?: readonly string[] | undefined;
-  },
-): boolean {
-  return (
-    result.cashier.challengeReshown === true &&
-    expected.outcome !== undefined &&
-    result.cashier.outcome !== expected.outcome &&
-    expected.statuses !== undefined &&
-    expected.statuses.includes(result.finalStatus)
-  );
-}
-
-/** Records the observation so the report shows OBSERVED with the reason. */
-export function markRedirectObserved(result: TransactionResult, testInfo: TestInfo): void {
-  testInfo.annotations.push(
-    { type: 'verdict', description: 'observe' },
-    {
-      type: 'error message',
-      description: `Status ${result.finalStatus}; 3DS page shown again after OTP; no merchant redirect seen (${result.cashier.finalUrl})`,
-    },
-  );
 }
 
 /** Soft-asserts every PSP check so all problems are reported together. */

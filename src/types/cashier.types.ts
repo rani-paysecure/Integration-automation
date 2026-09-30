@@ -24,8 +24,6 @@ export interface ChallengeResult {
   readonly action: 'none' | 'otp' | 'manual';
   /** e.g. "OTP entered, Submit pressed" / "completed by tester" / "not handled". */
   readonly detail: string;
-  /** The OTP was typed and submitted (not just shown). */
-  readonly answered?: boolean;
 }
 
 /** Where the cashier sent the customer after PAY. */
@@ -50,8 +48,6 @@ export interface CashierPaymentResult {
   readonly browserData?: BrowserData;
   /** Present when a 3DS challenge page was shown. */
   readonly challenge?: ChallengeResult;
-  /** The challenge page came back after the OTP was submitted, so no merchant redirect was seen. */
-  readonly challengeReshown?: boolean;
 }
 
 /** A card scenario to run through the cashier, with its expected result. */
