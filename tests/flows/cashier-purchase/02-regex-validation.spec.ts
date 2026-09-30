@@ -1,6 +1,5 @@
 import { executeTransaction } from '@helpers/transaction-flow';
-import { expectRegexOutcome } from '@helpers/uploaded-case-checks';
-import { setPath } from '@utils/object';
+import { expectRegexOutcome, regexCaseRequest } from '@helpers/uploaded-case-checks';
 import { HttpStatus } from '@constants/http';
 import { expect, test } from '@fixtures/api.fixture';
 import { requireCaseCard } from '@test-data/cashier-purchase/cashier-cards';
@@ -33,10 +32,9 @@ test.describe(
             testConfig.transaction.payCardId,
           );
 
-          const request = setPath(
+          const { request, country } = regexCaseRequest(
             { ...buildPurchaseRequest(envData, merchant) },
-            regexCase.path,
-            regexCase.value,
+            regexCase,
           );
           const created = await purchaseApi.createPurchase(request);
           expect(created, 'The purchase must be created').toHaveStatus([
@@ -55,6 +53,7 @@ test.describe(
               purchaseId: created.body.purchaseId,
               checkoutUrl: created.body.checkout_url,
               card: scenario.card,
+              request,
               redirects: {
                 success: envData.purchase.success_redirect,
                 failure: envData.purchase.failure_redirect,
@@ -69,7 +68,7 @@ test.describe(
           const rules = await test.step('bank field regexes (dashboard)', () =>
             backoffice.getFieldValidationRules(regexCase.bank ?? usedBank));
 
-          expectRegexOutcome(regexCase, { usedBank, rules, bank: result.bank }, testInfo);
+          expectRegexOutcome(regexCase, { usedBank, country, rules, bank: result.bank }, testInfo);
         },
       );
     }

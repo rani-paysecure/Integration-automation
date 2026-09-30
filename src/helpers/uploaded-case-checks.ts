@@ -1,7 +1,9 @@
 import { expect, type TestInfo } from '@playwright/test';
 import type { BankTransaction } from '../schemas/backoffice.schema';
 import { maskSensitiveData } from '../utils/masking';
-import { compileBankRule, findSentValue } from './bank-regex';
+import { setPath } from '../utils/object';
+import { findSentValue } from './bank-regex';
+import { describePgsRule, evaluatePgsRule, pspLacksField } from './pgs-rules';
 import type { TransactionResult } from './transaction-flow';
 
 /**
@@ -15,6 +17,7 @@ export interface RegexCaseInput {
   readonly field: string;
   readonly value: string;
   readonly expectation: 'valid' | 'invalid' | 'observe' | 'auto';
+  readonly country?: string | undefined;
   readonly regex?: string | undefined;
 }
 
@@ -26,6 +29,8 @@ export function expectRegexOutcome(
   regexCase: RegexCaseInput,
   context: {
     readonly usedBank: string;
+    /** Customer country of the request (per-country rules). */
+    readonly country: string;
     readonly rules: Readonly<Record<string, string>>;
     readonly bank: BankTransaction | undefined;
   },
@@ -56,34 +61,46 @@ export function expectRegexOutcome(
   }
 
   const pattern = context.rules[regexCase.field];
-  const rule = pattern === undefined ? undefined : compileBankRule(pattern);
-  note('regex', pattern ?? `(no regex for ${regexCase.field} on this bank)`);
+  const country = regexCase.country ?? context.country;
+  const pgs =
+    pattern === undefined
+      ? undefined
+      : evaluatePgsRule(regexCase.field, regexCase.value, pattern, country);
+  note(
+    'regex',
+    pattern === undefined
+      ? `(no regex for ${regexCase.field} on this bank)`
+      : describePgsRule(pattern, country, regexCase.field),
+  );
   if (regexCase.regex !== undefined && pattern !== undefined && regexCase.regex !== pattern) {
     note('rule changed', 'The regex changed since this case was created – the live rule is used');
   }
-  const matches = rule?.kind === 'regex' ? rule.regex.test(regexCase.value) : undefined;
-  if (matches !== undefined)
-    note('regex result', matches ? 'value matches the regex' : 'value does not match the regex');
-  if (rule?.kind === 'country-list')
-    note('regex result', `country rule (${rule.countries.join(', ')}) – not judged`);
-
-  let expectation = regexCase.expectation;
-  if (expectation === 'auto') {
-    expectation = matches === undefined ? 'observe' : matches ? 'valid' : 'invalid';
-  }
-  if (
-    matches !== undefined &&
-    regexCase.expectation !== 'auto' &&
-    expectation !== 'observe' &&
-    (expectation === 'valid') !== matches
-  ) {
+  if (pgs) {
     note(
-      'sheet vs regex',
-      `Sheet says ${expectation} but the value ${matches ? 'matches' : 'does not match'} the regex`,
+      'regex result',
+      `${pgs.verdict === 'valid' ? 'value matches the rule' : 'value does not match the rule'}${pgs.note ? ` · ${pgs.note}` : ''}`,
     );
   }
 
-  const hits = findSentValue(context.bank, regexCase.value, regexCase.field);
+  let expectation = regexCase.expectation;
+  if (expectation === 'auto') expectation = pgs === undefined ? 'observe' : pgs.verdict;
+  if (
+    pgs &&
+    regexCase.expectation !== 'auto' &&
+    expectation !== 'observe' &&
+    expectation !== pgs.verdict
+  ) {
+    note('sheet vs regex', `Sheet says ${expectation} but PGS's rule says ${pgs.verdict}`);
+  }
+  if (expectation !== 'observe' && pspLacksField(context.bank, regexCase.field)) {
+    note(
+      'not sent to this PSP',
+      `The PSP request has no ${regexCase.field} field – the rule cannot be seen from the PSP side`,
+    );
+    expectation = 'observe';
+  }
+
+  const hits = findSentValue(context.bank, pgs?.sentValue ?? regexCase.value, regexCase.field);
   const sent = hits.length > 0;
   note(
     'sent to PSP',
@@ -102,7 +119,7 @@ export function expectRegexOutcome(
         : 'Observe – recorded only',
   );
 
-  if (rule === undefined && regexCase.expectation === 'auto') {
+  if (pattern === undefined && regexCase.expectation === 'auto') {
     expect
       .soft(
         pattern,
@@ -170,4 +187,19 @@ export function expectEdgeOutcome(
       )
       .toBe(true);
   }
+}
+
+/** Purchase request for a regex case: the case's customer country (per-country rules) and value. */
+export function regexCaseRequest(
+  base: Record<string, unknown>,
+  regexCase: {
+    readonly path: string;
+    readonly value: string;
+    readonly country?: string | undefined;
+  },
+): { request: Record<string, unknown>; country: string } {
+  const client = (base.client ?? {}) as Record<string, unknown>;
+  const country = regexCase.country ?? (typeof client.country === 'string' ? client.country : 'AT');
+  const withCountry = setPath(base, 'client.country', country);
+  return { request: setPath(withCountry, regexCase.path, regexCase.value), country };
 }

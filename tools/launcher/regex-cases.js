@@ -11,6 +11,8 @@
  */
 'use strict';
 
+const pgsRules = require('../../config/pgs/pgs-rules');
+
 /** Dashboard field name → purchase request path. */
 const FIELD_PATHS = {
   full_name: 'client.full_name',
@@ -143,13 +145,14 @@ function compileRule(pattern) {
 }
 
 /** Length boundaries around the last `{min,max}` quantifier, e.g. `.{2,120}` → 1, 2, 120, 121 characters (the regex decides which are valid). */
-function boundaryCandidates(pattern) {
+function boundaryCandidates(pattern, field = '') {
   const quantifiers = [...String(pattern).matchAll(/\{(\d+)(,(\d*))?\}/g)];
   const last = quantifiers.at(-1);
   if (!last) return [];
   const min = Number(last[1]);
   const max = last[2] === undefined ? min : last[3] === '' ? undefined : Number(last[3]);
-  const make = (n) => 'Abcdefghij'.repeat(Math.ceil(n / 10) + 1).slice(0, n);
+  const alphabet = /phone|mobile/i.test(field) ? '9876543210' : 'Abcdefghij';
+  const make = (n) => alphabet.repeat(Math.ceil(n / 10) + 1).slice(0, n);
   const out = [];
   if (min > 1) out.push([`${min - 1} characters`, make(min - 1)]);
   if (min > 0) out.push([`${min} characters`, make(min)]);
@@ -164,43 +167,98 @@ function boundaryCandidates(pattern) {
  * Cases for one bank: [{ data, display, issues, warnings }] in the same shape
  * as an Excel preview, so the launcher shows and appends them the same way.
  */
-function casesForBank(bank, rules) {
+/** Phone numbers per country for country-list rules (checked with the PGS catalog). */
+const PHONE_BY_COUNTRY = {
+  IN: [
+    ['India, 10 digits', '9876543210'],
+    ['India, +91', '+919876543210'],
+    ['India, wrong code +92', '+929876543210'],
+    ['India, 9 digits', '987654321'],
+  ],
+  US: [
+    ['US, +1', '+14155552671'],
+    ['US, 10 digits', '4155552671'],
+    ['US, 7 digits', '5552671'],
+  ],
+  GB: [
+    ['UK, +44', '+447911123456'],
+    ['UK, 9 digits', '791112345'],
+  ],
+  AE: [['UAE, +971', '+971501234567']],
+  SG: [['Singapore, +65', '+6581234567']],
+  KZ: [['Kazakhstan, +7', '+77012345678']],
+};
+
+/**
+ * Cases for one bank: [{ data, display, issues, warnings }] in the same shape
+ * as an Excel preview, so the launcher shows and appends them the same way.
+ * `country` = customer country of the standard request (the rule for that
+ * country decides Valid / Invalid, exactly like PGS).
+ */
+function casesForBank(bank, rules, options = {}) {
+  const country = options.country || 'AT';
   const cases = [];
   const summary = [];
   for (const [field, pattern] of Object.entries(rules)) {
-    const rule = compileRule(pattern);
     const requestPath = FIELD_PATHS[field];
+    const trimmed = String(pattern).trim();
+    const countryRule = trimmed.startsWith('[') || trimmed.startsWith('{');
+    const resolved = pgsRules.resolveSpec(pattern, country, field);
+    let broken = '';
+    if (resolved.regex !== null) {
+      try {
+        pgsRules.toJsRegExp(resolved.regex);
+      } catch (error) {
+        broken = error.message;
+      }
+    }
     summary.push({
       field,
       pattern,
-      kind: rule.kind,
+      kind: countryRule ? 'country-list' : 'regex',
       path: requestPath || '',
-      note:
-        rule.kind === 'invalid'
-          ? `Pattern cannot be used: ${rule.problem}`
-          : rule.kind === 'country-list'
-            ? `Validated per country (${rule.countries.join(', ')}) – cases are recorded, not judged`
-            : requestPath
-              ? ''
-              : 'Field is not on the purchase request – no cases',
+      note: !requestPath
+        ? 'Field is not on the purchase request – no cases'
+        : broken
+          ? `Malformed regex – PGS replaces every value (${broken})`
+          : countryRule
+            ? `Per country – ${country} customers: ${pgsRules.describe(pattern, country, field)}`
+            : '',
     });
-    if (!requestPath || rule.kind === 'invalid') continue;
+    if (!requestPath) continue;
+
+    // Values to try: the field's library, boundaries of the resolved regex, and –
+    // for per-country rules – numbers for each enabled country (with that country).
+    const candidates = [...(CANDIDATES[field] || GENERIC).map(([l, v]) => [l, v, undefined])];
+    if (resolved.regex !== null && !broken) {
+      candidates.push(
+        ...boundaryCandidates(resolved.regex, field).map(([l, v]) => [l, v, undefined]),
+      );
+    }
+    if (countryRule && field === 'phone') {
+      let list = [];
+      try {
+        list = trimmed.startsWith('[') ? JSON.parse(trimmed) : JSON.parse(trimmed).enable || [];
+      } catch {
+        /* malformed – summary says so */
+      }
+      for (const c of list)
+        for (const [l, v] of PHONE_BY_COUNTRY[c] || []) candidates.push([l, v, c]);
+    }
     const seen = new Set();
-    const candidates = [
-      ...(CANDIDATES[field] || GENERIC),
-      ...(rule.kind === 'regex' ? boundaryCandidates(pattern) : []),
-    ];
-    for (const [label, value] of candidates) {
-      if (seen.has(value) || BASELINE.has(value.toLowerCase())) continue;
-      seen.add(value);
-      const expectation =
-        rule.kind === 'country-list' ? 'observe' : rule.regex.test(value) ? 'valid' : 'invalid';
+    for (const [label, value, caseCountry] of candidates) {
+      const key = `${caseCountry || ''}|${value}`;
+      if (seen.has(key) || (!caseCountry && BASELINE.has(value.toLowerCase()))) continue;
+      seen.add(key);
+      const result = pgsRules.evaluate(field, value, pattern, caseCountry || country);
+      const expectation = result.verdict === 'valid' ? 'valid' : 'invalid';
       const data = {
         bank,
         field,
         path: requestPath,
         title: `${field} – ${label}`,
         value,
+        ...(caseCountry && caseCountry !== country ? { country: caseCountry } : {}),
         expectation,
         regex: pattern,
         origin: 'dashboard',
@@ -209,9 +267,9 @@ function casesForBank(bank, rules) {
         data,
         display: [
           bank,
-          field,
+          field + (data.country ? ` (${data.country})` : ''),
           value.length > 40 ? `"${value.slice(0, 14)}…" (${value.length} chars)` : `"${value}"`,
-          expectationLabel(expectation),
+          expectationLabel(expectation) + (result.note ? ` · ${result.note}` : ''),
         ],
         issues: [],
         warnings: [],

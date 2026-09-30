@@ -1,6 +1,8 @@
 import type { TestInfo } from '@playwright/test';
 import type { BackofficeTransaction, BankTransaction } from '../schemas/backoffice.schema';
+import type { CashierCard } from '../types/cashier.types';
 import { maskSensitiveData } from '../utils/masking';
+import { mappingChecks, maskingChecks, paymentInfoChecks } from './psp-compliance';
 
 export const PSP_RESULT_ANNOTATION = 'psp-result';
 
@@ -95,6 +97,10 @@ export function summarizePsp(
   options: {
     readonly expectedBank?: string | undefined;
     readonly expectedMid?: string | undefined;
+    /** Purchase request – enables the purchase ↔ PSP field mapping checks. */
+    readonly request?: object | undefined;
+    /** Card used – its full number must not appear anywhere in clear. */
+    readonly card?: Pick<CashierCard, 'number'> | undefined;
   } = {},
 ): PspSummary {
   const status = trx.status.toUpperCase();
@@ -169,6 +175,22 @@ export function summarizePsp(
         expected: options.expectedMid,
         actual: bank?.midName ?? '',
       });
+    }
+    const pspCalled =
+      bank !== undefined && (isNonEmpty(bank.response) || isNonEmpty(bank.paymentTransId));
+    if (bank !== undefined) {
+      const masking = maskingChecks(bank, options.card);
+      checks.push(...masking.checks);
+      notes.push(...masking.notes);
+    }
+    if (bank !== undefined && pspCalled) {
+      const info = paymentInfoChecks(bank, expectedAmount, expectedCurrency);
+      checks.push(...info.checks);
+      if (options.request !== undefined && isNonEmpty(bank.paymentInfo)) {
+        const mapping = mappingChecks(options.request as Record<string, unknown>, bank, purchaseId);
+        checks.push(...mapping.checks);
+        notes.push(...mapping.notes);
+      }
     }
     if (status === 'PAID') {
       checks.push(

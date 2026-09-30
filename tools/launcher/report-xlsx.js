@@ -9,13 +9,14 @@
 
 const ExcelJS = require('exceljs');
 
-const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'psp-check', 'other'];
+const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'psp-check', 'other'];
 const CATEGORY_NAMES = {
   field: 'Field validation',
   regex: 'Regex validation',
   psp: 'PSP request / response',
   edge: 'Custom & edge cases',
   card: 'Card transactions',
+  refund: 'Refunds',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
 };
@@ -53,6 +54,7 @@ function categoryFromKey(key) {
   if (key.startsWith('@PR-')) return 'psp';
   if (key.startsWith('@EC-')) return 'edge';
   if (key.startsWith('@card-')) return 'card';
+  if (key.startsWith('@RF-')) return 'refund';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';
 }

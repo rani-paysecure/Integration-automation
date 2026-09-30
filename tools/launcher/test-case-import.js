@@ -185,7 +185,7 @@ const OUTCOME_LABELS = Object.fromEntries(
     label.replace(/^./, (ch) => ch.toUpperCase()),
   ]),
 );
-const CHECKS = ['equals', 'not equals', 'contains', 'matches', 'present', 'absent'];
+const CHECKS = ['equals', 'not equals', 'contains', 'matches', 'present', 'absent', 'masked'];
 
 /**
  * Column definitions drive the template, the header detection and the guide.
@@ -323,6 +323,16 @@ const CATEGORIES = {
         example: 'John123',
       },
       {
+        key: 'country',
+        header: 'Country',
+        required: false,
+        width: 10,
+        aliases: ['customer country'],
+        guide:
+          'Customer country (ISO alpha-2, e.g. IN) – per-country rules like phone use it. Empty = the standard request country',
+        example: 'IN',
+      },
+      {
         key: 'result',
         header: 'Expected Result',
         required: false,
@@ -335,9 +345,9 @@ const CATEGORIES = {
       },
     ],
     examples: [
-      ['paysafe_payfac', 'full_name', 'Name with digits', 'John123', 'Invalid'],
-      ['', 'full_name', 'Name with hyphen', 'Jean-Luc Picard', ''],
-      ['', 'city', 'City with digits', 'Wien1', ''],
+      ['paysafe_payfac', 'full_name', 'Name with digits', 'John123', '', 'Invalid'],
+      ['', 'full_name', 'Name with hyphen', 'Jean-Luc Picard', '', ''],
+      ['', 'phone', 'Indian number without +91', '9876543210', 'IN', ''],
     ],
   },
   psp: {
@@ -392,7 +402,8 @@ const CATEGORIES = {
         width: 13,
         aliases: ['condition', 'rule'],
         options: CHECKS,
-        guide: 'equals · not equals · contains · matches (regex) · present · absent',
+        guide:
+          'equals · not equals · contains · matches (regex) · present · absent · masked (stored as ***)',
         example: 'equals',
       },
       {
@@ -402,7 +413,7 @@ const CATEGORIES = {
         width: 26,
         aliases: ['expected', 'value'],
         guide:
-          'Text, number or a value from the purchase: {purchaseId} {amount} {amountMinor} (amount in cents) {currency} {email} {country} {city} {zip} {phone} {fullName}. Empty for present / absent',
+          'Text, number or a value from the purchase: {purchaseId} {amount} {amountMinor} (amount in cents) {currency} {email} {country} {city} {zip} {phone} {fullName}. Empty for present / absent / masked',
         example: '{currency}',
       },
     ],
@@ -420,6 +431,8 @@ const CATEGORIES = {
       ],
       ['Customer address sent to PSP', '', 'Request', 'billingDetails.zip', 'equals', '{zip}'],
       ['PSP returns a status', '', 'Response', 'status', 'present', ''],
+      ['Card data masked in PSP log', '', 'Request', 'card.cvv', 'masked', ''],
+      ['Card data masked in PSP log', '', 'Request', 'card.cardNum', 'masked', ''],
     ],
   },
   edge: {
@@ -679,6 +692,11 @@ function parseRegexRows(rows, get) {
     if (result && !['valid', 'invalid'].includes(result))
       issues.push('Expected Result must be Valid, Invalid or empty');
     const expectation = result === 'valid' ? 'valid' : result === 'invalid' ? 'invalid' : 'auto';
+    const country = String(v.country || '')
+      .trim()
+      .toUpperCase();
+    if (country && !/^[A-Z]{2}$/.test(country))
+      issues.push('Country must be a 2-letter code, e.g. IN');
     const canonical =
       Object.keys(FIELD_PATHS).find(
         (k) => FIELD_PATHS[k] === path && k.toLowerCase() === field.toLowerCase(),
@@ -688,7 +706,9 @@ function parseRegexRows(rows, get) {
       field: canonical,
       path: path || '',
       title: v.title || `${canonical} – ${v.data}`,
-      value: v.data,
+      // "…" keeps leading / trailing spaces that a spreadsheet cell would lose.
+      value: /^".*"$/s.test(v.data) ? v.data.slice(1, -1) : v.data,
+      ...(country ? { country } : {}),
       expectation,
       origin: 'upload',
     };
@@ -697,8 +717,8 @@ function parseRegexRows(rows, get) {
       data,
       display: [
         v.bank || 'Routed bank',
-        canonical,
-        `"${v.data}"`,
+        canonical + (country ? ` (${country})` : ''),
+        `"${data.value}"`,
         expectation === 'auto' ? "Bank's regex decides" : expectationLabel(expectation),
       ],
       issues,
@@ -942,9 +962,29 @@ async function previewImport(categoryId, buffer, filename, cardIds = []) {
         index[c.key] >= 0 ? String(cells[index[c.key]] ?? '').trim() : '',
       ]),
     );
+  return previewParsed(categoryId, PARSERS[categoryId](body, get, cardIds));
+}
+
+/**
+ * Rows given as objects keyed by the category's column keys (e.g. generated
+ * by AI) – validated exactly like an upload. Row numbers are 1-based positions.
+ */
+function previewObjects(categoryId, objects, cardIds = []) {
+  const category = categoryOf(categoryId);
+  if (!Array.isArray(objects)) throw new Error('Expected a list of test cases');
+  const body = objects.slice(0, MAX_ROWS).map((o, i) => ({
+    row: i + 1,
+    cells: category.columns.map((c) => String((o && o[c.key]) ?? '').trim()),
+  }));
+  const get = (cells) =>
+    Object.fromEntries(category.columns.map((c, i) => [c.key, cells[i] ?? '']));
+  return previewParsed(categoryId, PARSERS[categoryId](body, get, cardIds));
+}
+
+function previewParsed(categoryId, parsed) {
   const known = knownSignatures(categoryId);
   const seen = new Set();
-  const cases = PARSERS[categoryId](body, get, cardIds).map((c) => {
+  const cases = parsed.map((c) => {
     const sig = signature(categoryId, c.data);
     const duplicate = known.has(sig);
     const repeated = !duplicate && seen.has(sig);
@@ -1044,9 +1084,12 @@ function validateCase(categoryId, d) {
         path: d.path,
         title: str(d.title, 200) || d.field,
         value: str(d.value, 500),
+        ...(typeof d.country === 'string' && /^[A-Z]{2}$/.test(d.country)
+          ? { country: d.country }
+          : {}),
         expectation: d.expectation,
         ...(d.regex ? { regex: str(d.regex, 500) } : {}),
-        origin: d.origin === 'dashboard' ? 'dashboard' : 'upload',
+        origin: ['dashboard', 'ai'].includes(d.origin) ? d.origin : 'upload',
       };
     case 'psp':
       need(
@@ -1277,6 +1320,7 @@ async function templateBuffer(categoryId, cardIds = []) {
 module.exports = {
   CATEGORIES,
   markDuplicates,
+  previewObjects,
   DATA_DIR,
   listCategories,
   previewImport,

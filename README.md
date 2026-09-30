@@ -334,6 +334,36 @@ Payments: **Card for payments** on the Run tab is used by regex / PSP / edge cas
 names a card). Field-validation cases only pay when **Also pay for accepted field-validation cases**
 is ticked.
 
+## PGS backend knowledge
+
+`docs/pgs-behaviour.md` summarises how the PGS backend validates purchases and applies bank field
+regexes (read from its code, with results confirmed on test4 – including bugs such as date of birth
+`1990-13-01` being accepted). The AI generator and the `generate-test-cases` skill use it as
+context. `config/pgs/pgs-rules.js` is a port of PGS's `ClientDetailsValidator` (per-country phone
+rules, phone repair, "NA" handling) used by the regex tests; refresh its country catalog with
+`npm run cases -- sync-pgs <path to PGS repo>`.
+
+## AI-generated test cases
+
+Two ways, same result (cases in the category's template, validated like an upload, you choose what to add):
+
+- **Launcher → Test cases → Generate with AI.** Choose the category (for regex also the bank in _From
+  the dashboard_), min / max number of cases and an optional focus. Claude gets the template, the
+  request fields, the bank's live field regexes, the test-card IDs, PSP field names seen in earlier
+  runs and the existing cases, and returns new cases. For regex the bank's own regex decides Valid /
+  Invalid. Needs `ANTHROPIC_API_KEY` in `.env` (`AI_MODEL` optional, default `claude-haiku-4-5-20251001`);
+  only the launcher reads the key. No passwords, API keys or card numbers are sent.
+- **Claude skill `generate-test-cases`** (`docs/skills/generate-test-cases/SKILL.md`) for use in Claude
+  (Cowork / Claude Code): "generate 15–25 regex cases for paysafe_payfac". It uses the helper CLI and
+  writes an upload-ready Excel file:
+
+```bash
+npm run cases -- spec <category>                     # columns, allowed values, card IDs
+npm run cases -- context <category> [--bank <bank>]  # fields, bank regexes, cards, existing cases
+npm run cases -- write <category> rows.json out.xlsx # rows → filled template
+npm run cases -- check <category> out.xlsx           # validate like the launcher upload
+```
+
 ## Cashier purchase – pay on the cashier (end to end)
 
 `tests/flows/cashier-purchase/03-cashier-payment.spec.ts` runs the real customer journey:
@@ -378,6 +408,43 @@ successful. Unpaid purchases are reported as **NOT ATTEMPTED**.
 Output: `reports/psp-validation/psp-validation-results.csv` – **purchase ID → PSP transaction ID**,
 bank, MID, amounts, PSP status, gateway code/message, failed checks, verdict (+ `history/`). The
 masked PSP request/response are attached to each test in the HTML report.
+
+### Automatic PSP compliance checks (every paid / failed transaction)
+
+Added to the PSP checks of every transaction (card payments, regex/PSP/edge cases, field cases
+that pay, and the by-ID check). Code: `src/helpers/psp-compliance.ts`.
+
+| Check                                                                      | Source                                                                       | Passes when                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Card number / CVV / card expiry / e-mail / phone masked in PSP logs        | `paymentInfo`, `cancelInfo`, `allOtherRequest`, `response`, `response3ds`, … | value stored as `***` everywhere (PGS `maskJsonObject`); the test card's full number appears nowhere. Only the **path** is reported, never the value. Merchant e-mail/phone and a clear cardholder name are listed as notes. |
+| paymentInfo filled                                                         | `paymentInfo`                                                                | the transaction request was stored (Main.createPayload, transaction call)                                                                                                                                                    |
+| Mapping: amount / currency / purchase ID                                   | `paymentInfo`                                                                | amount = purchase total (major or minor units), currency, purchase ID sent                                                                                                                                                   |
+| Mapping: first/last name, e-mail, phone, street, city, zip, state, country | purchase `client` → `paymentInfo`                                            | the PSP received the purchase value (fields the PSP does not take → note; masked → counts as mapped)                                                                                                                         |
+| Merchant webhook sent (Webhook out)                                        | `/admin/getWebhookResponse`                                                  | a webhook with the final status exists; URL = `success_callback` (paid) / `failure_callback` (error). A non-2xx answer of the merchant URL (e.g. `Fail-405` from google.com) is a note.                                      |
+| PSP webhook received and consumed (Webhook in)                             | `/admin/pspWebhookLog/data`                                                  | any webhook the PSP sent has status `consumed` / `Already_Consumed` (none → note)                                                                                                                                            |
+
+Uploaded PSP sheets also accept the check **masked** (e.g. `card.cvv` → masked).
+
+## Cashier purchase – stage 5: refunds (`@RF-…`, real refunds)
+
+`tests/flows/cashier-purchase/06-refunds.spec.ts` – only refunds purchases it paid itself with the
+run's card, or the **Settled purchase to refund** entered in the launcher (`REFUND_PURCHASE_ID`).
+
+| Case                                                                                | Expected                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF-001 paid purchase (new payment or the given one)                                 | PAID                                                                                                                                                                                                              |
+| RF-002 partial refund 30 % (`POST /api/v1/purchases/{pid}/refund {amount, reason}`) | HTTP 202 → `partial_refunded`; refund in history (Reports → refunds), total refunded / refundable amount, status history `partial_refunded amt: x`, refund request **in `cancelInfo` (masked)**, merchant webhook |
+| RF-003 more than refundable                                                         | 400 `invalid_amount`                                                                                                                                                                                              |
+| RF-004 amount 0                                                                     | 400 "Refund amount must be greater than zero."                                                                                                                                                                    |
+| RF-005 remaining amount                                                             | HTTP 202 → `refunded` (same checks as RF-002)                                                                                                                                                                     |
+| RF-006 refund after full refund                                                     | 400 "already fully refunded"                                                                                                                                                                                      |
+| RF-007/008/009 unpaid purchase / no reason / no amount                              | 400 (no payment needed)                                                                                                                                                                                           |
+
+**Sandbox note:** Paysafe refuses refunds until the payment is settled (error 3406 "…has not been
+batched yet"; PGS answers "Refund can not be initiated"). The case is then **OBSERVED** and the
+failure recording is verified instead (refund entry `ERROR`, `refund_failed amt: x`, status
+unchanged, `cancelInfo` filled and masked). For a successful refund, enter a purchase paid a day
+or more earlier as **Settled purchase to refund**.
 
 **Dashboard login:** add _Dashboard username/password_ to your profile in the launcher (or
 `UAT_DASHBOARD_USERNAME` / `UAT_DASHBOARD_PASSWORD`). The dashboard allows **one active session per

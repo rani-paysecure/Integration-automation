@@ -1,5 +1,6 @@
 import { HttpStatus } from '@constants/http';
 import { recordPspResult, summarizePsp } from '@helpers/psp-validation';
+import { webhookResults } from '@helpers/transaction-flow';
 import { expect, test } from '@fixtures/api.fixture';
 import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.factory';
 
@@ -48,10 +49,24 @@ test.describe(
           const trx = await backoffice.requireTransaction(purchaseId);
 
           const bank = await backoffice.getBankTransaction(purchaseId);
-          const summary = summarizePsp(purchaseId, trx, bank, {
+          const psp = summarizePsp(purchaseId, trx, bank, {
             expectedBank: merchant.expectedBank,
             expectedMid: merchant.expectedMid,
+            // Stored purchase (customer data as received) → purchase ↔ PSP mapping checks.
+            request: trx,
           });
+          // Webhook in (PSP → PGS) / webhook out (PGS → merchant) for the current status.
+          const webhooks = psp.attempted
+            ? await webhookResults(backoffice, purchaseId, psp.purchaseStatus, {
+                request: trx,
+                pspTransId: bank?.paymentTransId,
+              })
+            : { checks: [], notes: [] };
+          const summary = {
+            ...psp,
+            checks: [...psp.checks, ...webhooks.checks],
+            notes: [...psp.notes, ...webhooks.notes],
+          };
           testInfo.annotations.push({ type: 'purchase id', description: purchaseId });
           await recordPspResult(testInfo, summary, bank);
 

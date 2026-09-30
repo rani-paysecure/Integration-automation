@@ -50,11 +50,16 @@ const regexCase = z.object({
   path: fieldPath,
   title: z.string().min(1),
   value: z.string().min(1),
+  /** Customer country for this case (client.country); empty = standard request. */
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
   /** auto = decided by the bank's regex at run time. */
   expectation: z.enum(['valid', 'invalid', 'observe', 'auto']),
   /** Pattern when the case was created (for reference – the live rule is used at run time). */
   regex: z.string().optional(),
-  origin: z.enum(['dashboard', 'upload']),
+  origin: z.enum(['dashboard', 'upload', 'ai']),
   source,
 });
 
@@ -65,6 +70,7 @@ export const PSP_CHECKS = [
   'matches',
   'present',
   'absent',
+  'masked',
 ] as const;
 const pspCase = z.object({
   id: z.string().regex(/^PR-\d{3,}$/),

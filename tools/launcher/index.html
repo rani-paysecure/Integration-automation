@@ -112,6 +112,10 @@
       table.import td.multi { white-space: pre-line; }
       .dash-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 8px 0 14px; background: var(--surface-2); }
       .dash-head { display: flex; flex-direction: column; gap: 2px; }
+      .ai-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-top: 14px; background: var(--surface-2); }
+      .ai-grid { display: grid; grid-template-columns: 110px 110px 1fr auto; gap: 8px 12px; align-items: end; margin-top: 8px; }
+      .ai-grid input { margin: 0; } .ai-go button { white-space: nowrap; }
+      @media (max-width: 640px) { .ai-grid { grid-template-columns: 1fr 1fr; } .ai-focus, .ai-go { grid-column: 1 / -1; } }
       .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 14px; }
       .or-line::before, .or-line::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
       table.import td.regex { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
@@ -281,6 +285,10 @@
               <div id="purchaseIdsBox" class="hidden">
                 <label for="purchaseIds">Purchase IDs for the PSP check <span class="hint">(one per line or comma-separated)</span></label>
                 <textarea id="purchaseIds" rows="3" placeholder="6aba50cc6c2e4742b36b8131"></textarea>
+              </div>
+              <div id="refundBox" class="hidden">
+                <label for="refundPurchaseId">Settled purchase to refund <span class="hint">(optional – a PAID purchase of this merchant whose settlement is batched; empty = pay a new one. Most PSP sandboxes refuse refunds until the payment is settled.)</span></label>
+                <input id="refundPurchaseId" placeholder="6aba50cc6c2e4742b36b8131" autocomplete="off" />
               </div>
             </section>
             <section>
@@ -507,6 +515,19 @@
                 <input id="importFile" type="file" accept=".xlsx,.csv" class="hidden" />
               </label>
             </div>
+          </div>
+          <div class="ai-box">
+            <div class="dash-head">
+              <b>✦ Generate with AI</b>
+              <span class="hint" id="aiHint">Claude writes cases in this category's template – checked like an upload, you choose what to add.</span>
+            </div>
+            <div class="ai-grid">
+              <div><label for="aiMin">Min cases</label><input id="aiMin" type="number" min="1" max="50" value="5" /></div>
+              <div><label for="aiMax">Max cases</label><input id="aiMax" type="number" min="1" max="50" value="15" /></div>
+              <div class="ai-focus"><label for="aiFocus">Focus <span class="hint">(optional)</span></label><input id="aiFocus" placeholder="e.g. length boundaries and unicode names" /></div>
+              <div class="ai-go"><button id="aiGenerate" class="primary" type="button">Generate</button></div>
+            </div>
+            <div class="msg" id="aiMsg"></div>
           </div>
           <div id="importPreview" class="hidden">
             <div class="row tight"><span class="summary" id="importSummary"></span><span class="hint" id="importName"></span></div>
@@ -789,8 +810,9 @@
       function renderSelectionState() {
         $('selCount').textContent = `${state.selected.size} selected`;
         $('purchaseIdsBox').classList.toggle('hidden', !state.selected.has('@psp-by-id'));
+        $('refundBox').classList.toggle('hidden', ![...state.selected].some((k) => k.startsWith('@RF-')));
         $('run').disabled = state.selected.size === 0 || state.running;
-        const needsCard = [...state.selected].filter((k) => /^@(RX|PR|EC)-/.test(k));
+        const needsCard = [...state.selected].filter((k) => /^@(RX|PR|EC)-/.test(k) || (k === '@RF-001' && !$('refundPurchaseId').value.trim()));
         $('cardWarning').className = needsCard.length && !$('payCard').value ? 'msg error' : 'hint';
         $('cardWarning').textContent = needsCard.length && !$('payCard').value ? `${needsCard.length} selected case(s) need a card – choose one above, or they are skipped (unless the sheet names a card).` : '';
       }
@@ -802,7 +824,7 @@
         const value = $('runProfile').value;
         const payload = {
           env: state.env, testKeys: [...state.selected], ...runChoice(), payCard: $('payCard').value, payFieldCases: $('payFieldCases').checked, device: $('device').value,
-          purchaseIds: $('purchaseIds').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
+          purchaseIds: $('purchaseIds').value, refundPurchaseId: $('refundPurchaseId').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
         };
         if (value === CUSTOM) Object.assign(payload, { brandId: $('ooBrand').value, apiKey: $('ooKey').value, dashboardUsername: $('ooDashUser').value, dashboardPassword: $('ooDashPass').value });
         else payload.profileId = value;
@@ -854,12 +876,12 @@
         return td;
       }
       // ── report view ─────────────────────────────────────────────────────────
-      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'psp-check', 'other'];
-      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
       const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
       function categoryFromKey(key) {
         if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
-        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
       }
       /** Older reports have no category / items – derive what we can. */
       function normaliseRow(t) {
@@ -1164,6 +1186,7 @@
         $('uploadTitle').textContent = `Upload · ${c.label}`;
         $('categoryDescription').textContent = `Columns: ${c.columns.map((col) => col.header + (col.required ? '' : ' (optional)')).join(' · ')}`;
         $('listTitle').textContent = `Uploaded · ${c.label}`;
+        $('aiFocus').placeholder = AI_FOCUS[c.id] || '';
         $('regexDash').classList.toggle('hidden', c.id !== 'regex');
         $('regexOr').classList.toggle('hidden', c.id !== 'regex');
         if (c.id === 'regex') loadRegexBanks();
@@ -1197,6 +1220,7 @@
           if (c.duplicate) notes.append(el('span', { class: 'warn' }, 'Already exists'));
           for (const i of c.issues) notes.append(el('span', { class: 'issue' }, i));
           for (const w of c.warnings || []) notes.append(el('span', { class: 'warn' }, w));
+          for (const n of c.info || []) notes.append(el('span', { class: 'hint' }, n));
           if (!notes.childElementCount) notes.append(el('span', { class: 'hint' }, 'OK'));
           body.append(el('tr', { class: c.issues.length ? 'bad' : c.duplicate ? 'dup' : '' },
             el('td', {}, box), el('td', {}, c.rows.join(', ') || '—'), ...c.display.map((v, i) => el('td', { class: i === 0 && ['field', 'regex'].includes(state.category) ? 'mono' : 'multi' }, v || '—')), notes));
@@ -1248,6 +1272,37 @@
           state.importFile = `dashboard: ${bank}`; state.importCases = result.cases; state.importColumns = result.columns;
           $('importName').textContent = `· ${bank} (dashboard)`; say('importMsg', ''); renderImport();
         } catch (error) { say('importMsg', error.message, false); }
+      }
+      const AI_FOCUS = {
+        field: 'e.g. email and phone formats, missing fields, very long values',
+        regex: 'e.g. length boundaries, unicode names, forbidden characters',
+        psp: 'e.g. amount and currency, order reference, billing address',
+        edge: 'e.g. amount boundaries with the approved and 3DS cards',
+      };
+      async function loadAiStatus() {
+        try {
+          state.ai = await api('/api/ai/status');
+          $('aiGenerate').disabled = !state.ai.configured;
+          $('aiHint').textContent = state.ai.configured
+            ? `Claude (${state.ai.model}) writes cases in this category's template – checked like an upload, you choose what to add.`
+            : 'Not set up: add ANTHROPIC_API_KEY=… to .env (AI_MODEL optional), then restart the launcher.';
+        } catch { $('aiGenerate').disabled = true; }
+      }
+      async function generateWithAi() {
+        const c = currentCategory(); if (!c) return;
+        const min = Number($('aiMin').value) || 5; const max = Math.max(min, Number($('aiMax').value) || min);
+        const bank = $('regexBank').value;
+        if (c.id === 'regex' && !bank) return say('aiMsg', 'Choose the bank in "From the dashboard" above first.', false);
+        const profileId = dashboardTester();
+        if (c.id === 'regex' && !profileId) return say('aiMsg', 'Regex cases need a saved tester with a dashboard login (Run tab).', false);
+        $('aiGenerate').disabled = true; say('aiMsg', `Generating ${min}–${max} ${c.label.toLowerCase()} cases… (usually 20–60 s)`);
+        try {
+          const result = await api('/api/test-cases/generate', { method: 'POST', body: JSON.stringify({ category: c.id, env: state.env, profileId, bank, min, max, focus: $('aiFocus').value }) });
+          state.importFile = `AI · ${result.model}`; state.importCases = result.cases; state.importColumns = result.columns;
+          $('importName').textContent = `· generated by ${result.model}`; renderImport();
+          say('aiMsg', `${result.cases.length} case(s) generated${result.note ? ` – ${result.note}` : ''} · ${result.usage.input + result.usage.output} tokens. Review below, then add.`, !result.note);
+        } catch (error) { say('aiMsg', error.message, false); }
+        finally { $('aiGenerate').disabled = !state.ai?.configured; }
       }
       async function loadCustom() {
         try {
@@ -1315,6 +1370,8 @@
         drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); previewFile(e.dataTransfer.files[0]); });
         $('appendCases').addEventListener('click', appendImport);
         $('loadRegexRules').addEventListener('click', loadRegexRules);
+        $('aiGenerate').addEventListener('click', generateWithAi);
+        loadAiStatus();
         $('cancelImport').addEventListener('click', () => { state.importCases = []; renderImport(); say('importMsg', ''); });
         loadCustom();
         $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));

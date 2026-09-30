@@ -56,6 +56,10 @@ export interface TestConfig {
   /** Merchant context for this run (from the tester profile or env vars). */
   readonly merchant: {
     readonly brandId: string | undefined;
+    /** Dashboard merchant ID (tester profile or <ENV>_MERCHANT_ID) – e.g. for the KYC configuration lookup. */
+    readonly id: number | undefined;
+    /** Dashboard merchant name, when known. */
+    readonly name: string | undefined;
     /** Card scheme sent as `paymentMethod`, e.g. `VISA`. */
     readonly paymentMethod: string;
     /** Currency for the run (RUN_CURRENCY); undefined = purchase template currency. */
@@ -79,6 +83,16 @@ export interface TestConfig {
     readonly baseUrl: string | undefined;
     readonly username: string | undefined;
     readonly password: string | undefined;
+  };
+  /** KYC module (POST /kyc/create …). Enabled per merchant in Dashboard → KYC configuration. */
+  readonly kyc: {
+    /** Country sent on every KYC create (KYC_COUNTRY, default US). */
+    readonly country: string;
+    /** Optional second merchant for the cross-merchant isolation case. */
+    readonly secondApiKey: string | undefined;
+    readonly secondBrandId: string | undefined;
+    /** Optional public sink the server can reach, for callback delivery cases. */
+    readonly callbackUrl: string | undefined;
   };
   /** Selected tester profile (TEST_PROFILE), if any. */
   readonly profile: { readonly id: string; readonly name: string } | undefined;

@@ -108,7 +108,12 @@ export default class UiReportReporter implements Reporter {
   onTestEnd(test: TestCase, result: TestResult): void {
     const annotations = [...test.annotations, ...result.annotations];
     const values: Record<string, string> = {};
-    for (const a of annotations) if (a.description !== undefined) values[a.type] = a.description;
+    for (const a of annotations) {
+      if (a.description === undefined) continue;
+      // Several notes per test are kept (one per line); other types: last one wins.
+      values[a.type] =
+        a.type === 'note' && values.note ? `${values.note}\n${a.description}` : a.description;
+    }
 
     const fieldCase = parseJson(values[FIELD_CASE_ANNOTATION]) as FieldCaseMeta | undefined;
     const fieldResult = parseJson(values[FIELD_RESULT_ANNOTATION]) as FieldResultMeta | undefined;
@@ -118,7 +123,7 @@ export default class UiReportReporter implements Reporter {
 
     const key =
       test.tags.find((tag) =>
-        /^@(FT-|FV-|RX-|PR-|EC-|card-|psp-by-id|backoffice-smoke)/.test(tag),
+        /^@(FT-|FV-|RX-|PR-|EC-|RF-|card-|psp-by-id|backoffice-smoke)/.test(tag),
       ) ?? test.id;
     const pspFieldChecks = (parseJson(values[PSP_FIELD_CHECKS_ANNOTATION]) ??
       []) as PspFieldCheckResult[];

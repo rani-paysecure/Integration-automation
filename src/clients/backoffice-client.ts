@@ -4,8 +4,13 @@ import { Endpoints } from '../constants/endpoints';
 import {
   backofficeTransactionSchema,
   bankTransactionSchema,
+  merchantWebhookSchema,
+  refundDetailsSchema,
   type BackofficeTransaction,
   type BankTransaction,
+  type MerchantWebhook,
+  type PspWebhook,
+  type RefundDetails,
 } from '../schemas/backoffice.schema';
 import { BaseApiClient, type BaseApiClientOptions } from './base-api-client';
 import { MemorySessionStore, type SessionStore, type StorageState } from './backoffice-session';
@@ -38,6 +43,16 @@ export function extractMetaCsrf(html: string): string | undefined {
 export function isLoginFailure(finalUrl: string): boolean {
   const { pathname, search } = new URL(finalUrl);
   return pathname === '/' || /login|error/i.test(pathname + search);
+}
+
+/** KYC provider MID configured for a merchant. */
+export interface KycSetup {
+  readonly bankMidId: number;
+  /** Payment bank name of the MID – the `{provider}` in /kyc/webhook/{provider}. */
+  readonly provider: string;
+  readonly midName: string;
+  /** Webhook signing secret (never log). */
+  readonly webhookSecret: string | undefined;
 }
 
 /** Thrown when a request lands on the login page (session ended elsewhere). */
@@ -303,5 +318,105 @@ export class BackofficeClient extends BaseApiClient {
         (entry): entry is [string, string] => typeof entry[1] === 'string',
       ),
     );
+  }
+
+  /** JSON GET on the dashboard; `undefined` when it answers with a page instead of data. */
+  private async getData(path: string, params?: Record<string, string | number>): Promise<unknown> {
+    const response = await this.withSession(async () => {
+      const result = await this.get(path, params === undefined ? {} : { params });
+      this.assertSession(result.raw.url());
+      return result;
+    });
+    if (!response.ok) throw new Error(`Dashboard ${path} failed with HTTP ${response.status}`);
+    const body: unknown = response.body;
+    return typeof body === 'object' && body !== null ? body : undefined;
+  }
+
+  /** Transaction log → Webhook out: every webhook PGS sent to the merchant for the purchase. */
+  async getMerchantWebhooks(purchaseId: string): Promise<MerchantWebhook[]> {
+    const body = await this.getData(Endpoints.backoffice.merchantWebhooks, { pid: purchaseId });
+    if (!Array.isArray(body)) return [];
+    // The merchant's answer (often an HTML page) is not needed for the checks.
+    return body.map((row): MerchantWebhook => {
+      const parsed = merchantWebhookSchema.parse(row);
+      return {
+        purchaseId: parsed.purchaseId,
+        callback_url: parsed.callback_url,
+        transactionStatus: parsed.transactionStatus,
+        callTime: parsed.callTime,
+        callStatus: parsed.callStatus,
+        channel: parsed.channel,
+      };
+    });
+  }
+
+  /**
+   * PSP Webhook log → Webhook in: webhooks received from the PSP that mention
+   * the purchase (or the PSP transaction ID). Headers and body are dropped –
+   * they contain signatures and cookies.
+   */
+  async getPspWebhooks(searchTerms: readonly string[]): Promise<PspWebhook[]> {
+    const seen = new Map<string, PspWebhook>();
+    for (const term of searchTerms.filter(Boolean)) {
+      const body = await this.getData(Endpoints.backoffice.pspWebhooks, {
+        search: term,
+        page: 0,
+        limit: 50,
+      });
+      const rows = (body as { rows?: unknown } | undefined)?.rows;
+      if (!Array.isArray(rows)) continue;
+      const text = (value: unknown): string =>
+        typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+      for (const row of rows as Record<string, unknown>[]) {
+        const id = text(row.id) || `${text(row.receiveTime)}-${String(seen.size)}`;
+        seen.set(id, {
+          pspName: text(row.pspName),
+          status: text(row.status),
+          receiveTime: text(row.receiveTime),
+        });
+      }
+    }
+    return [...seen.values()];
+  }
+
+  /** Refund history of a purchase (status history, refunds, refunded / refundable amount). */
+  async getRefundDetails(purchaseId: string): Promise<RefundDetails | undefined> {
+    const body = await this.getData(Endpoints.backoffice.refundDetails(purchaseId));
+    if (body === undefined || Array.isArray(body)) return undefined;
+    // Only whitelisted keys – the raw answer includes unmasked customer data.
+    const raw = body as Record<string, unknown>;
+    return refundDetailsSchema.parse({
+      status: raw.status,
+      status_history: raw.status_history,
+      totalRefunded: raw.totalRefunded,
+      refundable_amount: raw.refundable_amount,
+      refund_availability: raw.refund_availability,
+      refunds: raw.refunds,
+    });
+  }
+
+  /**
+   * KYC configuration of a merchant (Dashboard → Merchant → KYC configuration).
+   * Returns the configured KYC provider MID, or `undefined` when KYC is not set up.
+   * Only id / provider / MID name leave this method; the webhook secret (index 2 of the
+   * `##`-separated mid_auth_key) is returned separately and must never be logged.
+   */
+  async getKycSetup(merchantId: number): Promise<KycSetup | undefined> {
+    const config = await this.getData(Endpoints.backoffice.kycConfig, { mid: merchantId });
+    const raw = (config as { bankMidId?: unknown } | undefined)?.bankMidId;
+    const bankMidId = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isInteger(bankMidId) || bankMidId <= 0) return undefined;
+    const mids = await this.getData(Endpoints.backoffice.kycMids);
+    const row = (Array.isArray(mids) ? (mids as Record<string, unknown>[]) : []).find(
+      (m) => Number(m.id) === bankMidId,
+    );
+    const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+    const authKey = text(row?.mid_auth_key);
+    return {
+      bankMidId,
+      provider: text(row?.bankName),
+      midName: text(row?.mid) || text(row?.mid_desc),
+      webhookSecret: authKey.split('##')[2]?.trim() || undefined,
+    };
   }
 }

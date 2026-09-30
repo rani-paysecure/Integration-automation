@@ -35,6 +35,7 @@ import {
 async function completeTransactionIfSelected(
   testCase: FieldTestCase,
   response: ApiResponse<PurchaseCreated>,
+  request: Record<string, unknown>,
   deps: {
     testConfig: TestConfig;
     envData: EnvironmentTestData;
@@ -63,6 +64,7 @@ async function completeTransactionIfSelected(
       purchaseId: response.body.purchaseId,
       checkoutUrl: response.body.checkout_url,
       card: scenario.card,
+      request,
       redirects: {
         success: deps.envData.purchase.success_redirect,
         failure: deps.envData.purchase.failure_redirect,
@@ -103,6 +105,7 @@ test.describe(
           await completeTransactionIfSelected(
             testCase,
             response,
+            request,
             { testConfig, envData, merchant, purchaseApi, backoffice, openCashierPage },
             testInfo,
           );
