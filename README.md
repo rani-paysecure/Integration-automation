@@ -305,6 +305,16 @@ entered, SUBMIT pressed"). Team default cards (Paysafe sandbox,
 Note: the Paysafe sandbox declines some amounts on purpose (a 2.00 purchase is declined "by the
 issuing bank"), so the team default purchase amount is 10.00.
 
+## Devices (desktop / tablet / phone)
+
+**Device** on the Run tab opens the cashier as Desktop Chrome, iPad, Galaxy Tab S4, iPhone 14 or
+Pixel 7 (screen, viewport, pixel ratio, user agent and touch of that device; engine stays Chromium).
+The cashier reads these values itself and sends them to PGS on PAY (`/npv/…?sw=&sh=&cd=&pd=&uo=&ije=`),
+which forwards them to PSPs that need 3DS browser data. Every payment records the device and the
+values sent to PGS, and checks that the screen size sent equals the device screen.
+Paysafe collects browser data on its own hosted 3DS page, so its request only carries
+`threeDs.deviceChannel` and `customerIp`. Limitation: `navigator.platform` is not emulated.
+
 ## Execution report (launcher → Report)
 
 Each run is shown grouped by category (Field validation, Regex validation, PSP request / response,

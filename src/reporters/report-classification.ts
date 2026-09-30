@@ -175,6 +175,8 @@ export function classify(input: ClassifyInput): Classification {
     );
   }
   actualItems.push(
+    ...item('Device', values.device),
+    ...item('Device data to PGS', values['device data to PGS']),
     ...item('3DS challenge', values['3ds challenge']),
     ...item(
       'Cashier',

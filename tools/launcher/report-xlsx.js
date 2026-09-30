@@ -240,6 +240,7 @@ async function reportWorkbook(report) {
     ['Payment method', c.paymentMethod],
     ['Routed to (MID)', c.mid && c.mid !== 'not checked' ? c.mid : c.bank],
     ['Card for payments', c.payWithCard],
+    ['Device (cashier)', c.device || 'Desktop'],
     ['Started', report.startedAt ? new Date(report.startedAt).toLocaleString('en-GB') : ''],
     ['Finished', report.finishedAt ? new Date(report.finishedAt).toLocaleString('en-GB') : ''],
   ]) {

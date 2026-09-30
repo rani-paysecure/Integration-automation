@@ -47,6 +47,14 @@ const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 const MAX_LOG_LINES = 5000;
 
 const ENVIRONMENT_IDS = ['uat', 'local'];
+/** Cashier devices – keep in sync with src/pages/devices.ts. */
+const DEVICES = {
+  desktop: 'Desktop – Chrome, 1280×900',
+  'tablet-ipad': 'Tablet – iPad',
+  'tablet-android': 'Tablet – Galaxy Tab S4',
+  'phone-iphone': 'Phone – iPhone 14',
+  'phone-android': 'Phone – Pixel 7',
+};
 
 // ── settings (config/defaults.json + settings.local.json) ─────────────────────
 
@@ -367,6 +375,9 @@ function listTests(env) {
       [PLAYWRIGHT_CLI, 'test', '--list', '--reporter=json', '--project=cashier-purchase'],
       { cwd: ROOT, env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '' }, shell: false },
     );
+    child.on('error', (error) =>
+      reject(new HttpError(500, `Could not list tests: ${error.message}`)),
+    );
     let out = '';
     let err = '';
     child.stdout.on('data', (c) => (out += c));
@@ -444,6 +455,8 @@ function startRun(input) {
   if (bank && !/^[\w .:/-]{1,80}$/.test(bank)) throw new HttpError(400, 'Invalid bank name');
   const mid = String(input.mid || '').trim();
   if (mid && !/^[\w .:/,-]{1,400}$/.test(mid)) throw new HttpError(400, 'Invalid MID');
+  const device = String(input.device || 'desktop');
+  if (!Object.hasOwn(DEVICES, device)) throw new HttpError(400, 'Unknown device');
   const payCard = String(input.payCard || '').trim();
   if (payCard && !settings.cards[env].some((c) => c.id === payCard)) {
     throw new HttpError(400, 'Unknown payment card');
@@ -468,6 +481,7 @@ function startRun(input) {
     RUN_BANK: bank,
     RUN_MID: mid,
     RUN_PAY_CARD: payCard,
+    RUN_DEVICE: device,
     RUN_PAY_FIELD_CASES: payCard && input.payFieldCases === true ? '1' : '',
     RUN_HEADED: input.headed === true ? '1' : '',
     ATTACH_HTTP_ALWAYS: '1',
@@ -529,6 +543,7 @@ function startRun(input) {
     bank: bank || 'not checked',
     mid: mid || 'not checked',
     paymentMethod,
+    device: DEVICES[device],
     payWithCard: payWith
       ? `${payWith.label}${input.payFieldCases === true ? ' (also for accepted field cases)' : ''}`
       : 'none',
@@ -561,6 +576,11 @@ function startRun(input) {
   const filter = '';
 
   const child = spawn(process.execPath, args, { cwd: ROOT, env: childEnv, shell: false });
+  child.on('error', (error) => {
+    pushLine(`■ could not start the test run: ${error.message}`);
+    if (run) run.status = 'failed';
+    broadcast('status', runState());
+  });
   run = {
     id: crypto.randomUUID(),
     child,
@@ -681,7 +701,9 @@ function serveFile(res, baseDir, relative) {
     throw new HttpError(404, 'Not found');
   const type = CONTENT_TYPES[path.extname(target).toLowerCase()] || 'application/octet-stream';
   res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
-  fs.createReadStream(target).pipe(res);
+  fs.createReadStream(target)
+    .on('error', () => res.destroy())
+    .pipe(res);
 }
 
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
@@ -958,6 +980,20 @@ server.listen(PORT, HOST, () => {
       /* opening the browser is best-effort */
     }
   }
+});
+
+// One unexpected error (a dropped connection, a dashboard timeout, a child
+// process that fails to start) must not take the whole launcher down – log it
+// and keep serving.
+process.on('uncaughtException', (error) => {
+  process.stderr.write(
+    `\n[launcher] unexpected error (still running): ${error.stack || error.message}\n`,
+  );
+});
+process.on('unhandledRejection', (reason) => {
+  process.stderr.write(
+    `\n[launcher] unhandled promise rejection (still running): ${reason instanceof Error ? reason.stack : String(reason)}\n`,
+  );
 });
 
 process.on('SIGINT', () => {

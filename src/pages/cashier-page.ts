@@ -1,5 +1,10 @@
 import type { Frame, Page, Response } from '@playwright/test';
-import type { CashierCard, CashierPaymentResult, ChallengeSetting } from '../types/cashier.types';
+import type {
+  BrowserData,
+  CashierCard,
+  CashierPaymentResult,
+  ChallengeSetting,
+} from '../types/cashier.types';
 import { watchForChallenge } from './three-ds-challenge';
 
 export interface RedirectUrls {
@@ -100,8 +105,16 @@ export class CashierPage {
       });
 
     try {
+      // String expression: the project compiles without DOM types.
+      const screen = await this.page.evaluate<{ width: number; height: number }>(
+        '({ width: screen.width, height: screen.height })',
+      );
       await this.payButton().click();
       const submission = await npv;
+      const browserData: BrowserData | undefined =
+        submission === undefined
+          ? undefined
+          : { sent: Object.fromEntries(new URL(submission.url()).searchParams), screen };
       if (submission !== undefined) {
         const rejected = await this.rejectionMessage(submission);
         if (rejected !== undefined) {
@@ -110,6 +123,7 @@ export class CashierPage {
             finalUrl: this.page.url(),
             apiMessage: rejected,
             visitedPages: externalPages(visited, targets),
+            ...(browserData ? { browserData } : {}),
           };
         }
       }
@@ -124,6 +138,7 @@ export class CashierPage {
       return {
         ...this.classify(redirects),
         visitedPages: externalPages(visited, targets),
+        ...(browserData ? { browserData } : {}),
         ...(shown ? { challenge: shown } : {}),
       };
     } finally {
