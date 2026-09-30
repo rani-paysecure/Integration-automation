@@ -46,6 +46,11 @@ async function findOtpInput(page: Page, ignoreHost: string): Promise<{ frame: Fr
   return undefined;
 }
 
+/** True while a challenge (OTP) input is visible on the page or in one of its frames. */
+export async function isChallengeVisible(page: Page, cashierHost: string): Promise<boolean> {
+  return (await findOtpInput(page, cashierHost)) !== undefined;
+}
+
 async function readOtpHint(frame: Frame): Promise<string> {
   const text = await frame
     .locator('body')
@@ -132,6 +137,7 @@ export async function watchForChallenge(
         host,
         action,
         detail: `OTP ${configured === '' ? 'read from the page' : 'from card settings'} entered, "${pressed}" pressed`,
+        answered: true,
       };
     }
     await page.waitForTimeout(POLL_MS).catch(() => undefined);
