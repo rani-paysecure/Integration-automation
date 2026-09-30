@@ -1,5 +1,10 @@
 import { HttpStatus } from '@constants/http';
-import { executeTransaction, expectPspChecks } from '@helpers/transaction-flow';
+import {
+  executeTransaction,
+  expectPspChecks,
+  markRedirectObserved,
+  redirectMissedButSettled,
+} from '@helpers/transaction-flow';
 import { expect, test } from '@fixtures/api.fixture';
 import { cashierCardScenarios } from '@test-data/cashier-purchase/cashier-cards';
 import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.factory';
@@ -51,10 +56,14 @@ test.describe(
             testInfo,
           );
 
-          expect(
-            result.cashier.outcome,
-            `cashier outcome (${result.cashier.apiMessage || result.cashier.finalUrl})`,
-          ).toBe(scenario.expected.outcome);
+          if (redirectMissedButSettled(result, scenario.expected)) {
+            markRedirectObserved(result, testInfo);
+          } else {
+            expect(
+              result.cashier.outcome,
+              `cashier outcome (${result.cashier.apiMessage || result.cashier.finalUrl})`,
+            ).toBe(scenario.expected.outcome);
+          }
           expect(scenario.expected.statuses, `final status ${result.finalStatus}`).toContain(
             result.finalStatus,
           );

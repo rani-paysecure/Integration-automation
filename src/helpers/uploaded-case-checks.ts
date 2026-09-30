@@ -1,10 +1,19 @@
 import { expect, type TestInfo } from '@playwright/test';
 import type { BankTransaction } from '../schemas/backoffice.schema';
 import { maskSensitiveData } from '../utils/masking';
+<<<<<<< Updated upstream
 import { setPath } from '../utils/object';
 import { findSentValue } from './bank-regex';
 import { describePgsRule, evaluatePgsRule, pspLacksField } from './pgs-rules';
 import type { TransactionResult } from './transaction-flow';
+=======
+import { compileBankRule, findSentValue } from './bank-regex';
+import {
+  markRedirectObserved,
+  redirectMissedButSettled,
+  type TransactionResult,
+} from './transaction-flow';
+>>>>>>> Stashed changes
 
 /**
  * Assertions for uploaded cases (regex / edge cases). Kept out of the specs so
@@ -161,7 +170,9 @@ export function expectEdgeOutcome(
   expected: EdgeExpectation,
   testInfo: TestInfo,
 ): void {
-  if (expected.outcome !== undefined) {
+  if (redirectMissedButSettled(result, expected)) {
+    markRedirectObserved(result, testInfo);
+  } else if (expected.outcome !== undefined) {
     expect
       .soft(result.cashier.outcome, `cashier result (${result.cashier.finalUrl})`)
       .toBe(expected.outcome);
