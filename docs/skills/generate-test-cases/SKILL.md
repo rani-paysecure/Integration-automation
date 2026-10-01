@@ -13,7 +13,8 @@ added on its **Test cases** tab by uploading a filled template. This skill write
 - **Category**: `field` (request field rules) · `regex` (a bank's field regexes) · `psp` (checks on
   the PSP request/response) · `edge` (end-to-end scenarios with a card and expected outcome) ·
   `kyc` (POST /kyc/create: customer, request changes, auth variant → HTTP, code, KYC status) ·
-  `refund` (refund steps on a purchase → HTTP, code, final status) · `bank-config` (flip the routed
+  `refund` (refund steps on a purchase → HTTP, code, final status) · `s2s` (S2S card payment:
+  request changes / auth → HTTP, code, status, browser outcome) · `bank-config` (flip the routed
   MID / merchant settings → pay or refund → routing, status, code, PSP currency).
 - **How many**: min and max number of cases (default 10–20; PSP counts test cases, not rows).
 - **Environment**: `local` (default) or `uat` – both are test4.
@@ -90,6 +91,15 @@ country not sent; customer.fullName="Ann Lee"; customer.phoneNo not sent` (never
   ("can not be processed"), `currency` (PSP currency, e.g. `{other}`). Base every case on the live
   settings from `context` and flip them; one idea per case. Rules: § 7. Each routing change costs a
   5-minute wait at run time (PGS MID cache) – keep the set focused.
+
+- **s2s** – `purchase` = New purchase / Unknown purchaseId / Second call (payment already started);
+  `auth` = Valid / No Authorization header / Key without Bearer / Content-Type text/plain; `changes` =
+  S2S body changes on top of the S2S data tab: `expires="12/3"; cvc not sent; screen_width=0;
+remember_card=on; deviceId="QA-1"` ("…" text, numbers, true/false, null, JSON, N characters); `http`
+  required; for 202 give `status` (final: PAID / ERROR) and `outcome` (Success / Failure / Pending redirect);
+  for rejections `code`, `message` and `status` after the call (CREATED payable / ERROR ended). Card
+  payment methods only. Rules: § 8 (many malformed values are accepted by PGS – write the correct
+  expectation, a red case is a finding).
 
 Save the rows as a JSON array of objects keyed by the column `key`s, e.g. `generated-regex.json`.
 

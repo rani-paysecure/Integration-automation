@@ -38,6 +38,8 @@ export const Endpoints = {
     byId: (purchaseId: string) => `/v1/purchases/${encode(purchaseId)}/`,
     /** GET = full refund, POST {amount, reason} = partial (or full) refund. */
     refund: (purchaseId: string) => `/v1/purchases/${encode(purchaseId)}/refund`,
+    /** S2S card payment: POST with `?s2s=true` (card + browser data, merchant key). */
+    s2s: (purchaseId: string) => `/v1/p/${encode(purchaseId)}/`,
   },
   payments: {
     collection: '/v1/payments',

@@ -17,6 +17,7 @@ const CATEGORY_ORDER = [
   'card',
   'refund',
   'bank-config',
+  's2s',
   'kyc',
   'psp-check',
   'other',
@@ -29,6 +30,7 @@ const CATEGORY_NAMES = {
   card: 'Card transactions',
   refund: 'Refunds',
   'bank-config': 'Bank & MID configuration',
+  s2s: 'S2S purchase',
   kyc: 'KYC verification',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
@@ -69,6 +71,7 @@ function categoryFromKey(key) {
   if (key.startsWith('@card-')) return 'card';
   if (/^@(RF|RC)-/.test(key)) return 'refund';
   if (/^@(BM|BC)-/.test(key)) return 'bank-config';
+  if (/^@(S2S|S2|s2s-card)-/.test(key)) return 's2s';
   if (/^@(KYC|KV)-/.test(key)) return 'kyc';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';
@@ -81,8 +84,8 @@ function normalise(t) {
     ...t,
     category,
     polarity: t.polarity || 'neutral',
-    caseId: /^@(FT|FV|RX|PR|EC|RF|RC|BM|BC|KYC|KV)-/.test(t.key) ? t.key.slice(1) : '',
-    name: String(t.title).replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|KYC|KV)-\S+\s(· )?/, ''),
+    caseId: /^@(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|KYC|KV)-/.test(t.key) ? t.key.slice(1) : '',
+    name: String(t.title).replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|KYC|KV)-\S+\s(· )?/, ''),
     expectedItems: t.expectedItems?.length
       ? t.expectedItems
       : t.expected

@@ -123,7 +123,7 @@ export default class UiReportReporter implements Reporter {
 
     const key =
       test.tags.find((tag) =>
-        /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|KYC-|KV-|card-|psp-by-id|backoffice-smoke)/.test(
+        /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|S2S-|S2-|s2s-card-|KYC-|KV-|card-|psp-by-id|backoffice-smoke)/.test(
           tag,
         ),
       ) ?? test.id;

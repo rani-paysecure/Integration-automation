@@ -184,3 +184,36 @@ column, so all fields must be re-posted, and it always stores `is_test_data=fals
 - **Caching:** routing loads MIDs via `MISCDaoimpl.getAllLiveMid` / `getAllActiveMid`, cached in Redis for
   5 minutes (`cacheALM8:…`), not invalidated by `setPaymentBankMID`. A MID change reaches routing up to
   5 minutes late. Refunds (`getMIDBy_AUTHMID`) and the merchant profile are read from the database.
+
+## 8. S2S card payment – `APIController.s2s` → `PurchaseService.s2s` (confirmed on test4)
+
+`POST /api/v1/p/{purchaseId}/?s2s=true`, body `S2s`: cardholder_name, card_number, expires (MM/YY),
+cvc, remember_card, remote_ip, user_agent, accept_header (the last three `@NotNull`), language,
+java_enabled, javascript_enabled, color_depth, utc_offset, screen_width / screen_height.
+
+- Order of checks: Bearer key (401 `authentication_failed` "Authorization header missing", also for a
+  key without "Bearer ") → Content-Type json (415 `unsupported_media_type`) → purchase found (400
+  "PurchaseId Not found.") → status CREATED / OVERDUE (else 400 "Only purchases that can be paid for can
+  be initiated for payment.") → remote_ip ≠ caller IP → card checks → payment method allowed → expiry.
+- Missing remote_ip / user_agent / accept_header → 400 `Invalid_Parameter` "<field> cannot be null";
+  malformed JSON → 400 `invalid_json`. These, auth and the Luhn check ("Invalid card Number (Luhn
+  algo)", also for letters) leave the purchase **CREATED**.
+- Missing cvc / cardholder_name / expires / remember_card → 400 "Card Detail is missing"; expiry
+  without "/" or in the past → 400 "Invalid Card Expiry(Valid Format:MM/YY) …"; a card the cashier
+  rejects (4111…) → 400 "Invalid card details". These end the purchase as **ERROR**.
+- **Bugs:** missing `card_number` → HTTP 500 "something went wrong" (exception) and the purchase is no
+  longer payable; expiry month `13/31` is accepted (202) and the payment starts.
+- The payment method is taken from the card's scheme: a card sent for an APM purchase (e.g.
+  BANKTRANSFER) → 400 "Payment Method VISA is not Allowed!". No S2S for APMs.
+- Success, merchant trxType ALL / 3D → 202 `{status:"pending", method:"GET",
+callback_url:"<checkout host>/api/v1/payment/<purchaseId>/"}`, purchase PENDINGEXECUTE; opening the
+  callback runs the payment (3DS page or merchant redirect). A second S2S call → 400 "Only purchases
+  that can be paid for …".
+- trxType 2D → PGS pays inside the call (`self.payment`), polls up to 20 s and answers 202 with the
+  purchase (`trxType: 2D`, callback "no_need"); the merchant webhook carries the final status.
+- `remember_card` on / true → the card is saved for the customer (`updateSavedCard`).
+- **Not validated by S2S (accepted with 202, payment starts):** expiry `12/3` (one-digit year) and month
+  `00`, CVC with 2 / 5 digits or letters, cardholder_name of 256 characters, remote_ip that is not an IP,
+  remember_card values other than on / off, screen 0, unknown language, extra body fields. Rejected:
+  expiry MM/YYYY ("Invalid Card Expiry"), empty cardholder_name ("Card Detail is missing", ERROR), spaces
+  in the card number (Luhn, still CREATED).

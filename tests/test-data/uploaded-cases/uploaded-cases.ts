@@ -8,6 +8,7 @@
  *   edge-cases.json        EC-xxx   end-to-end scenarios     → 05-edge-cases.spec.ts
  *   kyc-validation.json    KV-xxx   KYC create cases         → kyc/20-uploaded-kyc-cases.spec.ts
  *   refund-cases.json      RC-xxx   refund steps             → 08-uploaded-refund-cases.spec.ts
+ *   s2s-cases.json         S2-xxx   S2S card payments        → s2s-purchase/03-uploaded-s2s-cases.spec.ts
  *   bank-config.json       BC-xxx   bank / MID settings      → 09-uploaded-bank-config-cases.spec.ts
  *
  * Every file is validated on load, so a broken entry fails fast with its id.
@@ -202,6 +203,27 @@ const bankConfigCase = z.object({
   source,
 });
 
+const s2sCase = z.object({
+  id: z.string().regex(/^S2-\d{3,}$/),
+  title: z.string().min(1),
+  card: z.string().optional(),
+  /** new = fresh purchase · unknown = purchaseId that does not exist · second = valid S2S call first. */
+  purchase: z.enum(['new', 'unknown', 'second']),
+  auth: z.enum(['valid', 'none', 'no-bearer', 'text-plain']),
+  /** S2S body changes on top of the S2S data tab (any field name). */
+  set: z.record(z.string().regex(/^[A-Za-z_]\w*$/), z.unknown()).optional(),
+  remove: z.array(z.string()).optional(),
+  expected: z.object({
+    http: z.number().int(),
+    code: z.string().optional(),
+    messageContains: z.string().optional(),
+    statuses: z.array(z.string()).optional(),
+    outcome: z.enum(['success-redirect', 'failure-redirect', 'pending-redirect']).optional(),
+  }),
+  source,
+});
+
+export type S2sCase = z.infer<typeof s2sCase>;
 export type RefundCase = z.infer<typeof refundCase>;
 export type RefundAmount = z.infer<typeof refundAmount>;
 export type BankConfigCase = z.infer<typeof bankConfigCase>;
@@ -261,3 +283,4 @@ export const loadUploadedRefundCases = (file = 'refund-cases.json'): RefundCase[
   load(file, refundCase);
 export const loadUploadedBankConfigCases = (file = 'bank-config.json'): BankConfigCase[] =>
   load(file, bankConfigCase);
+export const loadUploadedS2sCases = (file = 's2s-cases.json'): S2sCase[] => load(file, s2sCase);

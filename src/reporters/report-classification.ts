@@ -15,6 +15,7 @@ export type CategoryId =
   | 'card'
   | 'refund'
   | 'bank-config'
+  | 's2s'
   | 'kyc'
   | 'psp-check'
   | 'other';
@@ -33,6 +34,7 @@ export const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   card: 'Card transactions',
   refund: 'Refunds',
   'bank-config': 'Bank & MID configuration',
+  s2s: 'S2S purchase',
   kyc: 'KYC verification',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
@@ -46,6 +48,7 @@ export function categoryOf(key: string): CategoryId {
   if (key.startsWith('@card-')) return 'card';
   if (key.startsWith('@RF-') || key.startsWith('@RC-')) return 'refund';
   if (key.startsWith('@BM-') || key.startsWith('@BC-')) return 'bank-config';
+  if (/^@(S2S|S2|s2s-card)-/.test(key)) return 's2s';
   if (key.startsWith('@KYC-') || key.startsWith('@KV-')) return 'kyc';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';

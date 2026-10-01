@@ -11,7 +11,7 @@
  *   npm run cases -- check <category> <file.xlsx|csv> [--env local]         validate exactly like the launcher upload
  *   npm run cases -- sync-pgs <path to PGS repo>             refresh config/pgs/country-validation-regex.json
  *
- * Categories: field, regex, psp, edge, kyc, refund, bank-config. Output is JSON / text on stdout.
+ * Categories: field, regex, psp, edge, kyc, refund, bank-config, s2s. Output is JSON / text on stdout.
  */
 'use strict';
 
@@ -51,7 +51,7 @@ function settings() {
 function category(id) {
   const c = caseImport.CATEGORIES[id];
   if (!c)
-    fail(`Unknown category "${id}" – use field, regex, psp, edge, kyc, refund or bank-config`);
+    fail(`Unknown category "${id}" – use field, regex, psp, edge, kyc, refund, bank-config or s2s`);
   return c;
 }
 
@@ -160,6 +160,10 @@ async function main() {
       ctx.bankConfig = await client.bankConfigContext(flags.mid, client.merchantId);
       if (!ctx.bankConfig) fail(`MID ${flags.mid} not found in the dashboard`);
       ctx.currency = s.purchase[env]?.purchase?.currency || 'EUR';
+      for (const c of caseImport.loadCases(id))
+        ctx.existing.push(`${c.title} – ${caseImport.summarize(id, c).join(' | ')}`);
+    } else if (id === 's2s') {
+      ctx.s2sTemplate = s.s2s?.[env];
       for (const c of caseImport.loadCases(id))
         ctx.existing.push(`${c.title} – ${caseImport.summarize(id, c).join(' | ')}`);
     } else if (id === 'refund') {

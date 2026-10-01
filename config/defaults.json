@@ -29,7 +29,7 @@
         "country": "AT",
         "city": "jaipur",
         "stateCode": "WI",
-        "street_address": "Kärntner Straße 10",
+        "street_address": "K\u00e4rntner Stra\u00dfe 10",
         "zip_code": "1010",
         "date_of_birth": "2011-04-25",
         "phone": "+436601234567",
@@ -57,7 +57,7 @@
         "country": "AT",
         "city": "jaipur",
         "stateCode": "WI",
-        "street_address": "Kärntner Straße 10",
+        "street_address": "K\u00e4rntner Stra\u00dfe 10",
         "zip_code": "1010",
         "date_of_birth": "2011-04-25",
         "phone": "+436601234567",
@@ -84,13 +84,15 @@
     "uat": [
       {
         "id": "risk-rule-3ds-u",
-        "label": "Visa – risk rule fails (3DS result U)",
+        "label": "Visa \u2013 risk rule fails (3DS result U)",
         "number": "4530910000012345",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Test Risk",
         "expectedOutcome": "failure-redirect",
-        "expectedStatuses": ["ERROR"],
+        "expectedStatuses": [
+          "ERROR"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -100,13 +102,15 @@
       },
       {
         "id": "invalid-card-details",
-        "label": "Visa 4111… rejected by cashier",
+        "label": "Visa 4111\u2026 rejected by cashier",
         "number": "4111111111111111",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Test Invalid",
         "expectedOutcome": "rejected",
-        "expectedStatuses": ["CREATED"],
+        "expectedStatuses": [
+          "CREATED"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -116,13 +120,15 @@
       },
       {
         "id": "visa-3ds-challenge-pass",
-        "label": "Visa 3DS challenge – correct OTP",
+        "label": "Visa 3DS challenge \u2013 correct OTP",
         "number": "4000000000002503",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Challenge Pass",
         "expectedOutcome": "success-redirect",
-        "expectedStatuses": ["PAID"],
+        "expectedStatuses": [
+          "PAID"
+        ],
         "enabled": true,
         "challenge": {
           "action": "otp",
@@ -132,13 +138,15 @@
       },
       {
         "id": "visa-3ds-challenge-decline",
-        "label": "Visa 3DS challenge – authentication declined",
+        "label": "Visa 3DS challenge \u2013 authentication declined",
         "number": "4000000000002370",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Challenge Decline",
         "expectedOutcome": "failure-redirect",
-        "expectedStatuses": ["ERROR"],
+        "expectedStatuses": [
+          "ERROR"
+        ],
         "enabled": true,
         "challenge": {
           "action": "otp",
@@ -148,13 +156,15 @@
       },
       {
         "id": "visa-3ds-frictionless",
-        "label": "Visa 3DS frictionless – authenticated",
+        "label": "Visa 3DS frictionless \u2013 authenticated",
         "number": "4000000000002719",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Frictionless Pass",
         "expectedOutcome": "success-redirect",
-        "expectedStatuses": ["PAID"],
+        "expectedStatuses": [
+          "PAID"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -166,13 +176,15 @@
     "local": [
       {
         "id": "risk-rule-3ds-u",
-        "label": "Visa – risk rule fails (3DS result U)",
+        "label": "Visa \u2013 risk rule fails (3DS result U)",
         "number": "4530910000012345",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Test Risk",
         "expectedOutcome": "failure-redirect",
-        "expectedStatuses": ["ERROR"],
+        "expectedStatuses": [
+          "ERROR"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -182,13 +194,15 @@
       },
       {
         "id": "invalid-card-details",
-        "label": "Visa 4111… rejected by cashier",
+        "label": "Visa 4111\u2026 rejected by cashier",
         "number": "4111111111111111",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Test Invalid",
         "expectedOutcome": "rejected",
-        "expectedStatuses": ["CREATED"],
+        "expectedStatuses": [
+          "CREATED"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -198,13 +212,15 @@
       },
       {
         "id": "visa-3ds-challenge-pass",
-        "label": "Visa 3DS challenge – correct OTP",
+        "label": "Visa 3DS challenge \u2013 correct OTP",
         "number": "4000000000002503",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Challenge Pass",
         "expectedOutcome": "success-redirect",
-        "expectedStatuses": ["PAID"],
+        "expectedStatuses": [
+          "PAID"
+        ],
         "enabled": true,
         "challenge": {
           "action": "otp",
@@ -214,13 +230,15 @@
       },
       {
         "id": "visa-3ds-challenge-decline",
-        "label": "Visa 3DS challenge – authentication declined",
+        "label": "Visa 3DS challenge \u2013 authentication declined",
         "number": "4000000000002370",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Challenge Decline",
         "expectedOutcome": "failure-redirect",
-        "expectedStatuses": ["ERROR"],
+        "expectedStatuses": [
+          "ERROR"
+        ],
         "enabled": true,
         "challenge": {
           "action": "otp",
@@ -230,13 +248,15 @@
       },
       {
         "id": "visa-3ds-frictionless",
-        "label": "Visa 3DS frictionless – authenticated",
+        "label": "Visa 3DS frictionless \u2013 authenticated",
         "number": "4000000000002719",
         "expiry": "12/30",
         "cvv": "123",
         "holderName": "Frictionless Pass",
         "expectedOutcome": "success-redirect",
-        "expectedStatuses": ["PAID"],
+        "expectedStatuses": [
+          "PAID"
+        ],
         "enabled": true,
         "challenge": {
           "action": "none",
@@ -245,5 +265,35 @@
         }
       }
     ]
+  },
+  "s2s": {
+    "uat": {
+      "browserData": "device",
+      "remote_ip": "157.38.242.7",
+      "remember_card": "off",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+      "accept_header": "text/html",
+      "language": "en-US",
+      "java_enabled": "false",
+      "javascript_enabled": true,
+      "color_depth": 24,
+      "utc_offset": 0,
+      "screen_width": 1920,
+      "screen_height": 1080
+    },
+    "local": {
+      "browserData": "device",
+      "remote_ip": "157.38.242.7",
+      "remember_card": "off",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+      "accept_header": "text/html",
+      "language": "en-US",
+      "java_enabled": "false",
+      "javascript_enabled": true,
+      "color_depth": 24,
+      "utc_offset": 0,
+      "screen_width": 1920,
+      "screen_height": 1080
+    }
   }
 }

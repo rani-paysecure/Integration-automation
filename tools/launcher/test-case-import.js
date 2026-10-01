@@ -8,6 +8,7 @@
  *   edge   → Custom & edge cases       (EC-xxx)  end-to-end scenarios with an expected outcome
  *   kyc    → KYC validation            (KV-xxx)  POST /kyc/create: request / customer / auth → HTTP, code, status
  *   refund → Refund cases              (RC-xxx)  refund steps on a purchase → HTTP, code, final status
+ *   s2s    → S2S cases                 (S2-xxx)  S2S card payment: purchase + auth + body changes → HTTP, status, outcome
  *   bank-config → Bank & MID config    (BC-xxx)  flip MID / merchant settings → pay / refund → routing, status
  *
  * Each category has its own template (download from the launcher), parser and
@@ -798,6 +799,13 @@ function extraCategories() {
   return extra;
 }
 Object.assign(CATEGORIES, extraCategories().CATEGORIES);
+// S2S card payment category (S2-xxx) – see s2s-cases.js.
+let s2sExtra;
+function s2sCategory() {
+  if (!s2sExtra) s2sExtra = require('./s2s-cases')({ norm: (x) => norm(x) });
+  return s2sExtra;
+}
+Object.assign(CATEGORIES, s2sCategory().CATEGORIES);
 
 const categoryOf = (id) => {
   const c = CATEGORIES[id];
@@ -1199,6 +1207,7 @@ const describeKycExpected = (e) =>
 
 const PARSERS = {
   ...extraCategories().PARSERS,
+  ...s2sCategory().PARSERS,
   kyc: parseKycRows,
   field: parseFieldRows,
   regex: parseRegexRows,
@@ -1207,6 +1216,7 @@ const PARSERS = {
 };
 const PREVIEW_COLUMNS = {
   ...extraCategories().PREVIEW_COLUMNS,
+  ...s2sCategory().PREVIEW_COLUMNS,
   field: ['Parameter', 'Test case', 'Test data', 'Expected'],
   regex: ['Bank', 'Field', 'Test data', 'Expected'],
   psp: ['Test case', 'Card', 'Checks'],
@@ -1218,6 +1228,7 @@ const PREVIEW_COLUMNS = {
 
 /** Content signature – ignores id, title and source so renamed copies are caught too. */
 function signature(categoryId, c) {
+  if (categoryId === 's2s') return s2sCategory().signature(categoryId, c);
   if (categoryId === 'refund' || categoryId === 'bank-config')
     return extraCategories().signature(categoryId, c);
   switch (categoryId) {
@@ -1433,6 +1444,7 @@ function validateCase(categoryId, d) {
   const context = () => (d.context && typeof d.context === 'object' ? { context: d.context } : {});
   if (categoryId === 'refund' || categoryId === 'bank-config')
     return extraCategories().validate(categoryId, d, need);
+  if (categoryId === 's2s') return s2sCategory().validate(categoryId, d, need);
   switch (categoryId) {
     case 'field':
       need(PATH_RE.test(d.path), 'invalid request field');
@@ -1556,6 +1568,7 @@ function deleteCase(caseId) {
 
 /** Short one-line description of a stored case for the launcher list. */
 function summarize(categoryId, c) {
+  if (categoryId === 's2s') return s2sCategory().summarize(categoryId, c);
   if (categoryId === 'refund' || categoryId === 'bank-config')
     return extraCategories().summarize(categoryId, c);
   switch (categoryId) {

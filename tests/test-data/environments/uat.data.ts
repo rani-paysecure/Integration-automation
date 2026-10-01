@@ -4,7 +4,7 @@ import type { EnvironmentTestData } from './environment-data.types';
  * UAT test data. Values are NOT secrets; override via env vars where they
  * differ per tester/pipeline. Replace placeholders with real UAT values.
  */
-export const uatData: Omit<EnvironmentTestData, 'purchase'> = {
+export const uatData: Omit<EnvironmentTestData, 'purchase' | 's2s'> = {
   merchant: {
     id: process.env.UAT_MERCHANT_ID ?? 'UAT-MERCHANT-PLACEHOLDER',
     defaultCurrency: 'USD',
