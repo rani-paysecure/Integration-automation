@@ -8,5 +8,7 @@ Hosted-checkout purchase: `POST /v1/purchases/` → customer pays on `checkout_u
 | 2. Regex validation                     | `02-regex-validation.spec.ts`     | Planned                                            |
 | 3. PSP request/response validation      | `03-psp-validation.spec.ts`       | Implemented for given purchase IDs (back-office)   |
 | 4. Report: purchase ID → transaction ID | reporter                          | Planned                                            |
+| 5. Refunds                              | `06-refunds.spec.ts`              | Implemented (real refunds)                         |
+| 6. Bank & MID configuration             | `07-bank-mid-config.spec.ts`      | Implemented (flip → test → restore)                |
 
 Run: `npm run test:cashier` (all stages) or `npm run test:cashier:fields` (stage 1).

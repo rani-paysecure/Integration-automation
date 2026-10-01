@@ -460,7 +460,46 @@ export class BackofficeClient extends BaseApiClient {
       bankMidId,
       provider: text(row?.bankName),
       midName: text(row?.mid) || text(row?.mid_desc),
-      webhookSecret: authKey.split('##')[2]?.trim() || undefined,
+      webhookSecret:
+        (authKey.split('##')[2]?.trim() ?? '') === '' ? undefined : authKey.split('##')[2]?.trim(),
     };
+  }
+
+  /**
+   * Unlogged dashboard request for configuration pages and writes whose bodies
+   * contain MID credentials (mid_auth_key, SSL passwords …). Nothing of it is
+   * recorded in the report or the log – callers must whitelist what they keep.
+   */
+  async rawRequest(
+    method: 'GET' | 'POST',
+    path: string,
+    body: { readonly form?: Record<string, string>; readonly json?: unknown } = {},
+  ): Promise<{ status: number; url: string; text: string }> {
+    return this.withSession(async () => {
+      const url = `${this.options.baseUrl.replace(/\/+$/, '')}${path}`;
+      const form =
+        body.form === undefined ? undefined : { ...body.form, _csrf: this.csrfToken ?? '' };
+      const response = await this.requestContext().fetch(url, {
+        method,
+        failOnStatusCode: false,
+        headers: {
+          ...this.sessionHeaders(),
+          accept: 'application/json, text/html;q=0.9',
+          ...(body.json === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        ...(form === undefined ? {} : { form }),
+        ...(body.json === undefined ? {} : { data: JSON.stringify(body.json) }),
+      });
+      this.assertSession(response.url());
+      const result = {
+        status: response.status(),
+        url: response.url(),
+        text: await response.text(),
+      };
+      this.logger.info(
+        `${method} ${path.split('?')[0]} → ${String(result.status)} (configuration, body not logged)`,
+      );
+      return result;
+    });
   }
 }

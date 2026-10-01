@@ -59,7 +59,8 @@ export function expectChecks(checks: readonly ComplianceCheck[]): void {
   }
 }
 
-async function settledStatus(api: PurchaseApiClient, purchaseId: string): Promise<string> {
+/** Waits until no refund of the purchase is in process; returns the purchase status. */
+export async function settledStatus(api: PurchaseApiClient, purchaseId: string): Promise<string> {
   let status = '';
   await expect
     .poll(

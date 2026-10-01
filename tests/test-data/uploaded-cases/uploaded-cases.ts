@@ -7,6 +7,8 @@
  *   psp-validation.json    PR-xxx   PSP request/response     → 04-psp-field-checks.spec.ts
  *   edge-cases.json        EC-xxx   end-to-end scenarios     → 05-edge-cases.spec.ts
  *   kyc-validation.json    KV-xxx   KYC create cases         → kyc/20-uploaded-kyc-cases.spec.ts
+ *   refund-cases.json      RC-xxx   refund steps             → 08-uploaded-refund-cases.spec.ts
+ *   bank-config.json       BC-xxx   bank / MID settings      → 09-uploaded-bank-config-cases.spec.ts
  *
  * Every file is validated on load, so a broken entry fails fast with its id.
  */
@@ -18,7 +20,8 @@ import type { CashierOutcome } from '@app-types/cashier.types';
 
 export const UPLOADED_CASES_DIR = __dirname;
 
-const fieldPath = z.string().regex(/^[A-Za-z_]\w*(\.\w+)*$/);
+/** Request path; payment-method keys may contain '-' (extraParam.account-no). */
+const fieldPath = z.string().regex(/^[A-Za-z_][\w-]*(\.[\w-]+)*$/);
 const source = z
   .object({ file: z.string(), rows: z.array(z.number()), importedAt: z.string() })
   .optional();
@@ -132,6 +135,76 @@ const kycCase = z.object({
   source,
 });
 
+const refundAmount = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('none') }),
+  z.object({ kind: z.literal('total') }),
+  z.object({ kind: z.literal('rest'), delta: z.number().optional() }),
+  z.object({ kind: z.literal('percent'), value: z.number().positive() }),
+  z.object({ kind: z.literal('fixed'), value: z.number() }),
+  z.object({ kind: z.literal('raw'), value: z.string() }),
+]);
+const refundCase = z.object({
+  id: z.string().regex(/^RC-\d{3,}$/),
+  title: z.string().min(1),
+  /** new = paid with the card first · unpaid = created, not paid · given = REFUND_PURCHASE_ID. */
+  purchase: z.enum(['new', 'unpaid', 'given']),
+  card: z.string().optional(),
+  steps: z
+    .array(z.object({ amount: refundAmount }))
+    .min(1)
+    .max(6),
+  /** Absent = "QA refund". */
+  reason: z
+    .discriminatedUnion('kind', [
+      z.object({ kind: z.literal('none') }),
+      z.object({ kind: z.literal('value'), value: z.string() }),
+    ])
+    .optional(),
+  /** Applies to the LAST step. */
+  expected: z.object({
+    http: z.number().int().optional(),
+    code: z.string().optional(),
+    messageContains: z.string().optional(),
+    statuses: z.array(z.string()).optional(),
+  }),
+  source,
+});
+
+const flag = z.union([z.literal(0), z.literal(1)]);
+const bankConfigCase = z.object({
+  id: z.string().regex(/^BC-\d{3,}$/),
+  title: z.string().min(1),
+  /**
+   * MID fields as in the dashboard form + merchant_conversion (Merchant Details switch).
+   * Tokens: {purchase} / {card} = the purchase currency / card scheme, {other} = a different one.
+   */
+  settings: z
+    .object({
+      onlyTwoD: flag.optional(),
+      partial_refund_allowed: flag.optional(),
+      curr_convert_to: z.string().optional(),
+      allowed_curr: z.string().optional(),
+      allowed_card: z.string().optional(),
+      merchant_conversion: flag.optional(),
+    })
+    .strict(),
+  action: z.enum(['pay', 'partial-refund', 'full-refund']),
+  card: z.string().optional(),
+  set: z.record(fieldPath, z.unknown()).optional(),
+  remove: z.array(fieldPath).optional(),
+  expected: z.object({
+    routing: z.enum(['uses', 'skips']).optional(),
+    statuses: z.array(z.string()).optional(),
+    code: z.string().optional(),
+    errorContains: z.string().optional(),
+    currency: z.string().optional(),
+  }),
+  source,
+});
+
+export type RefundCase = z.infer<typeof refundCase>;
+export type RefundAmount = z.infer<typeof refundAmount>;
+export type BankConfigCase = z.infer<typeof bankConfigCase>;
 export type KycCase = z.infer<typeof kycCase>;
 export type RegexCase = z.infer<typeof regexCase>;
 export type PspFieldCheck = z.infer<typeof pspCase>['checks'][number];
@@ -184,3 +257,7 @@ export const loadUploadedEdgeCases = (file = 'edge-cases.json'): EdgeCase[] =>
   load(file, edgeCase) as EdgeCase[];
 export const loadUploadedKycCases = (file = 'kyc-validation.json'): KycCase[] =>
   load(file, kycCase);
+export const loadUploadedRefundCases = (file = 'refund-cases.json'): RefundCase[] =>
+  load(file, refundCase);
+export const loadUploadedBankConfigCases = (file = 'bank-config.json'): BankConfigCase[] =>
+  load(file, bankConfigCase);

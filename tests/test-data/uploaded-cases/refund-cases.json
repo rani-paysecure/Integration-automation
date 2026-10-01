@@ -1,0 +1,179 @@
+{
+  "nextNumber": 7,
+  "cases": [
+    {
+      "id": "RC-001",
+      "title": "Two partial refunds, then the rest",
+      "purchase": "new",
+      "steps": [
+        {
+          "amount": {
+            "kind": "percent",
+            "value": 20
+          }
+        },
+        {
+          "amount": {
+            "kind": "percent",
+            "value": 30
+          }
+        },
+        {
+          "amount": {
+            "kind": "rest"
+          }
+        }
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "REFUNDED"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          1
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    },
+    {
+      "id": "RC-002",
+      "title": "Partial refund, then more than the rest",
+      "purchase": "new",
+      "steps": [
+        {
+          "amount": {
+            "kind": "percent",
+            "value": 50
+          }
+        },
+        {
+          "amount": {
+            "kind": "rest",
+            "delta": 0.01
+          }
+        }
+      ],
+      "expected": {
+        "http": 400,
+        "code": "invalid_amount",
+        "messageContains": "exceeds refundable amount"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    },
+    {
+      "id": "RC-003",
+      "title": "Negative amount is rejected",
+      "purchase": "new",
+      "steps": [
+        {
+          "amount": {
+            "kind": "fixed",
+            "value": -1
+          }
+        }
+      ],
+      "expected": {
+        "http": 400,
+        "statuses": [
+          "PAID"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    },
+    {
+      "id": "RC-004",
+      "title": "Text amount is rejected",
+      "purchase": "new",
+      "steps": [
+        {
+          "amount": {
+            "kind": "raw",
+            "value": "abc"
+          }
+        }
+      ],
+      "expected": {
+        "http": 400,
+        "statuses": [
+          "PAID"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    },
+    {
+      "id": "RC-005",
+      "title": "Empty reason is rejected",
+      "purchase": "unpaid",
+      "steps": [
+        {
+          "amount": {
+            "kind": "fixed",
+            "value": 1
+          }
+        }
+      ],
+      "reason": {
+        "kind": "value",
+        "value": ""
+      },
+      "expected": {
+        "http": 400
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    },
+    {
+      "id": "RC-006",
+      "title": "Full refund twice – second one rejected",
+      "purchase": "new",
+      "steps": [
+        {
+          "amount": {
+            "kind": "total"
+          }
+        },
+        {
+          "amount": {
+            "kind": "total"
+          }
+        }
+      ],
+      "expected": {
+        "http": 400
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-01T08:59:53.191Z"
+      }
+    }
+  ]
+}

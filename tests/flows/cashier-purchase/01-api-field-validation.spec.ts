@@ -3,6 +3,8 @@ import type { BackofficeClient } from '@clients/backoffice-client';
 import type { PurchaseApiClient } from '@clients/purchase-api-client';
 import {
   applyFieldCase,
+  casePaymentMethod,
+  expectStoredAsSent,
   fieldCaseAnnotation,
   recordFieldResult,
   verifyFieldExpectation,
@@ -96,12 +98,27 @@ test.describe(
         ) => {
           test.skip(testCase.cashierOnly === true, testCase.apiNote ?? 'Cashier-only case');
 
-          const request = applyFieldCase(buildPurchaseRequest(envData, merchant), testCase);
+          // The case's payment method (context paymentMethod=…) picks its Purchase data fields.
+          const paymentMethod = casePaymentMethod(testCase) ?? merchant.paymentMethod;
+          const request = applyFieldCase(
+            buildPurchaseRequest(envData, { ...merchant, paymentMethod }),
+            testCase,
+          );
 
           const response = await purchaseApi.createPurchase(request);
 
           recordFieldResult(testInfo, response);
+          // A payment method the merchant does not allow says nothing about the field.
+          const notAllowed =
+            casePaymentMethod(testCase) !== undefined &&
+            response.status === 400 &&
+            response.text.includes('payment_method_not_allowed');
+          test.skip(
+            notAllowed,
+            `The merchant does not allow payment method ${casePaymentMethod(testCase) ?? ''} – enable it for the tester's merchant to run this case`,
+          );
           verifyFieldExpectation(response, testCase, { successSchema: purchaseCreatedSchema });
+          expectStoredAsSent(response, testCase);
           await completeTransactionIfSelected(
             testCase,
             response,

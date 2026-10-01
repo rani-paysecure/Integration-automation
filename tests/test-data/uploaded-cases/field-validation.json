@@ -1,3 +1,388 @@
 {
-  "cases": []
+  "nextNumber": 19,
+  "cases": [
+    {
+      "id": "FV-001",
+      "parameter": "extraParam",
+      "path": "extraParam",
+      "title": "extraParam with all bank-transfer parameters",
+      "mutation": {
+        "type": "set",
+        "value": {
+          "iban": "AE701722586121849073530",
+          "accountNumber": "123456789",
+          "sortCode": "1234567",
+          "name": "computer ABC"
+        }
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 extraParam stored as sent",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          1
+        ],
+        "importedAt": "2026-10-01T09:59:36.551Z"
+      }
+    },
+    {
+      "id": "FV-002",
+      "parameter": "extraParam.iban",
+      "path": "extraParam.iban",
+      "title": "iban missing, other parameters sent",
+      "mutation": {
+        "type": "remove"
+      },
+      "context": {
+        "extraParam.accountNumber": "123456789",
+        "extraParam.sortCode": "1234567",
+        "extraParam.name": "computer ABC"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 the cashier asks for missing parameters",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-003",
+      "parameter": "extraParam.iban",
+      "path": "extraParam.iban",
+      "title": "iban empty",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "context": {
+        "extraParam.accountNumber": "123456789",
+        "extraParam.sortCode": "1234567",
+        "extraParam.name": "computer ABC"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as sent",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-004",
+      "parameter": "extraParam.iban",
+      "path": "extraParam.iban",
+      "title": "iban in a wrong format (too short, lowercase)",
+      "mutation": {
+        "type": "set",
+        "value": "ae70"
+      },
+      "context": {
+        "extraParam.accountNumber": "123456789",
+        "extraParam.sortCode": "1234567",
+        "extraParam.name": "computer ABC"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 PGS stores it, the PSP checks the format",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-005",
+      "parameter": "extraParam.accountNumber",
+      "path": "extraParam.accountNumber",
+      "title": "accountNumber as a number",
+      "mutation": {
+        "type": "set",
+        "value": 123456789
+      },
+      "context": {
+        "extraParam.iban": "AE701722586121849073530",
+        "extraParam.sortCode": "1234567",
+        "extraParam.name": "computer ABC"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as a number",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-006",
+      "parameter": "extraParam.sortCode",
+      "path": "extraParam.sortCode",
+      "title": "sortCode with letters and symbols",
+      "mutation": {
+        "type": "set",
+        "value": "12-ab!@"
+      },
+      "context": {
+        "extraParam.iban": "AE701722586121849073530",
+        "extraParam.accountNumber": "123456789",
+        "extraParam.name": "computer ABC"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 PGS does not validate the format",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-007",
+      "parameter": "extraParam.name",
+      "path": "extraParam.name",
+      "title": "name null",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "context": {
+        "extraParam.iban": "AE701722586121849073530",
+        "extraParam.accountNumber": "123456789",
+        "extraParam.sortCode": "1234567"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as null (confirmed on test4)",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          7
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-008",
+      "parameter": "extraParam.name",
+      "path": "extraParam.name",
+      "title": "name 256 characters",
+      "mutation": {
+        "type": "set",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "context": {
+        "extraParam.iban": "AE701722586121849073530",
+        "extraParam.accountNumber": "123456789",
+        "extraParam.sortCode": "1234567"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 no length limit at create (confirmed on test4)",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          8
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-009",
+      "parameter": "extraParam.qaNotRequired",
+      "path": "extraParam.qaNotRequired",
+      "title": "parameter the payment method does not need",
+      "mutation": {
+        "type": "set",
+        "value": "QA-extra"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 unknown keys are stored and ignored",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          9
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-010",
+      "parameter": "extraParam",
+      "path": "extraParam",
+      "title": "empty extraParam object",
+      "mutation": {
+        "type": "set",
+        "value": {}
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          10
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-011",
+      "parameter": "extraParam",
+      "path": "extraParam",
+      "title": "extraParam as text instead of an object",
+      "mutation": {
+        "type": "set",
+        "value": "iban=AE701722586121849073530"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error \u2013 400 invalid_json \"Request Body Not Found/MalFormed\"",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          11
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-012",
+      "parameter": "extraParam",
+      "path": "extraParam",
+      "title": "extraParam as a list",
+      "mutation": {
+        "type": "set",
+        "value": [
+          "AE701722586121849073530"
+        ]
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error \u2013 400 invalid_json \"Request Body Not Found/MalFormed\"",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          12
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-013",
+      "parameter": "upiId",
+      "path": "upiId",
+      "title": "upiId sent (UPI handle)",
+      "mutation": {
+        "type": "set",
+        "value": "pending@testbank"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as sent",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          13
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-014",
+      "parameter": "upiId",
+      "path": "upiId",
+      "title": "upiId empty",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as sent (confirmed on test4)",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          14
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-015",
+      "parameter": "upiId",
+      "path": "upiId",
+      "title": "upiId without @ (wrong format)",
+      "mutation": {
+        "type": "set",
+        "value": "pendingtestbank"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 PGS does not validate the format",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          15
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-016",
+      "parameter": "invoiceNo",
+      "path": "invoiceNo",
+      "title": "invoiceNo sent",
+      "mutation": {
+        "type": "set",
+        "value": "657890b89hnm"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as sent",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          16
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-017",
+      "parameter": "invoiceNo",
+      "path": "invoiceNo",
+      "title": "invoiceNo 256 characters",
+      "mutation": {
+        "type": "set",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 no length limit at create (confirmed on test4)",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          17
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    },
+    {
+      "id": "FV-018",
+      "parameter": "invoiceNo",
+      "path": "invoiceNo",
+      "title": "invoiceNo as a number",
+      "mutation": {
+        "type": "set",
+        "value": 657890
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted \u2013 stored as sent (confirmed on test4)",
+      "source": {
+        "file": "starter set \u2013 payment-method fields",
+        "rows": [
+          18
+        ],
+        "importedAt": "2026-10-01T09:59:36.552Z"
+      }
+    }
+  ]
 }

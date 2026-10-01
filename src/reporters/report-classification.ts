@@ -8,7 +8,16 @@ import type { PspSummary } from '../helpers/psp-validation';
  * labelled lines instead of one long string.
  */
 export type CategoryId =
-  'field' | 'regex' | 'psp' | 'edge' | 'card' | 'refund' | 'kyc' | 'psp-check' | 'other';
+  | 'field'
+  | 'regex'
+  | 'psp'
+  | 'edge'
+  | 'card'
+  | 'refund'
+  | 'bank-config'
+  | 'kyc'
+  | 'psp-check'
+  | 'other';
 export type Polarity = 'positive' | 'negative' | 'neutral';
 
 export interface ReportItem {
@@ -23,6 +32,7 @@ export const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   edge: 'Custom & edge cases',
   card: 'Card transactions',
   refund: 'Refunds',
+  'bank-config': 'Bank & MID configuration',
   kyc: 'KYC verification',
   'psp-check': 'PSP check (existing purchases)',
   other: 'Other',
@@ -34,7 +44,8 @@ export function categoryOf(key: string): CategoryId {
   if (key.startsWith('@PR-')) return 'psp';
   if (key.startsWith('@EC-')) return 'edge';
   if (key.startsWith('@card-')) return 'card';
-  if (key.startsWith('@RF-')) return 'refund';
+  if (key.startsWith('@RF-') || key.startsWith('@RC-')) return 'refund';
+  if (key.startsWith('@BM-') || key.startsWith('@BC-')) return 'bank-config';
   if (key.startsWith('@KYC-') || key.startsWith('@KV-')) return 'kyc';
   if (key === '@psp-by-id' || key === '@backoffice-smoke') return 'psp-check';
   return 'other';

@@ -250,6 +250,30 @@ npm run test:cashier:fields -- --grep FT-01  # filter by case id / title
   blocked, cardholder name) belongs to a future browser suite.
 - Auth: `Authorization: Bearer <API key of the selected profile>` (`API_KEY_HEADER=Authorization`, `API_KEY_PREFIX=Bearer`).
 
+## Payment-method fields (`extraParam`, `upiId`, `invoiceNo` …)
+
+Some payment methods need their own request fields. Nothing is hardcoded per method:
+
+- **Purchase data → Payment-method fields (optional):** rows of _payment method · field · type · value_.
+  Field = `extraParam.<any key>` (iban, accountNumber, sortCode, name …) or a top-level name (`upiId`,
+  `invoiceNo`). Payment method _All_ = every purchase; a name (e.g. `UPI`) = only when the run or a
+  case uses that method (matched case-insensitively). _Paste JSON…_ takes
+  `{"upiId": "pending@testbank", "extraParam": {"iban": "AE07…"}}` for a method. Stored in the
+  template as `extraParam` (all methods) and `methodFields` (per method).
+- **Field validation cases (FV-xxx):** Parameter `extraParam.<key>`, `extraParam` (whole object) or a
+  top-level name; Test Data `Field not sent`, `""`, `null`, `123 (no quotes)`, `{"k":"v"}`, `["x"]`,
+  `256 characters`; Context `paymentMethod=UPI; extraParam.accountNumber="123"` runs the case with
+  that method and sets the other keys, so only one key changes. Accepted values must come back
+  stored as sent.
+- **From the dashboard:** Test cases → Field validation → _From the dashboard – payment-method
+  parameters_ reads a method's required fields and extraParam groups (Payment Methods page) and
+  suggests valid / missing / empty / null / wrong type / 256 chars / both groups / not-required-key /
+  wrong extraParam type cases for every key. A method the tester's merchant does not allow is skipped.
+- The starter set FV-001…018 covers `extraParam` (iban, accountNumber, sortCode, name), `upiId` and
+  `invoiceNo` – all confirmed on test4 (PGS stores these fields as sent; only a non-object
+  `extraParam` is rejected). PGS rules: `docs/pgs-behaviour.md` § 1.
+- `platform`, `send_receipt` and `skip_capture` are no longer sent (removed from the template).
+
 ## Uploading test cases by category (launcher → Test cases)
 
 Each category has its own template (**Download template**: a "Test Cases" sheet with examples and
@@ -257,12 +281,15 @@ dropdowns, plus a short "Guide" sheet). Fill it in, upload it, check the preview
 selected cases**. Cases that already exist or have problems are flagged and can't be ticked. IDs are
 never reused, even after a delete.
 
-| Category               | IDs      | Stored in (`tests/test-data/uploaded-cases/`) | What runs                                                                                                                                   |
-| ---------------------- | -------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Field validation       | `FV-xxx` | `field-validation.json`                       | One request field changed; API response must match the expectation (next to the built-in `FT-xxx`).                                         |
-| Regex validation       | `RX-xxx` | `regex-validation.json`                       | Real transaction per value; the bank's field regex (dashboard) decides: matching value must reach the PSP unchanged, non-matching must not. |
-| PSP request / response | `PR-xxx` | `psp-validation.json`                         | Real transaction; fields of the PSP request/response (dashboard log) checked: equals / not equals / contains / matches / present / absent.  |
-| Custom & edge cases    | `EC-xxx` | `edge-cases.json`                             | Real transaction with optional request changes; cashier result, final status and error message compared.                                    |
+| Category               | IDs      | Stored in (`tests/test-data/uploaded-cases/`) | What runs                                                                                                                                                                                                               |
+| ---------------------- | -------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Field validation       | `FV-xxx` | `field-validation.json`                       | One request field changed; API response must match the expectation (next to the built-in `FT-xxx`).                                                                                                                     |
+| Regex validation       | `RX-xxx` | `regex-validation.json`                       | Real transaction per value; the bank's field regex (dashboard) decides: matching value must reach the PSP unchanged, non-matching must not.                                                                             |
+| PSP request / response | `PR-xxx` | `psp-validation.json`                         | Real transaction; fields of the PSP request/response (dashboard log) checked: equals / not equals / contains / matches / present / absent.                                                                              |
+| Custom & edge cases    | `EC-xxx` | `edge-cases.json`                             | Real transaction with optional request changes; cashier result, final status and error message compared.                                                                                                                |
+| KYC validation         | `KV-xxx` | `kyc-validation.json`                         | `POST /kyc/create` with a customer, request changes and an auth variant; HTTP, code and KYC status compared.                                                                                                            |
+| Refund cases           | `RC-xxx` | `refund-cases.json`                           | Refund steps (`30%; rest`, `rest+1`, `-1`, `"abc"`, `not sent` …) on a new payment, an unpaid purchase or the settled purchase of the Run tab; last answer + final status compared.                                     |
+| Bank & MID config      | `BC-xxx` | `bank-config.json`                            | Flip the routed MID / merchant settings (2D only, partial refund, convert to, allowed currencies / cards, merchant conversion) → pay or refund → routing, status, code, PSP currency; restored after. Run on their own. |
 
 - **Regex rules come from the dashboard:** PaymentBankJsonData → Field Regex, per bank
   (`GET /admin/getFieldValidationRules?bank_name=…`). On test4 a value that breaks the rule is not
@@ -278,6 +305,17 @@ never reused, even after a delete.
   tab; without either they are skipped.
 - **Field / regex values:** `Field not sent` removes the field, `""` sends an empty string,
   `256 characters` generates a long value, `110001 with country=IN` also sets the country.
+- **Refund cases:** every step waits until the previous refund is processed; expectations apply to the
+  last step. A refund the PSP refuses although PGS accepted it (sandbox, not settled yet) is OBSERVED.
+  _Settled purchase (Run tab)_ uses the purchase ID entered as **Settled purchase to refund**.
+- **Bank & MID config cases:** settings use tokens so they work for any run – `{purchase}` / `{card}` =
+  the purchase currency / card scheme, `{other}` = a different one. Refund actions pay first with the
+  current settings, then change them and refund. The MID under test is **Routes to** on the Run tab (or
+  the MID a probe payment goes to). Same safety as BM-xxx: journalled, restored, 5-minute cache wait.
+- **AI for refunds / bank & MID:** _Generate with AI_ reads the routed MID's live settings, its bank and
+  the merchant switch from the dashboard (whitelisted fields only) and the PGS rules in
+  `docs/pgs-behaviour.md` §5 / §7, so new dashboard settings show up in the proposed cases. Built-in
+  RF / BM cases are listed as "existing" so they are not repeated.
 - Commit the JSON files so the whole team gets the cases. They are validated when tests load.
 
 ## 3DS challenge (bank OTP page)
@@ -450,6 +488,46 @@ or more earlier as **Settled purchase to refund**.
 `UAT_DASHBOARD_USERNAME` / `UAT_DASHBOARD_PASSWORD`). The dashboard allows **one active session per
 user** – a run logs in once (shared by all workers, removed after the run) and **ends that user's
 browser session**. Use a dedicated automation dashboard user per QA to avoid being logged out.
+
+## Cashier purchase – stage 6: bank & MID configuration (`@BM-…`, flip → test → restore)
+
+`tests/flows/cashier-purchase/07-bank-mid-config.spec.ts` checks that the routed bank / MID
+settings change how PGS processes a payment. BM-001 pays with the run's card and reads the bank / MID
+it was routed to (checked against the run's bank / MID when given). Cases that need another value
+**change it through the dashboard's own MID form / merchant switch, make a real payment or refund,
+and restore the original value** in `finally`.
+
+| Case   | Setting (temporarily set)                                | Expected                                                                                                    |
+| ------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| BM-001 | –                                                        | PAID; bank, MID and merchant settings recorded                                                              |
+| BM-002 | bank `max_refund_days` (read only)                       | `refund_upto` = paid + days × 24 h − 1 h (0 when days ≤ 0)                                                  |
+| BM-003 | MID 2D only = 0                                          | routed to the MID; PSP request carries 3DS data                                                             |
+| BM-004 | MID 2D only = 1                                          | still routed to the MID (merchant trxType ALL; 3D → MID skipped); PSP refusal of the 2D payment is OBSERVED |
+| BM-005 | MID partial refund allowed = 0                           | 400 code `payment_can_not_be_refunded` (the API returns only the code)                                      |
+| BM-006 | MID partial refund allowed = 1                           | partial refund not refused by the MID check (PSP may still refuse)                                          |
+| BM-007 | MID convert to = other currency, merchant conversion ON  | `fx_Currency` and PSP currency = convert-to currency                                                        |
+| BM-008 | MID convert to = other currency, merchant conversion OFF | MID skipped (CONVERSION_NOT_ALLOWED)                                                                        |
+| BM-009 | MID allowed currencies = another currency only           | MID skipped                                                                                                 |
+| BM-010 | MID allowed cards = the other scheme only                | MID skipped                                                                                                 |
+| BM-011 | –                                                        | MID and merchant settings equal the BM-001 snapshot                                                         |
+
+- **Shared config:** these settings are shared on test4. The launcher runs BM cases **on their own
+  with one worker** and needs the tester's dashboard login (SUPERADMIN).
+- **Safety:** every change is written to `reports/bank-config-journal.json` before it is made and
+  removed after the restore; the next BM run restores anything a killed run left changed. A MID
+  write re-posts every field of the MID unchanged, reads the MID back and, if anything other than
+  the flipped field changed, posts the original back and fails. MIDs flagged as test data are never
+  changed (the form would clear that flag). No auth key / password is logged; PGS refund errors
+  that contain the auth key are masked.
+- **PGS MID cache (5 min):** payment routing reads the live MIDs from Redis (`cacheALM8`, 5 minutes) and a
+  MID edit does not clear it. After each routing change (2D only, convert to, allowed currencies / cards)
+  the next payment waits until that cache has expired (`BANK_CONFIG_MID_CACHE_SECONDS`, default 315), so
+  a full BM run takes ~30–40 minutes. For up to 5 minutes after the run, PGS may still route with the last
+  flipped value. Refunds and the merchant conversion switch are read from the database (no wait).
+- Other currency for BM-007…009: USD (EUR for USD purchases), or `BANK_CONFIG_CONVERT_TO`.
+- `BANK_CONFIG_PURCHASE_ID`: start from an already paid purchase of the merchant (BM-001 makes no new payment).
+- **paysafe_payfac finding:** its request template sends `threeDs` even on a 2D-only MID; PGS skips the 3DS step
+  (Direct 2D) and Paysafe can then refuse the payment with 5068 "payment handle … not permitted … because of its state".
 
 ## KYC verification (`tests/flows/kyc`, project `kyc`)
 

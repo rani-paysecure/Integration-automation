@@ -237,6 +237,85 @@ class DashboardClient {
     };
   }
 
+  /**
+   * Settings that change routing / refunds for the AI's bank & MID cases: the routed MID,
+   * its bank and the merchant. Whitelisted fields only – never auth keys, passwords or
+   * the bank's test cards (the raw rows hold them).
+   */
+  async bankConfigContext(midName, merchantId) {
+    const rows = await this.cached('banksRaw', () =>
+      this.getJson('/admin/getAllActivePaymentBanks'),
+    );
+    const banks = (Array.isArray(rows) ? rows : []).filter((b) => b && b.name);
+    const lower = String(midName || '').toLowerCase();
+    const ordered = [
+      ...banks
+        .filter((b) => lower.startsWith(String(b.name).toLowerCase()))
+        .sort((a, b) => String(b.name).length - String(a.name).length),
+      ...banks.filter((b) => !lower.startsWith(String(b.name).toLowerCase())),
+    ].slice(0, 25);
+    for (const bank of ordered) {
+      let mids;
+      try {
+        mids = await this.getJson(
+          `/admin/v2/getAllPaymentBankMIDList?pp_id=${encodeURIComponent(bank.id)}`,
+          false,
+        );
+      } catch {
+        continue;
+      }
+      const mid = (Array.isArray(mids) ? mids : []).find(
+        (m) => m.mid === midName || m.mid_desc === midName,
+      );
+      if (!mid) continue;
+      const page = merchantId
+        ? await this.request(`/admin/getMerchant?m_id=${encodeURIComponent(merchantId)}`).then(
+            (r) => r.res.text(),
+          )
+        : '';
+      const pick = (re) => (re.exec(page) || [])[1];
+      return {
+        bank: {
+          name: String(bank.name),
+          maxRefundDays: Number(bank.max_refund_days) || 0,
+          allowedCurr: String(bank.allowed_curr || ''),
+          allowedCard: String(bank.allowed_card || ''),
+        },
+        mid: {
+          name: String(mid.mid),
+          onlyTwoD: Number(mid.onlyTwoD) || 0,
+          is3ds: Number(mid.is3ds) || 0,
+          partialRefundAllowed: Number(mid.partial_refund_allowed) || 0,
+          currConvertTo: String(mid.curr_convert_to || ''),
+          allowedCurr: String(mid.allowed_curr || ''),
+          allowedCard: String(mid.allowed_card || ''),
+          allowedCountry: String(mid.allowedCountry || ''),
+          isTestData: mid.is_test_data === true,
+        },
+        merchant: {
+          conversionAllowed: Number(pick(/"conversionAllowed"\s*:\s*(-?\d+)/)) || 0,
+          trxType: pick(/"trxType"\s*:\s*"([^"]*)"/) || 'ALL',
+        },
+      };
+    }
+    return undefined;
+  }
+
+  /**
+   * Payment methods with their own parameters (Payment Methods page): required fields and the
+   * two extraParam key groups. Only these fields leave this module.
+   */
+  paymentMethods() {
+    return this.cached('paymentMethods', async () => {
+      const rows = await this.getJson('/admin/getAllPaymentMethods');
+      const { toMethod } = require('./payment-method-cases');
+      return (Array.isArray(rows) ? rows : [])
+        .map(toMethod)
+        .filter((m) => m.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    });
+  }
+
   /** Merchants with their allowed currencies / payment methods: [{ id, name, currencies, paymentMethods }] */
   merchants() {
     return this.cached('merchants', async () => {

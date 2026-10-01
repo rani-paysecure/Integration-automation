@@ -26,10 +26,7 @@ export interface CreatePurchaseRequest {
     readonly products: readonly PurchaseProduct[];
     readonly total: number;
   };
-  readonly platform: string;
   readonly brand_id: string;
-  readonly send_receipt: boolean;
-  readonly skip_capture: boolean;
   readonly success_redirect: string;
   readonly pending_redirect: string;
   readonly failure_redirect: string;
@@ -37,4 +34,8 @@ export interface CreatePurchaseRequest {
   readonly failure_callback: string;
   /** Card scheme, e.g. `VISA`. Typed as string so field tests can send invalid values. */
   readonly paymentMethod: string;
+  /** Payment-method-specific parameters – free-form keys (iban, accountNumber, …). Optional. */
+  readonly extraParam?: Readonly<Record<string, unknown>>;
+  /** Other payment-method-specific top-level fields (upiId, invoiceNo, …) – free-form. */
+  readonly [field: string]: unknown;
 }

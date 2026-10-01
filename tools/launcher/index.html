@@ -65,7 +65,10 @@
       pre#log { background: var(--log-bg); color: var(--log-text); border-radius: var(--radius); padding: 12px; height: 62vh; min-height: 320px; overflow: auto; font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; margin: 12px 0 0; }
       pre.preview { background: var(--surface-2); border-radius: 8px; padding: 10px; font: 13.5px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow: auto; max-height: 420px; margin: 0; }
       .msg { font-size: 14.5px; margin-top: 8px; min-height: 18px; white-space: pre-wrap; }
-      .msg.error { color: var(--fail); } .msg.ok { color: var(--pass); }
+      table.pm-fields { width: 100%; margin: 6px 0; } table.pm-fields td { padding: 3px 4px; } table.pm-fields td:last-child { width: 1%; }
+      table.pm-fields input, table.pm-fields select { width: 100%; min-width: 0; }
+      #pmJson { width: 100%; font: 13px ui-monospace, Menlo, Consolas, monospace; }
+      .msg.error { color: var(--fail); } .msg.ok { color: var(--pass); } .msg.warn { color: var(--warn); }
       .hidden { display: none !important; }
       table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
       th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -346,6 +349,38 @@
         .side-card, .side-label { display: none; }
         .topbar { position: static; }
       }
+          /* Category tiles: compact, equal height, 4 per row on wide screens */
+      .cat-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      @media (max-width: 1280px) { .cat-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+      @media (max-width: 900px) { .cat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 560px) { .cat-tiles { grid-template-columns: 1fr; } }
+      .cat-tile { --kind: var(--accent); position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 14px 16px 12px 18px; min-height: 128px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s, transform .15s; }
+      .cat-tile::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--kind); opacity: .85; }
+      .cat-tile:hover { border-color: color-mix(in srgb, var(--kind) 55%, var(--border)); transform: translateY(-1px); box-shadow: 0 6px 18px color-mix(in srgb, var(--kind) 14%, transparent); }
+      .cat-tile.active { border-color: var(--kind); box-shadow: 0 0 0 1px var(--kind), 0 8px 22px color-mix(in srgb, var(--kind) 18%, transparent); }
+      .cat-tile.kind-api { --kind: var(--info); }
+      .cat-tile.kind-pay { --kind: var(--accent); }
+      .cat-tile.kind-settings { --kind: var(--warn); }
+      .cat-tile .cat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .cat-tile .cat-name { font-weight: 700; font-size: 15.5px; line-height: 1.25; }
+      .cat-tile .cat-count { flex: none; font-size: 13px; font-weight: 700; line-height: 1; padding: 4px 9px; border-radius: 999px; color: var(--kind); background: color-mix(in srgb, var(--kind) 13%, transparent); }
+      .cat-tile .cat-count.zero { color: var(--muted); background: var(--surface-2); font-weight: 600; }
+      .cat-tile .cat-desc { font-size: 13.5px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .cat-tile .cat-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .cat-tile .cat-prefix { font: 600 12px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 2px 7px; }
+      .cat-tile .cat-kind { font-size: 12px; font-weight: 600; color: var(--kind); }
+      #categoryAbout { margin: 0 0 6px; }
+      .cat-tile .cat-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+      .cat-tile .cat-desc { height: calc(2 * 1.4em); align-self: start; }
+      /* Colour key: fills the rest of the last row so the grid never ends with a gap. */
+      .cat-legend { grid-column: span var(--rest, 1); display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 12px 18px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 13px; }
+      .cat-legend b { color: var(--text); font-size: 13.5px; }
+      .cat-legend .keys { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+      .cat-legend.hidden { display: none; }
+      .cat-legend .key { display: inline-flex; align-items: center; gap: 7px; }
+      .cat-legend .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--kind); flex: none; }
+      .cat-legend .dot.kind-api { --kind: var(--info); } .cat-legend .dot.kind-pay { --kind: var(--accent); } .cat-legend .dot.kind-settings { --kind: var(--warn); }
+
     </style>
     <script>
       // Light / dark before first paint (no flash): light, dark or system.
@@ -460,6 +495,7 @@
               </select>
               <label class="check"><input id="payFieldCases" type="checkbox" /> Also pay for accepted field-validation cases</label>
               <p class="hint" id="cardWarning"></p>
+              <p class="hidden" id="bankConfigWarning"></p>
               <label class="check"><input id="headed" type="checkbox" /> Show browser while paying</label>
               <div class="cols-2">
                 <div><label for="workers">Workers <span class="hint">(empty = default)</span></label><input id="workers" type="number" min="1" max="16" /></div>
@@ -554,12 +590,20 @@
           <label>Products</label>
           <div id="products"></div>
           <div class="row"><button id="addProduct" class="small" type="button">+ Add product</button></div>
-          <h3>Merchant settings</h3>
-          <div class="cols-2">
-            <div><label for="platform">Platform</label><input id="platform" /></div>
-            <div>
-              <label class="check" style="margin-top: 34px"><input id="sendReceipt" type="checkbox" /> send_receipt</label>
-              <label class="check"><input id="skipCapture" type="checkbox" /> skip_capture</label>
+          <h3>Payment-method fields <span class="hint">(optional)</span></h3>
+          <p class="hint">Only for payment methods that need them. <b>Field</b>: <code>extraParam.&lt;key&gt;</code> for any key inside <code>extraParam</code> (iban, accountNumber …), or a top-level name such as <code>upiId</code> / <code>invoiceNo</code>. <b>Payment method</b>: <i>All</i> = every purchase, a name (e.g. UPI) = only when the run or a test case uses that method.</p>
+          <table class="pm-fields"><thead><tr><th>Payment method</th><th>Field</th><th>Type</th><th>Value</th><th></th></tr></thead><tbody id="pmFields"></tbody></table>
+          <datalist id="pmMethods"></datalist>
+          <div class="row">
+            <button id="addPmField" class="small" type="button">+ Add field</button>
+            <button id="togglePmJson" class="small" type="button">Paste JSON…</button>
+          </div>
+          <div id="pmJsonBox" class="hidden">
+            <label for="pmJson">JSON with the fields (e.g. <code>{"upiId": "pending@testbank", "extraParam": {"iban": "AE07…"}}</code>)</label>
+            <textarea id="pmJson" rows="6" spellcheck="false"></textarea>
+            <div class="row">
+              <input id="pmJsonMethod" list="pmMethods" placeholder="Payment method – All or e.g. UPI" style="max-width: 260px" />
+              <button id="importPmJson" class="small" type="button">Add as rows</button>
             </div>
           </div>
           <h3>Redirects &amp; callbacks</h3>
@@ -643,6 +687,7 @@
         </section>
         <section>
           <h2 id="uploadTitle">Upload</h2>
+          <p id="categoryAbout"></p>
           <p class="hint" id="categoryDescription"></p>
           <div id="regexDash" class="dash-box hidden">
             <div class="dash-head">
@@ -658,6 +703,21 @@
               <table class="import"><thead><tr><th>Field</th><th>Regex</th><th>Note</th></tr></thead><tbody id="regexRules"></tbody></table>
             </div>
             <div class="or-line hidden" id="regexOr"><span>or upload your own values</span></div>
+          </div>
+          <div id="pmDash" class="dash-box hidden">
+            <div class="dash-head">
+              <b>From the dashboard – payment-method parameters</b>
+              <span class="hint">Required fields and extraParam keys of a payment method (Payment Methods page). Cases are suggested for each key – valid, missing, empty, null, wrong type, both groups, a key the method does not need – nothing is hardcoded.</span>
+            </div>
+            <div class="row tight">
+              <select id="pmMethod" style="max-width: 300px"><option value="">Loading payment methods…</option></select>
+              <button id="loadPmCases" type="button" class="small">Suggest cases</button>
+              <span class="hint" id="pmHint"></span>
+            </div>
+            <div id="pmParamsBox" class="import-wrap hidden">
+              <table class="import"><thead><tr><th>Payment method</th><th>Required fields</th><th>extraParam group 1</th><th>extraParam group 2</th></tr></thead><tbody id="pmParams"></tbody></table>
+            </div>
+            <div class="or-line"><span>or upload your own values</span></div>
           </div>
           <div class="upload-steps">
             <div class="step">
@@ -738,7 +798,12 @@
               </select>
             </div>
             <div><label class="check" style="margin-top: 34px"><input id="logBodies" type="checkbox" /> Log (masked) request/response bodies</label></div>
+            <div>
+              <label for="keepRuns">Runs to keep <span class="hint">(Report → run list, 1–100)</span></label>
+              <input id="keepRuns" type="number" min="1" max="100" step="1" />
+            </div>
           </div>
+          <p class="hint" style="margin-top: 10px">Older runs are deleted when a run finishes, when you save, and when the launcher starts. The latest run is always kept.</p>
           <p class="hint" style="margin-top: 10px">Traces contain unmasked request data – keep them inside the team.</p>
           <div class="row"><button id="saveRun" type="button">Save</button><button id="resetRun" type="button">Reset</button></div>
           <div class="msg" id="advMsg"></div>
@@ -813,7 +878,7 @@
       }
 
       // ── tabs & environment ────────────────────────────────────────────────
-      function showTab(name) {
+      function showTab(name) { requestAnimationFrame(() => fitLegend());
         for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('active', b.dataset.tab === name);
         const active = document.querySelector(`#tabs button[data-tab="${name}"]`);
         if (active) $('pageTitle').textContent = active.textContent.trim();
@@ -977,7 +1042,7 @@
             if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
             if (t.slow) tags.push(el('span', { class: 'tag transaction', title: 'Waits several minutes on the KYC expiry poller' }, 'slow'));
             if (t.provider) tags.push(el('span', { class: 'tag transaction', title: "Drives the provider's own UI – may break when Sumsub changes it" }, 'provider UI'));
-            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
+            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
           }
           details.dataset.group = group;
           box.append(details);
@@ -985,7 +1050,7 @@
         // Uploaded categories without cases still show – inside their suite group when it exists
         // (e.g. PSP cases belong to "3. PSP request/response validation"), otherwise as their own row.
         if (!$('testSearch').value) {
-          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases', kyc: 'KYC verification' };
+          const GROUP_OF = { regex: '2. Regex validation', psp: '3. PSP request/response validation', edge: '4. Custom & edge cases', refund: '5. Refunds', 'bank-config': '6. Bank & MID configuration', kyc: 'KYC verification' };
           for (const c of state.categories || []) {
             if (c.cases.length > 0 || c.id === 'field') continue;
             const go = el('button', { type: 'button', class: 'small' }, 'Add cases →');
@@ -1002,11 +1067,16 @@
       function renderSelectionState() {
         $('selCount').textContent = `${state.selected.size} selected`;
         $('purchaseIdsBox').classList.toggle('hidden', !state.selected.has('@psp-by-id'));
-        $('refundBox').classList.toggle('hidden', ![...state.selected].some((k) => k.startsWith('@RF-')));
+        $('refundBox').classList.toggle('hidden', ![...state.selected].some((k) => /^@(RF|RC)-/.test(k)));
         $('run').disabled = state.selected.size === 0 || state.running;
-        const needsCard = [...state.selected].filter((k) => /^@(RX|PR|EC)-/.test(k) || (k === '@RF-001' && !$('refundPurchaseId').value.trim()));
+        const needsCard = [...state.selected].filter((k) => /^@(RX|PR|EC|BM|BC|RC)-/.test(k) || (k === '@RF-001' && !$('refundPurchaseId').value.trim()));
         $('cardWarning').className = needsCard.length && !$('payCard').value ? 'msg error' : 'hint';
         $('cardWarning').textContent = needsCard.length && !$('payCard').value ? `${needsCard.length} selected case(s) need a card – choose one above, or they are skipped (unless the sheet names a card).` : '';
+        const bm = [...state.selected].filter((k) => /^@(BM|BC)-/.test(k));
+        $('bankConfigWarning').className = bm.length ? (bm.length !== state.selected.size ? 'msg error' : 'msg warn') : 'hidden';
+        $('bankConfigWarning').textContent = !bm.length ? '' : bm.length !== state.selected.size
+          ? 'Bank & MID cases change shared bank / MID settings while they run – run them on their own (unselect the other cases).'
+          : 'Bank & MID cases temporarily change the routed MID (2D, partial refund, conversion, currencies, cards) and the merchant\'s conversion switch on the dashboard, make real payments, then restore every setting. Runs with one worker and takes ~30–40 min: PGS routes from a 5-minute MID cache, so each routing change waits 5 min before paying.';
       }
 
       async function startRun() {
@@ -1068,12 +1138,12 @@
         return td;
       }
       // ── report view ─────────────────────────────────────────────────────────
-      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'kyc', 'psp-check', 'other'];
-      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'bank-config', 'kyc', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'bank-config': 'Bank & MID configuration', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
       const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
       function categoryFromKey(key) {
         if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
-        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (key.startsWith('@RF-')) return 'refund'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (/^@(RF|RC)-/.test(key)) return 'refund'; if (/^@(BM|BC)-/.test(key)) return 'bank-config'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
       }
       /** Older reports have no category / items – derive what we can. */
       function normaliseRow(t) {
@@ -1094,7 +1164,7 @@
       function reportCard(t) {
         const card = el('div', { class: `rcard ${t.verdict}` });
         const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
-        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|KYC|KV)-\S+\s(· )?/, '');
+        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|KYC|KV)-\S+\s(· )?/, '');
         const head = el('div', { class: 'rcard-head' },
           el('span', { class: `badge-v ${t.verdict}` }, VERDICT_TEXT[t.verdict] || t.verdict),
           ...(caseId ? [el('span', { class: 'case-id' }, caseId)] : []),
@@ -1297,7 +1367,7 @@
         for (const [key, label] of CLIENT_FIELDS) cf.append(el('div', {}, el('label', {}, label), el('input', { id: `cl_${key}`, value: t.client[key], oninput: renderPreview })));
         $('currency').value = t.purchase.currency; $('total').value = t.purchase.total;
         $('products').replaceChildren(...t.purchase.products.map(productRow));
-        $('platform').value = t.platform; $('sendReceipt').checked = t.send_receipt; $('skipCapture').checked = t.skip_capture;
+        renderPmFields(t);
         const uf = $('urlFields'); uf.replaceChildren();
         for (const [key, label] of URL_FIELDS) uf.append(el('label', {}, label), el('input', { id: `url_${key}`, value: t[key], oninput: renderPreview }));
         renderPreview();
@@ -1306,13 +1376,98 @@
         const client = Object.fromEntries(CLIENT_FIELDS.map(([k]) => [k, $(`cl_${k}`).value]));
         const products = [...$('products').children].map((row) => { const [n, p] = row.querySelectorAll('input'); return { name: n.value, price: Number(p.value) }; });
         const urls = Object.fromEntries(URL_FIELDS.map(([k]) => [k, $(`url_${k}`).value.trim()]));
-        return { client, purchase: { currency: $('currency').value.trim().toUpperCase(), products, total: Number($('total').value) }, platform: $('platform').value, send_receipt: $('sendReceipt').checked, skip_capture: $('skipCapture').checked, ...urls };
+        return { client, purchase: { currency: $('currency').value.trim().toUpperCase(), products, total: Number($('total').value) }, ...urls, ...readPmFields() };
       }
       function renderPreview() {
         try {
-          const t = readPurchaseForm();
-          $('purchasePreview').textContent = JSON.stringify({ ...t, brand_id: '<from tester>', paymentMethod: '<from run>' }, null, 2);
-        } catch { /* form not ready */ }
+          const { extraParam, methodFields, ...t } = readPurchaseForm();
+          const method = $('paymentMethod')?.value || 'VISA';
+          const extra = pmFieldsFor({ extraParam, methodFields }, method);
+          $('purchasePreview').textContent = `// payment method ${method} (Run tab)\n` + JSON.stringify({ ...t, ...extra, brand_id: '<from tester>', paymentMethod: method }, null, 2);
+          say('purchaseMsg', '');
+        } catch (error) { if (error && error.pmField) say('purchaseMsg', error.message, false); }
+      }
+
+      // ── payment-method fields (extraParam.* / top-level, per method) ─────
+      const PM_ALL = 'All';
+      const PM_TYPES = ['Text', 'Number', 'true / false', 'null', 'JSON'];
+      const pmType = (v) => v === null ? 'null' : typeof v === 'number' ? 'Number' : typeof v === 'boolean' ? 'true / false' : typeof v === 'object' ? 'JSON' : 'Text';
+      const pmText = (v) => v === null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+      function pmRow(row = { method: PM_ALL, field: 'extraParam.', type: 'Text', value: '' }) {
+        const type = el('select', { onchange: renderPreview }, ...PM_TYPES.map((t) => el('option', { value: t, ...(t === row.type ? { selected: true } : {}) }, t)));
+        const tr = el('tr', {},
+          el('td', {}, el('input', { value: row.method, list: 'pmMethods', placeholder: PM_ALL, oninput: renderPreview })),
+          el('td', {}, el('input', { class: 'mono', value: row.field, placeholder: 'extraParam.iban or upiId', oninput: renderPreview })),
+          el('td', {}, type),
+          el('td', {}, el('input', { class: 'mono', value: row.value, oninput: renderPreview })),
+          el('td', {}, el('button', { type: 'button', class: 'small', title: 'Remove', onclick: () => { tr.remove(); renderPreview(); } }, '×')));
+        return tr;
+      }
+      /** Template → rows: extraParam (All), methodFields["*"] (All) and methodFields[method]. */
+      function renderPmFields(t) {
+        const rows = [];
+        for (const [k, v] of Object.entries(t.extraParam || {})) rows.push({ method: PM_ALL, field: `extraParam.${k}`, type: pmType(v), value: pmText(v) });
+        for (const [method, fields] of Object.entries(t.methodFields || {})) {
+          for (const [k, v] of Object.entries(fields || {})) {
+            if (k === 'extraParam' && v && typeof v === 'object' && !Array.isArray(v)) {
+              for (const [ek, ev] of Object.entries(v)) rows.push({ method: method === '*' ? PM_ALL : method, field: `extraParam.${ek}`, type: pmType(ev), value: pmText(ev) });
+            } else rows.push({ method: method === '*' ? PM_ALL : method, field: k, type: pmType(v), value: pmText(v) });
+          }
+        }
+        $('pmFields').replaceChildren(...rows.map(pmRow));
+        const methods = new Set([PM_ALL, ...((state.dash?.routes || []).map((r) => r.paymentMethod)), $('paymentMethod')?.value].filter(Boolean));
+        $('pmMethods').replaceChildren(...[...methods].map((m) => el('option', { value: m })));
+      }
+      function pmValue(type, raw, field) {
+        const fail = (msg) => { const e = new Error(`${field}: ${msg}`); e.pmField = true; throw e; };
+        if (type === 'null') return null;
+        if (type === 'Number') { const n = Number(raw); if (raw.trim() === '' || !Number.isFinite(n)) fail('not a number'); return n; }
+        if (type === 'true / false') { if (!/^(true|false)$/i.test(raw.trim())) fail('use true or false'); return raw.trim().toLowerCase() === 'true'; }
+        if (type === 'JSON') { try { return JSON.parse(raw); } catch { fail('not valid JSON'); } }
+        return raw;
+      }
+      /** Rows → { extraParam?, methodFields? } – keys exactly as typed, nothing hardcoded. */
+      function readPmFields() {
+        const extraParam = {}; const methodFields = {};
+        for (const tr of $('pmFields').children) {
+          const [methodIn, fieldIn, typeIn, valueIn] = tr.querySelectorAll('input, select');
+          const field = fieldIn.value.trim(); if (!field || field === 'extraParam.') continue;
+          const method = methodIn.value.trim() || PM_ALL;
+          const all = method.toLowerCase() === PM_ALL.toLowerCase() || method === '*';
+          const m = /^extra_?params?\.(.+)$/i.exec(field);
+          if (m ? !/^[\w-]+$/.test(m[1]) : !/^[A-Za-z_][\w-]*$/.test(field)) { const e = new Error(`"${field}": use extraParam.<key> or a top-level name (letters, digits, _ -)`); e.pmField = true; throw e; }
+          const value = pmValue(typeIn.value, valueIn.value, field);
+          if (m && all) { extraParam[m[1]] = value; continue; }
+          const key = all ? '*' : method.toUpperCase();
+          const entry = (methodFields[key] = methodFields[key] || {});
+          if (m) entry.extraParam = { ...(entry.extraParam || {}), [m[1]]: value };
+          else entry[field] = value;
+        }
+        return { ...(Object.keys(extraParam).length ? { extraParam } : {}), ...(Object.keys(methodFields).length ? { methodFields } : {}) };
+      }
+      /** Same merge as the test framework (purchase-request.factory.ts methodFieldsFor). */
+      function pmFieldsFor(t, method) {
+        const entries = Object.entries(t.methodFields || {});
+        const all = (entries.find(([m]) => m === '*') || [])[1] || {};
+        const own = (entries.find(([m]) => m.toUpperCase() === String(method).toUpperCase()) || [])[1] || {};
+        const { extraParam: ae, ...at } = all; const { extraParam: oe, ...ot } = own;
+        const extraParam = { ...(t.extraParam || {}), ...(ae || {}), ...(oe || {}) };
+        return { ...at, ...ot, ...(Object.keys(extraParam).length ? { extraParam } : {}) };
+      }
+      function importPmJson() {
+        let data;
+        try { data = JSON.parse($('pmJson').value); } catch { return say('purchaseMsg', 'The pasted text is not valid JSON.', false); }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return say('purchaseMsg', 'Paste a JSON object, e.g. {"upiId": "…", "extraParam": {…}}', false);
+        const method = $('pmJsonMethod').value.trim() || PM_ALL;
+        const rows = [];
+        for (const [k, v] of Object.entries(data)) {
+          if (/^extra_?params?$/i.test(k) && v && typeof v === 'object' && !Array.isArray(v)) {
+            for (const [ek, ev] of Object.entries(v)) rows.push({ method, field: `extraParam.${ek}`, type: pmType(ev), value: pmText(ev) });
+          } else rows.push({ method, field: k, type: pmType(v), value: pmText(v) });
+        }
+        $('pmFields').append(...rows.map(pmRow));
+        $('pmJson').value = ''; $('pmJsonBox').classList.add('hidden');
+        renderPreview(); say('purchaseMsg', `${rows.length} field(s) added – check them, then Save purchase data.`);
       }
 
       // ── cards tab ─────────────────────────────────────────────────────────
@@ -1369,37 +1524,72 @@
       function renderAdvanced() {
         const s = eff();
         $('aHeader').value = s.auth.apiKeyHeader; $('aPrefix').value = s.auth.apiKeyPrefix; $('aToken').value = s.auth.tokenPath;
-        $('logLevel').value = s.run.logLevel; $('trace').value = s.run.trace; $('logBodies').checked = s.run.logHttpBodies;
+        $('logLevel').value = s.run.logLevel; $('trace').value = s.run.trace; $('logBodies').checked = s.run.logHttpBodies; $('keepRuns').value = String(s.run.keepRuns ?? 5);
         $('authBadge').classList.toggle('hidden', !isOverridden('auth'));
         $('runBadge').classList.toggle('hidden', !isOverridden('run'));
       }
 
       // ── test cases (upload by category) ─────────────────────────────────────
-      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|KYC|KV)-/;
+      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|RC|BM|BC|KYC|KV)-/;
       function currentCategory() { return (state.categories || []).find((c) => c.id === state.category) || (state.categories || [])[0]; }
       async function readFileBase64(file) {
         const bytes = new Uint8Array(await file.arrayBuffer()); let bin = '';
         for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
         return btoa(bin);
       }
+      /** Short card text; the full description is shown in the Upload section. */
+      // Short tile names (full name in the tooltip and the upload panel), grouped by kind.
+      const CATEGORY_TILES = {
+        field: { kind: 'api', name: 'Field validation', label: 'API only', text: 'Change one request field – the API answer must match.' },
+        kyc: { kind: 'api', name: 'KYC', label: 'API only', text: 'POST /kyc/create variants – HTTP, code and KYC status.' },
+        regex: { kind: 'pay', name: 'Regex validation', label: 'Real payment', text: "Values checked against the bank's field regex from the dashboard." },
+        psp: { kind: 'pay', name: 'PSP checks', label: 'Real payment', text: 'Checks on the request / response PGS exchanged with the PSP.' },
+        edge: { kind: 'pay', name: 'Edge cases', label: 'Real payment', text: 'End-to-end scenarios: cashier result, status and error.' },
+        refund: { kind: 'pay', name: 'Refunds', label: 'Real refunds', text: 'Refund steps on a purchase – last answer and final status.' },
+        'bank-config': { kind: 'settings', name: 'Bank & MID', label: 'Changes MID settings', text: 'Flip MID / merchant settings, pay or refund, then restore.' },
+      };
+      const TILE_ORDER = Object.keys(CATEGORY_TILES);
+      /** The colour key fills the rest of the last row (hidden when the row is already full). */
+      function fitLegend() {
+        const box = $('categoryTiles'); const legend = box.querySelector('.cat-legend'); if (!legend) return;
+        // Hidden tab → the template is still "repeat(4, …)"; visible → one size per column.
+        const template = getComputedStyle(box).gridTemplateColumns;
+        const repeat = /repeat\((\d+)/.exec(template);
+        const cols = repeat ? Number(repeat[1]) : template.split(' ').filter(Boolean).length || 1;
+        const rest = cols - ((box.children.length - 1) % cols);
+        legend.classList.toggle('hidden', rest === cols);
+        legend.style.setProperty('--rest', String(rest));
+      }
+      window.addEventListener('resize', () => fitLegend());
       function renderCategories() {
         const box = $('categoryTiles'); box.replaceChildren();
-        for (const c of state.categories || []) {
-          const tile = el('button', { type: 'button', class: `cat-tile${c.id === state.category ? ' active' : ''}` },
-            el('span', { class: 'cat-name' }, c.label),
-            el('div', { class: 'cat-head' }, el('span', { class: 'cat-prefix' }, `${c.prefix}-xxx`), el('span', { class: 'cat-count' }, `${c.cases.length} uploaded`)),
-            el('div', { class: 'cat-desc' }, c.description));
+        const ordered = [...(state.categories || [])].sort((a, b) => (TILE_ORDER.indexOf(a.id) + 1 || 99) - (TILE_ORDER.indexOf(b.id) + 1 || 99));
+        for (const c of ordered) {
+          const info = CATEGORY_TILES[c.id] || { kind: 'api', label: '', text: c.description };
+          const tile = el('button', { type: 'button', class: `cat-tile kind-${info.kind}${c.id === state.category ? ' active' : ''}`, title: c.description },
+            el('div', { class: 'cat-top' }, el('span', { class: 'cat-name' }, info.name || c.label), el('span', { class: `cat-count${c.cases.length ? '' : ' zero'}` }, String(c.cases.length))),
+            el('div', { class: 'cat-desc' }, info.text),
+            el('div', { class: 'cat-foot' }, el('span', { class: 'cat-prefix' }, `${c.prefix}-xxx`), info.label ? el('span', { class: 'cat-kind' }, info.label) : ''));
           tile.addEventListener('click', () => { state.category = c.id; remember('caseCategory', c.id); state.importCases = []; renderImport(); say('importMsg', ''); renderCategories(); });
           box.append(tile);
         }
+        const total = (state.categories || []).reduce((n, c) => n + c.cases.length, 0);
+        const key = (kind, text) => el('span', { class: 'key' }, el('span', { class: `dot kind-${kind}` }), text);
+        box.append(el('div', { class: 'cat-legend' },
+          el('b', {}, `${total} uploaded case${total === 1 ? '' : 's'}`),
+          el('div', { class: 'keys' }, key('api', 'API only'), key('pay', 'Real payment / refund'), key('settings', 'Changes MID settings'))));
+        fitLegend();
         const c = currentCategory(); if (!c) return;
         $('uploadTitle').textContent = `Upload · ${c.label}`;
+        $('categoryAbout').textContent = c.description;
         $('categoryDescription').textContent = `Columns: ${c.columns.map((col) => col.header + (col.required ? '' : ' (optional)')).join(' · ')}`;
         $('listTitle').textContent = `Uploaded · ${c.label}`;
         $('aiFocus').placeholder = AI_FOCUS[c.id] || '';
         $('regexDash').classList.toggle('hidden', c.id !== 'regex');
         $('regexOr').classList.toggle('hidden', c.id !== 'regex');
         if (c.id === 'regex') loadRegexBanks();
+        $('pmDash').classList.toggle('hidden', c.id !== 'field');
+        if (c.id === 'field') loadPaymentMethods();
         $('listHint').textContent = `Saved in ${c.file} – commit it to share with the team. Select them on the Run tab${['psp', 'edge'].includes(c.id) ? ' (they make a real transaction with the card from the sheet or the Run tab)' : ''}.`;
         renderCustom();
       }
@@ -1448,6 +1638,43 @@
         } catch (error) { say('importMsg', error.message, false); }
       }
       /** Saved tester of the Run tab – the dashboard login used for bank rules. */
+      /** Payment methods with their parameters (dashboard) – methods with parameters first. */
+      async function loadPaymentMethods() {
+        const profileId = dashboardTester();
+        const select = $('pmMethod');
+        if (!profileId) { select.replaceChildren(option('', 'No dashboard login')); $('pmHint').textContent = 'Choose a saved tester with a dashboard login on the Run tab.'; return; }
+        if (state.pmFor === `${state.env}:${profileId}` && select.options.length > 1) return;
+        try {
+          const { methods } = await api(`/api/dashboard/payment-methods?env=${state.env}&profileId=${encodeURIComponent(profileId)}`);
+          state.pmFor = `${state.env}:${profileId}`; state.pmMethods = methods;
+          const allowed = new Set((state.dash?.routes || []).map((r) => r.paymentMethod));
+          const has = (m) => m.mandatory.length || m.group1.length || m.group2.length;
+          const label = (m) => `${m.name}${has(m) ? ` – ${[m.mandatory.length ? `${m.mandatory.length} required` : '', m.group1.length + m.group2.length ? `${m.group1.length + m.group2.length} extraParam` : ''].filter(Boolean).join(', ')}` : ''}${allowed.size && !allowed.has(m.name) ? ' (not routed for this merchant)' : ''}`;
+          const withParams = methods.filter(has); const rest = methods.filter((m) => !has(m));
+          select.replaceChildren(option('', 'Choose a payment method'),
+            el('optgroup', { label: 'With their own parameters' }, ...withParams.map((m) => option(m.name, label(m)))),
+            el('optgroup', { label: 'Other payment methods' }, ...rest.map((m) => option(m.name, label(m)))));
+          const pick = recall('pmMethod') || $('paymentMethod')?.value || '';
+          if (methods.some((m) => m.name === pick)) select.value = pick;
+          $('pmHint').textContent = `${withParams.length} of ${methods.length} payment methods have their own parameters.`;
+        } catch (error) { select.replaceChildren(option('', 'Payment methods not available')); $('pmHint').textContent = error.message; }
+      }
+      async function loadPaymentMethodCases() {
+        const name = $('pmMethod').value; const profileId = dashboardTester();
+        if (!name || !profileId) return say('importMsg', 'Choose a payment method (and a tester with a dashboard login on the Run tab).', false);
+        remember('pmMethod', name); say('importMsg', `Building cases for ${name}…`);
+        try {
+          const result = await api(`/api/dashboard/payment-method-cases?env=${state.env}&profileId=${encodeURIComponent(profileId)}&method=${encodeURIComponent(name)}`);
+          const m = result.method; const join = (a) => a.join(', ') || '—';
+          $('pmParams').replaceChildren(el('tr', {}, el('td', { class: 'mono' }, m.name), el('td', { class: 'mono' }, join(m.mandatory)), el('td', { class: 'mono' }, join(m.group1)), el('td', { class: 'mono' }, join(m.group2))));
+          $('pmParamsBox').classList.remove('hidden');
+          state.importFile = `dashboard: ${m.name}`; state.importCases = result.cases; state.importColumns = result.columns;
+          $('importName').textContent = `· ${m.name} (dashboard)`;
+          const allowed = new Set((state.dash?.routes || []).map((r) => r.paymentMethod));
+          say('importMsg', allowed.size && !allowed.has(m.name) ? `${m.name} is not routed for this tester's merchant – its cases are skipped until the merchant allows it.` : '', !(allowed.size && !allowed.has(m.name)));
+          renderImport();
+        } catch (error) { say('importMsg', error.message, false); }
+      }
       function dashboardTester() {
         const id = $('runProfile').value;
         const creds = state.options.profiles.find((p) => p.id === id)?.environments[state.env];
@@ -1489,6 +1716,8 @@
         psp: 'e.g. amount and currency, order reference, billing address',
         edge: 'e.g. amount boundaries with the approved and 3DS cards',
         kyc: 'e.g. auth headers, missing country / customer, link TTL and expiry values, incomplete customer data',
+        refund: 'e.g. several partial refunds, the exact rest, more than the rest, zero / negative / text amounts, missing reason',
+        'bank-config': 'e.g. each MID setting on / off, conversion with the merchant switch on and off, allowed currencies / cards',
       };
       async function loadAiStatus() {
         try {
@@ -1506,9 +1735,10 @@
         if (c.id === 'regex' && !bank) return say('aiMsg', 'Choose the bank in "From the dashboard" above first.', false);
         const profileId = dashboardTester();
         if (c.id === 'regex' && !profileId) return say('aiMsg', 'Regex cases need a saved tester with a dashboard login (Run tab).', false);
+        if (c.id === 'bank-config' && !profileId) return say('aiMsg', 'Bank & MID cases read the MID settings from the dashboard – choose a saved tester with a dashboard login on the Run tab.', false);
         $('aiGenerate').disabled = true; say('aiMsg', `Generating ${min}–${max} ${c.label.toLowerCase()} cases… (usually 20–60 s)`);
         try {
-          const result = await api('/api/test-cases/generate', { method: 'POST', body: JSON.stringify({ category: c.id, env: state.env, profileId, bank, min, max, focus: $('aiFocus').value }) });
+          const result = await api('/api/test-cases/generate', { method: 'POST', body: JSON.stringify({ category: c.id, env: state.env, profileId, bank, mid: runChoice().mid, min, max, focus: $('aiFocus').value }) });
           state.importFile = `AI · ${result.model}`; state.importCases = result.cases; state.importColumns = result.columns;
           $('importName').textContent = `· generated by ${result.model}`; renderImport();
           say('aiMsg', `${result.cases.length} case(s) generated${result.note ? ` – ${result.note}` : ''} · ${result.usage.input + result.usage.output} tokens. Review below, then add.`, !result.note);
@@ -1528,7 +1758,7 @@
           renderCategories();
         } catch (error) { say('customMsg', error.message, false); }
       }
-      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'], kyc: ['Customer · auth', 'Request changes', 'Expected'] };
+      const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'], kyc: ['Customer · auth', 'Request changes', 'Expected'], refund: ['Purchase', 'Refunds', 'Expected'], 'bank-config': ['Settings', 'Action', 'Expected'] };
       function renderCustom() {
         const c = currentCategory(); if (!c) return;
         const cols = ['ID', 'Test case', ...(LIST_COLUMNS[c.id] || ['Details', 'Changes', 'Expected']), 'Source', ''];
@@ -1591,10 +1821,17 @@
         $('saveProfile').addEventListener('click', saveProfile);
         $('deleteProfile').addEventListener('click', deleteProfile);
         $('saveDefaultEnv').addEventListener('click', () => saveSettings('run', { ...eff().run, defaultEnvironment: $('defaultEnv').value }, 'envMsg'));
-        for (const id of ['currency', 'total', 'platform', 'sendReceipt', 'skipCapture']) $(id).addEventListener('input', renderPreview);
+        for (const id of ['currency', 'total']) $(id).addEventListener('input', renderPreview);
+        $('addPmField').addEventListener('click', () => { $('pmFields').append(pmRow()); renderPreview(); });
+        $('togglePmJson').addEventListener('click', () => $('pmJsonBox').classList.toggle('hidden'));
+        $('importPmJson').addEventListener('click', importPmJson);
+        $('loadPmCases').addEventListener('click', loadPaymentMethodCases);
         $('addProduct').addEventListener('click', () => { $('products').append(productRow()); renderPreview(); });
         $('sumTotal').addEventListener('click', () => { const f = readPurchaseForm(); $('total').value = Math.round(f.purchase.products.reduce((s, p) => s + p.price, 0) * 100) / 100; renderPreview(); });
-        $('savePurchase').addEventListener('click', () => saveSettings(`purchase.${state.env}`, readPurchaseForm(), 'purchaseMsg'));
+        $('savePurchase').addEventListener('click', () => {
+          let value; try { value = readPurchaseForm(); } catch (error) { return say('purchaseMsg', error.message, false); }
+          saveSettings(`purchase.${state.env}`, value, 'purchaseMsg');
+        });
         $('resetPurchase').addEventListener('click', () => resetSettings(`purchase.${state.env}`, 'purchaseMsg'));
         $('newCard').addEventListener('click', () => editCard(null));
         $('saveCard').addEventListener('click', saveCard);
@@ -1602,7 +1839,12 @@
         $('resetCards').addEventListener('click', () => { state.editingCard = null; resetSettings(`cards.${state.env}`, 'cardsMsg'); });
         $('saveAuth').addEventListener('click', () => saveSettings('auth', { apiKeyHeader: $('aHeader').value.trim(), apiKeyPrefix: $('aPrefix').value.trim(), tokenPath: $('aToken').value.trim() }, 'advMsg'));
         $('resetAuth').addEventListener('click', () => resetSettings('auth', 'advMsg'));
-        $('saveRun').addEventListener('click', () => saveSettings('run', { ...eff().run, logLevel: $('logLevel').value, trace: $('trace').value, logHttpBodies: $('logBodies').checked }, 'advMsg'));
+        $('saveRun').addEventListener('click', async () => {
+          const keepRuns = Math.round(Number($('keepRuns').value));
+          if (!Number.isInteger(keepRuns) || keepRuns < 1 || keepRuns > 100) return say('advMsg', 'Runs to keep must be a whole number from 1 to 100.', false);
+          await saveSettings('run', { ...eff().run, logLevel: $('logLevel').value, trace: $('trace').value, logHttpBodies: $('logBodies').checked, keepRuns }, 'advMsg');
+          loadHistory();
+        });
         $('resetRun').addEventListener('click', () => resetSettings('run', 'advMsg'));
         renderStatus(state.options.run);
         connect();
