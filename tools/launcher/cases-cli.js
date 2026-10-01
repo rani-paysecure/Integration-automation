@@ -4,14 +4,14 @@
  * Test-case helper for Claude (skill "generate-test-cases") and for QAs:
  *
  *   npm run cases -- spec <category> [--env local]          template columns, allowed values, cards
- *   npm run cases -- context <category> [--env local] [--bank <bank>] [--profile <id>]
+ *   npm run cases -- context <category> [--env local] [--bank <bank>] [--mid <MID>] [--profile <id>]
  *                                                           what to base new cases on (fields, regexes, cards, existing cases)
  *   npm run cases -- rules <bank> [--env local] [--profile <id>]   field regexes of a bank (dashboard)
  *   npm run cases -- write <category> <rows.json> <out.xlsx> [--env local]   rows → filled, upload-ready template
  *   npm run cases -- check <category> <file.xlsx|csv> [--env local]         validate exactly like the launcher upload
  *   npm run cases -- sync-pgs <path to PGS repo>             refresh config/pgs/country-validation-regex.json
  *
- * Categories: field, regex, psp, edge, kyc. Output is JSON / text on stdout.
+ * Categories: field, regex, psp, edge, kyc, refund, bank-config. Output is JSON / text on stdout.
  */
 'use strict';
 
@@ -50,7 +50,8 @@ function settings() {
 
 function category(id) {
   const c = caseImport.CATEGORIES[id];
-  if (!c) fail(`Unknown category "${id}" – use field, regex, psp, edge or kyc`);
+  if (!c)
+    fail(`Unknown category "${id}" – use field, regex, psp, edge, kyc, refund or bank-config`);
   return c;
 }
 
@@ -87,7 +88,13 @@ function dashboard(env, profileId) {
     );
   const baseUrl = settings().environments[env].baseUrl;
   if (!baseUrl) fail(`No dashboard URL for ${env.toUpperCase()}`);
-  return new DashboardClient({ baseUrl, username: creds.username, password: creds.password });
+  const client = new DashboardClient({
+    baseUrl,
+    username: creds.username,
+    password: creds.password,
+  });
+  client.merchantId = profile?.environments?.[env]?.merchant?.id;
+  return client;
 }
 
 async function main() {
@@ -147,6 +154,19 @@ async function main() {
         ctx.existing.push(`${c.path} = ${String(v).slice(0, 40)} → ${c.expectation}`);
       }
       for (const c of caseImport.loadCases('field')) ctx.existing.push(`${c.path} – ${c.title}`);
+    } else if (id === 'bank-config') {
+      if (!flags.mid) fail('Bank & MID context needs --mid <MID name> (Routes to on the Run tab)');
+      const client = dashboard(env, flags.profile);
+      ctx.bankConfig = await client.bankConfigContext(flags.mid, client.merchantId);
+      if (!ctx.bankConfig) fail(`MID ${flags.mid} not found in the dashboard`);
+      ctx.currency = s.purchase[env]?.purchase?.currency || 'EUR';
+      for (const c of caseImport.loadCases(id))
+        ctx.existing.push(`${c.title} – ${caseImport.summarize(id, c).join(' | ')}`);
+    } else if (id === 'refund') {
+      ctx.currency = s.purchase[env]?.purchase?.currency || 'EUR';
+      ctx.total = s.purchase[env]?.purchase?.total;
+      for (const c of caseImport.loadCases(id))
+        ctx.existing.push(`${c.title} – ${caseImport.summarize(id, c).join(' | ')}`);
     } else {
       for (const c of caseImport.loadCases(id)) ctx.existing.push(c.title);
     }

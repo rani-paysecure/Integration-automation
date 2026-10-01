@@ -4,7 +4,8 @@
     "defaultEnvironment": "uat",
     "logLevel": "info",
     "logHttpBodies": true,
-    "trace": ""
+    "trace": "",
+    "keepRuns": 5
   },
   "auth": {
     "apiKeyHeader": "Authorization",
@@ -44,9 +45,6 @@
         ],
         "total": 10
       },
-      "platform": "woocommerce",
-      "send_receipt": false,
-      "skip_capture": false,
       "success_redirect": "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
       "pending_redirect": "https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif",
       "failure_redirect": "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif",
@@ -75,9 +73,6 @@
         ],
         "total": 10
       },
-      "platform": "woocommerce",
-      "send_receipt": false,
-      "skip_capture": false,
       "success_redirect": "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
       "pending_redirect": "https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif",
       "failure_redirect": "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif",

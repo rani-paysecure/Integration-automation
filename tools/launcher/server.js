@@ -25,6 +25,7 @@ const { spawn } = require('node:child_process');
 const settingsCore = require('../../config/settings-core');
 const { DashboardClient, DashboardError } = require('./dashboard');
 const caseImport = require('./test-case-import');
+const paymentMethodCases = require('./payment-method-cases');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
 const ai = require('./ai-generate');
@@ -311,7 +312,9 @@ function saveProfile(input) {
       ? existing?.kyc
       : {
           enabled: input.kycEnabled === true,
-          ...(input.kycEnabled === true && input.kycMid ? { mid: String(input.kycMid).slice(0, 120) } : {}),
+          ...(input.kycEnabled === true && input.kycMid
+            ? { mid: String(input.kycMid).slice(0, 120) }
+            : {}),
         };
   profile.environments[env] = {
     brandId,
@@ -379,7 +382,7 @@ function childEnvFor(env) {
 }
 
 /** Everything the AI needs to know for one category (no secrets, no card numbers). */
-async function aiContext(category, env, profileId, bank) {
+async function aiContext(category, env, profileId, bank, mid = '') {
   const settings = effectiveSettings();
   const cards = settings.cards[env] || [];
   const ctx = {
@@ -400,6 +403,12 @@ async function aiContext(category, env, profileId, bank) {
       ctx.existing.push(`${c.path} = ${String(v).slice(0, 40)} → ${c.expectation}`);
     }
     for (const c of caseImport.loadCases('field')) ctx.existing.push(`${c.path} – ${c.title}`);
+    try {
+      const { client } = dashboardFor(env, profileId);
+      ctx.paymentMethods = paymentMethodCases.describeMethods(await client.paymentMethods());
+    } catch {
+      /* no dashboard login – the AI still gets the generic extraParam rules */
+    }
   } else if (category === 'regex') {
     if (!/^[\w .-]{1,80}$/.test(bank)) throw new HttpError(400, 'Choose a bank first');
     const { client } = dashboardFor(env, profileId);
@@ -411,6 +420,40 @@ async function aiContext(category, env, profileId, bank) {
     for (const c of caseImport.loadCases('regex')) {
       if (!c.bank || c.bank === bank) ctx.existing.push(`${c.field} = ${c.value}`);
     }
+  } else if (category === 'bank-config') {
+    const { client, creds } = dashboardFor(env, profileId);
+    if (!creds.merchant)
+      throw new HttpError(400, 'Set the merchant of this tester in the Testers tab first');
+    let midName = String(mid || '')
+      .split(',')[0]
+      .trim();
+    if (!midName) {
+      const routing = await routingFor(env, profileId);
+      midName = routing.routes.find((r) => r.routeTo === 'route_to_mid')?.targets[0]?.name || '';
+    }
+    if (!/^[\w .:/-]{1,120}$/.test(midName))
+      throw new HttpError(
+        400,
+        'No routed MID – choose currency / payment method on the Run tab (Routes to)',
+      );
+    ctx.bankConfig = await fromDashboard(() =>
+      client.bankConfigContext(midName, creds.merchant.id),
+    );
+    if (!ctx.bankConfig) throw new HttpError(400, `MID ${midName} was not found in the dashboard`);
+    ctx.currency = settings.purchase[env]?.purchase?.currency || 'EUR';
+    ctx.existing.push(
+      'BM-003/004 2D only 0/1 · BM-005/006 partial refund 0/1 · BM-007 convert to {other} + merchant conversion 1 · BM-008 convert to {other} + merchant conversion 0 · BM-009 allowed currencies {other} · BM-010 allowed cards {other} (built-in)',
+    );
+    for (const c of caseImport.loadCases(category))
+      ctx.existing.push(`${c.title} – ${caseImport.summarize(category, c).join(' | ')}`);
+  } else if (category === 'refund') {
+    ctx.currency = settings.purchase[env]?.purchase?.currency || 'EUR';
+    ctx.total = settings.purchase[env]?.purchase?.total;
+    ctx.existing.push(
+      'RF-002 partial 30% · RF-003 more than refundable → invalid_amount · RF-004 amount 0 · RF-005 rest → refunded · RF-006 refund after full refund · RF-007 unpaid purchase · RF-008 no reason · RF-009 no amount (built-in)',
+    );
+    for (const c of caseImport.loadCases(category))
+      ctx.existing.push(`${c.title} – ${caseImport.summarize(category, c).join(' | ')}`);
   } else {
     for (const c of caseImport.loadCases(category)) ctx.existing.push(c.title);
   }
@@ -433,7 +476,11 @@ function listTests(env) {
         '--project=cashier-purchase',
         '--project=kyc',
       ],
-      { cwd: ROOT, env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '', KYC_INCLUDE_SLOW: '1' }, shell: false },
+      {
+        cwd: ROOT,
+        env: { ...childEnvFor(env), PSP_PURCHASE_IDS: '', KYC_INCLUDE_SLOW: '1' },
+        shell: false,
+      },
     );
     child.on('error', (error) =>
       reject(new HttpError(500, `Could not list tests: ${error.message}`)),
@@ -451,19 +498,26 @@ function listTests(env) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
             const key = tags.find((t) =>
-              /^@(FT-|FV-|RX-|PR-|EC-|RF-|KYC-|KV-|card-|backoffice-smoke)/.test(t),
+              /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|KYC-|KV-|card-|backoffice-smoke)/.test(t),
             );
             if (!key) continue;
             // KYC and refund cases each form one group on the Run tab; the spec's section becomes a label.
             const isKyc = /^@(KYC|KV)-/.test(key);
-            const isRefund = key.startsWith('@RF-');
+            const isRefund = /^@(RF|RC)-/.test(key);
+            const isBank = /^@(BM|BC)-/.test(key);
             const section = isKyc
               ? String(group).replace(/^KYC verification › /, '')
               : isRefund
-                ? /request validation/i.test(group)
-                  ? 'Request validation'
-                  : 'Refund flow'
-                : undefined;
+                ? key.startsWith('@RC-')
+                  ? 'Uploaded cases'
+                  : /request validation/i.test(group)
+                    ? 'Request validation'
+                    : 'Refund flow'
+                : isBank
+                  ? key.startsWith('@BC-')
+                    ? 'Uploaded cases'
+                    : 'Built-in checks'
+                  : undefined;
             tests.push({
               key,
               title: spec.title,
@@ -471,7 +525,9 @@ function listTests(env) {
                 ? 'KYC verification'
                 : isRefund
                   ? 'Cashier purchase › 5. Refunds'
-                  : group,
+                  : isBank
+                    ? 'Cashier purchase › 6. Bank & MID configuration'
+                    : group,
               ...(section ? { section } : {}),
               transaction: tags.includes('@transaction'),
               // KYC: @slow waits minutes on the expiry poller, @sumsub drives the provider's UI.
@@ -552,6 +608,16 @@ function startRun(input) {
     throw new HttpError(400, 'Run the framework self-tests on their own');
   }
 
+  // Bank & MID cases flip shared bank / MID / merchant settings (and restore them):
+  // they run on their own, one at a time, so no other test sees a flipped setting.
+  const bankConfigKeys = keys.filter((k) => /^@(BM|BC)-/.test(k));
+  if (bankConfigKeys.length > 0 && bankConfigKeys.length !== keys.length) {
+    throw new HttpError(
+      400,
+      'Bank & MID configuration cases change shared bank / MID settings while they run – run them on their own (unselect the other cases).',
+    );
+  }
+
   const prefix = env.toUpperCase();
   /** @type {NodeJS.ProcessEnv} */
   const childEnv = {
@@ -581,6 +647,12 @@ function startRun(input) {
     secrets.push(creds.apiKey);
     if (creds.dashboard?.password) secrets.push(creds.dashboard.password);
     who = profile.name;
+    if (bankConfigKeys.length > 0 && !(creds.dashboard?.username && creds.dashboard?.password)) {
+      throw new HttpError(
+        400,
+        `Bank & MID cases change settings through the dashboard – add a dashboard login (SUPERADMIN) for ${profile.name} (${prefix}) on the Testers tab.`,
+      );
+    }
     brandId = creds.brandId;
     apiKeyHint = maskedKey(creds.apiKey);
     const kycKeys = keys.filter((k) => /^@(KYC|KV)-/.test(k));
@@ -661,7 +733,7 @@ function startRun(input) {
   if (!Number.isInteger(workers) || workers < 0 || workers > 16) {
     throw new HttpError(400, 'Workers must be 1–16 (or empty for default)');
   }
-  if (input.headed === true) args.push('--workers=1');
+  if (input.headed === true || bankConfigKeys.length > 0) args.push('--workers=1');
   else if (workers > 0) args.push(`--workers=${workers}`);
   const retries = Number(input.retries || 0);
   if (!Number.isInteger(retries) || retries < 0 || retries > 3) {
@@ -710,9 +782,35 @@ function startRun(input) {
     run.exitCode = code;
     run.status = run.status === 'stopping' ? 'stopped' : code === 0 ? 'passed' : 'failed';
     pushLine(`■ finished: ${run.status}${code === null ? '' : ` (exit ${code})`}`);
+    pruneRunHistory();
     broadcast('status', runState());
   });
   return run.id;
+}
+
+/**
+ * Keeps only the newest `run.keepRuns` reports (Advanced → Logging & reports, default 5)
+ * in reports/ui/history – the Report tab's run list. latest.json is never touched.
+ */
+function pruneRunHistory() {
+  const dir = path.join(UI_REPORT_DIR, 'history');
+  const keep = effectiveSettings().run.keepRuns ?? 5;
+  let removed = 0;
+  try {
+    const old = fs
+      .readdirSync(dir)
+      .filter((f) => /^[\w-]+\.json$/.test(f))
+      .sort()
+      .reverse()
+      .slice(keep);
+    for (const f of old) {
+      fs.rmSync(path.join(dir, f), { force: true });
+      removed++;
+    }
+  } catch {
+    /* no history yet */
+  }
+  return removed;
 }
 
 /** Report files from the last run – they survive a launcher restart. */
@@ -866,6 +964,25 @@ const server = http.createServer(async (req, res) => {
         const suggested = mids.map((m) => regexCases.bankForMid(m, names)).find(Boolean) || '';
         return send(res, 200, { banks: names, suggested });
       }
+      if (what === 'payment-methods') {
+        const { client } = dashboardFor(env, profileId);
+        const methods = await fromDashboard(() => client.paymentMethods());
+        return send(res, 200, { methods });
+      }
+      if (what === 'payment-method-cases') {
+        const name = String(url.searchParams.get('method') || '').trim();
+        if (!/^[\w .-]{1,80}$/.test(name)) throw new HttpError(400, 'Choose a payment method');
+        const { client } = dashboardFor(env, profileId);
+        const method = (await fromDashboard(() => client.paymentMethods())).find(
+          (m) => m.name === name,
+        );
+        if (!method) throw new HttpError(404, `${name} is not a payment method in the dashboard`);
+        const preview = caseImport.previewObjects(
+          'field',
+          paymentMethodCases.rowsForMethod(method),
+        );
+        return send(res, 200, { method, ...preview });
+      }
       if (what === 'regex-rules') {
         const bank = String(url.searchParams.get('bank') || '').trim();
         if (!/^[\w .-]{1,80}$/.test(bank)) throw new HttpError(400, 'Choose a bank');
@@ -928,7 +1045,7 @@ const server = http.createServer(async (req, res) => {
             .map((f) => f.slice(0, -5))
             .sort()
             .reverse()
-            .slice(0, 30)
+            .slice(0, effectiveSettings().run.keepRuns ?? 5)
         : [];
       return send(res, 200, { runs });
     }
@@ -981,6 +1098,7 @@ const server = http.createServer(async (req, res) => {
         env,
         String(body.profileId || ''),
         String(body.bank || '').trim(),
+        String(body.mid || '').trim(),
       );
       try {
         return send(res, 200, await ai.generateCases(category, body, ctx));
@@ -1023,6 +1141,7 @@ const server = http.createServer(async (req, res) => {
       if (body.value === undefined || body.value === null)
         throw new HttpError(400, 'Missing value');
       updateSettings(String(body.path || ''), body.value);
+      if (String(body.path || '') === 'run') pruneRunHistory();
       return send(res, 200, settingsView());
     }
     if (method === 'DELETE' && url.pathname === '/api/settings') {
@@ -1103,6 +1222,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+pruneRunHistory();
 server.listen(PORT, HOST, () => {
   const address = `http://${HOST}:${PORT}`;
   process.stdout.write(`\n  Test Launcher running at ${address}\n  Press Ctrl+C to stop.\n\n`);

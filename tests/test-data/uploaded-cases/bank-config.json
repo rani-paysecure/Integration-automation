@@ -1,0 +1,110 @@
+{
+  "nextNumber": 6,
+  "cases": [
+    {
+      "id": "BC-001",
+      "title": "Only the other card scheme allowed – MID skipped",
+      "settings": {
+        "allowed_card": "{other}"
+      },
+      "action": "pay",
+      "expected": {
+        "routing": "skips",
+        "statuses": [
+          "ERROR"
+        ],
+        "errorContains": "can not be processed"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          1
+        ],
+        "importedAt": "2026-10-01T08:59:53.193Z"
+      }
+    },
+    {
+      "id": "BC-002",
+      "title": "Only the card scheme in use allowed – MID used",
+      "settings": {
+        "allowed_card": "{card}"
+      },
+      "action": "pay",
+      "expected": {
+        "routing": "uses",
+        "statuses": [
+          "PAID"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-01T08:59:53.193Z"
+      }
+    },
+    {
+      "id": "BC-003",
+      "title": "Only the purchase currency allowed – MID used",
+      "settings": {
+        "allowed_curr": "{purchase}"
+      },
+      "action": "pay",
+      "expected": {
+        "routing": "uses",
+        "statuses": [
+          "PAID"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-01T08:59:53.193Z"
+      }
+    },
+    {
+      "id": "BC-004",
+      "title": "Convert to the purchase currency needs no conversion",
+      "settings": {
+        "curr_convert_to": "{purchase}",
+        "merchant_conversion": 0
+      },
+      "action": "pay",
+      "expected": {
+        "routing": "uses",
+        "statuses": [
+          "PAID"
+        ],
+        "currency": "{purchase}"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-01T08:59:53.193Z"
+      }
+    },
+    {
+      "id": "BC-005",
+      "title": "Partial refund switched off – partial refund rejected",
+      "settings": {
+        "partial_refund_allowed": 0
+      },
+      "action": "partial-refund",
+      "expected": {
+        "code": "payment_can_not_be_refunded"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-01T08:59:53.193Z"
+      }
+    }
+  ]
+}

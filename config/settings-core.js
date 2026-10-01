@@ -78,14 +78,19 @@ const purchaseTemplateSchema = z.object({
     products: z.array(z.object({ name: z.string(), price: z.number() })).min(1),
     total: z.number(),
   }),
-  platform: z.string(),
-  send_receipt: z.boolean(),
-  skip_capture: z.boolean(),
   success_redirect: z.string(),
   pending_redirect: z.string(),
   failure_redirect: z.string(),
   success_callback: z.string(),
   failure_callback: z.string(),
+  /** Optional extraParam sent with every purchase (keys depend on the payment method). */
+  extraParam: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Optional request fields per payment method, merged when the run (or a case) uses that
+   * method – e.g. { "UPI": { "upiId": "pending@testbank", "extraParam": { "vpa": "…" } } }.
+   * Keys are free-form: nothing is hardcoded per payment method.
+   */
+  methodFields: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
 });
 
 const endpointsSchema = z.object({ baseUrl: urlOrEmpty, apiBaseUrl: urlOrEmpty });
@@ -96,6 +101,8 @@ const settingsSchema = z.object({
     logLevel: z.enum(['debug', 'info', 'warn', 'error', 'silent']),
     logHttpBodies: z.boolean(),
     trace: z.enum(['', 'on', 'off', 'retain-on-failure', 'on-first-retry', 'on-all-retries']),
+    /** Past runs kept for the Report tab's run list (older ones are deleted). */
+    keepRuns: z.number().int().min(1).max(100).default(5),
   }),
   auth: z.object({
     apiKeyHeader: z.string().trim().min(1),

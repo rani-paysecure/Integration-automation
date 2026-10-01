@@ -48,11 +48,15 @@ function aiStatus() {
 
 const FOCUS_HINTS = {
   field:
-    'missing / empty / null values, wrong types, length limits, formats (email, phone, dates, ISO codes), unicode, whitespace, injection strings',
+    'missing / empty / null values, wrong types, length limits, formats (email, phone, dates, ISO codes), unicode, whitespace, injection strings; payment-method parameters in extraParam (valid, missing, empty, null, wrong type, several keys, keys the method does not need, extraParam not an object)',
   regex:
     'values just inside and just outside every pattern: length boundaries, allowed vs forbidden characters, leading/trailing spaces, unicode letters, look-alike characters, words the pattern blocks',
   psp: 'amount (major vs minor units), currency, order reference = purchase ID, customer / billing data, 3DS fields, status and IDs in the response',
   edge: 'amount boundaries, currency / country mismatches, missing optional customer data, different test cards (approved, declined, 3DS challenge)',
+  refund:
+    'partial refunds in several steps, the exact rest, more than the rest (rest+0.01, rest+1), total twice, zero / negative / non-numeric amounts, amount or reason not sent, empty reason, refunds of an unpaid purchase, many small refunds, refunds after a full refund',
+  'bank-config':
+    'each setting on and off against the current value: 2D only, partial refund (partial vs full refund), convert to {other} with merchant conversion on / off, allowed currencies with and without {purchase}, allowed cards with and without {card}, combinations of two settings',
   kyc: 'auth variants (no key, no Bearer, unknown key, no / foreign Brand-Id), missing or blank country, missing / unknown customer ids, merchant_cust_id vs customer_id, link_ttl_minutes and kyc_expiry_in_minutes boundaries, incomplete customer records (customer.* not sent), unknown extra fields',
 };
 
@@ -118,6 +122,8 @@ const PGS_SECTIONS = {
   regex: ['2.'],
   psp: ['3.', '4.'],
   kyc: ['6.'],
+  refund: ['5.'],
+  'bank-config': ['7.'],
 };
 function pgsBehaviour(categoryId) {
   let text;
@@ -146,10 +152,40 @@ function buildContext(categoryId, ctx) {
       `${c.challenge && c.challenge.action !== 'none' ? `, 3DS challenge (${c.challenge.action})` : ''}`,
   );
   if (categoryId === 'field' || categoryId === 'edge') {
+    const { methodFields, extraParam, ...template } = ctx.purchaseTemplate || {};
     lines.push(
       'Purchase request fields (standard request, dummy data):',
-      ...templateFields(ctx.purchaseTemplate).map((f) => `- ${f}`),
+      ...templateFields(template).map((f) => `- ${f}`),
     );
+    if (extraParam || methodFields) {
+      lines.push(
+        'Payment-method fields set in Purchase data (keys only):',
+        ...Object.keys(extraParam || {}).map((k) => `- extraParam.${k} (all methods)`),
+        ...Object.entries(methodFields || {}).flatMap(([m, f]) =>
+          Object.entries(f || {}).flatMap(([k, v]) =>
+            k === 'extraParam' && v && typeof v === 'object'
+              ? Object.keys(v).map((ek) => `- extraParam.${ek} (${m === '*' ? 'all methods' : m})`)
+              : [`- ${k} (${m === '*' ? 'all methods' : m})`],
+          ),
+        ),
+      );
+    }
+  }
+  if (categoryId === 'field') {
+    lines.push(
+      'Payment-method parameters are dynamic – keys differ per payment method, never assume a fixed list:',
+      '- Parameter extraParam.<key> (any key) or extraParam (the whole object, Test Data as JSON {"k":"v",…}); other method fields at the top level by name (upiId, invoiceNo …).',
+      '- Context sets the payment method and the other keys first: paymentMethod=UPI; extraParam.accountNumber="123" (separate with ;).',
+      '- Test Data: "Field not sent", "" (empty), null, 123 (no quotes), true (boolean), {"json":"object"}, ["list"], "256 characters".',
+      '- PGS stores extraParam / upiId / invoiceNo as sent (echoed in the answer); it does not reject missing or empty keys at create (the cashier asks); extraParam that is not an object → 400 invalid_json; keys from both extraParam groups for a method without user input → 400.',
+      '- The merchant must allow the payment method, otherwise the case is skipped.',
+    );
+    if (ctx.paymentMethods && ctx.paymentMethods.length) {
+      lines.push(
+        'Payment methods with their own parameters (live dashboard configuration):',
+        ...ctx.paymentMethods,
+      );
+    }
   }
   if (categoryId === 'regex') {
     lines.push(
@@ -199,6 +235,41 @@ function buildContext(categoryId, ctx) {
       'PSP response fields seen in earlier runs:',
       keys.response.length ? keys.response.join(', ') : '(none recorded yet – e.g. status, id)',
       'Placeholders for Expected Value: {purchaseId} {amount} {amountMinor} {currency} {email} {country} {city} {zip} {phone} {fullName}',
+    );
+  }
+  if (categoryId === 'refund') {
+    lines.push(
+      `Standard purchase: total ${ctx.total ?? 10} ${ctx.currency || 'EUR'} (Paysafe sandbox approves 10.00, declines 2.00).`,
+      'Refund API: POST /api/v1/purchases/{id}/refund {amount, reason}; both mandatory. 202 = accepted (partial_refunded / refunded once the PSP confirms).',
+      'Known answers: 400 invalid_amount "exceeds refundable amount"; 400 "Refund amount must be greater than zero."; 400 "reason for refund is required"; 400 "amount is required"; 400 "already fully refunded"; 400 "…can be refunded" for an unpaid purchase; 400 "Previous Refund Request already in Process" while a refund is pending.',
+      'Sandbox: the PSP often refuses refunds of a payment that is not settled yet (PGS: "Refund can not be initiated") – such a case is reported as OBSERVED, so still write the business expectation (202).',
+      'Purchase column: New payment | Unpaid purchase | Settled purchase (Run tab). Refunds column: amounts in order separated by ";" – 30% · 2.50 · rest · rest+0.01 · total · 0 · -1 · "abc" · not sent; expectations apply to the LAST step.',
+      'Expected Status = final purchase status: PAID, PARTIAL_REFUNDED, REFUNDED (unpaid purchases stay CREATED / VIEWED).',
+    );
+  }
+  if (categoryId === 'bank-config') {
+    const b = ctx.bankConfig || {};
+    const mid = b.mid || {};
+    const bank = b.bank || {};
+    const merchant = b.merchant || {};
+    lines.push(
+      `MID under test (live dashboard settings): ${mid.name} on bank ${bank.name}`,
+      `- 2D only: ${mid.onlyTwoD} · 3DS: ${mid.is3ds} · partial refund allowed: ${mid.partialRefundAllowed} · convert to: ${mid.currConvertTo || 'none'}`,
+      `- allowed currencies: ${String(mid.allowedCurr || 'all').split(',').length > 12 ? `${String(mid.allowedCurr).split(',').length} currencies (incl. ${ctx.currency})` : mid.allowedCurr || 'all'} · allowed cards: ${mid.allowedCard || 'all'} · allowed countries: ${mid.allowedCountry || 'all'}`,
+      `Bank: max_refund_days ${bank.maxRefundDays} · allowed methods ${
+        String(bank.allowedCard || '').split(',').length > 12
+          ? `${String(bank.allowedCard).split(',').length} methods (bank-level, not changed by the tests)`
+          : bank.allowedCard || 'all'
+      }`,
+      `Merchant: conversion allowed ${merchant.conversionAllowed} · transaction type ${merchant.trxType}`,
+      `Purchase currency of the standard request: ${ctx.currency} · card scheme: the Run tab payment method (VISA by default).`,
+      'Settings column: name=value; … with 2D only=1/0 · Partial refund=1/0 · Convert to=<currency>/{other}/none · Allowed currencies=<list> · Allowed cards=<list> · Merchant conversion=1/0.',
+      'Tokens: {purchase} = the purchase currency, {card} = the card scheme, {other} = a different currency / scheme. Prefer tokens over literal codes so cases work for any run.',
+      'Action: Pay (settings changed, then pay) | Partial refund / Full refund (pay with the current settings, then change them and refund – only Partial refund matters for refunds).',
+      'A MID that cannot take the payment is SKIPPED: the payment goes to another eligible MID or fails with ERROR "This customer can not be processed !". Use Expected Routing (Uses the MID / Skips the MID).',
+      'Refund with partial refund = 0 and an amount below the rest → HTTP 400 code payment_can_not_be_refunded (Expected Code). A full refund is not affected.',
+      'Conversion: Convert to={other} with Merchant conversion=1 → the PSP gets the other currency (Expected PSP Currency={other}); with Merchant conversion=0 the MID is skipped.',
+      'Only write cases for settings that exist here; one idea per case; mix "uses" and "skips".',
     );
   }
   if (categoryId === 'kyc') {

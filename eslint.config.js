@@ -38,6 +38,9 @@ module.exports = tseslint.config(
         'warn',
         {
           assertFunctionNames: [
+            'expectNotOnMid',
+            'withMidSettings',
+            'withMerchantConversion',
             'expectApiError',
             'expectRequiredFields',
             'verifyFieldExpectation',

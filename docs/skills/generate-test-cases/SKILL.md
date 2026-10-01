@@ -1,6 +1,6 @@
 ---
 name: generate-test-cases
-description: Generate Paysecure integration QA test cases (field validation, bank regex validation, PSP request/response, custom & edge cases) as an upload-ready Excel file for the Integration-automation launcher. Use when a QA asks to create, suggest or expand test cases for a category, a bank's field regexes, a PSP or a test card.
+description: Generate Paysecure integration QA test cases (field validation, bank regex validation, PSP request/response, custom & edge cases, KYC, refunds, bank & MID configuration) as an upload-ready Excel file for the Integration-automation launcher. Use when a QA asks to create, suggest or expand test cases for a category, a bank's field regexes, a PSP or a test card.
 ---
 
 # Generate test cases for the Integration-automation launcher
@@ -12,23 +12,26 @@ added on its **Test cases** tab by uploading a filled template. This skill write
 
 - **Category**: `field` (request field rules) · `regex` (a bank's field regexes) · `psp` (checks on
   the PSP request/response) · `edge` (end-to-end scenarios with a card and expected outcome) ·
-  `kyc` (POST /kyc/create: customer, request changes, auth variant → HTTP, code, KYC status).
+  `kyc` (POST /kyc/create: customer, request changes, auth variant → HTTP, code, KYC status) ·
+  `refund` (refund steps on a purchase → HTTP, code, final status) · `bank-config` (flip the routed
+  MID / merchant settings → pay or refund → routing, status, code, PSP currency).
 - **How many**: min and max number of cases (default 10–20; PSP counts test cases, not rows).
 - **Environment**: `local` (default) or `uat` – both are test4.
 - For `regex`: the **bank** name as in the dashboard (e.g. `paysafe_payfac`, `paywise`).
+- For `bank-config`: the **MID** the merchant routes to (Run tab → Routes to, e.g. `paysafe_payfac_mid`).
 - Optional focus (e.g. "unicode names", "amount boundaries", "3DS cards").
 
 ## 2. Read the template and the context (from the project root)
 
 ```bash
 npm run -s cases -- spec <category> --env local        # columns, allowed values, card IDs, examples
-npm run -s cases -- context <category> --env local [--bank <bank>]   # fields, bank regexes, cards, existing cases
+npm run -s cases -- context <category> --env local [--bank <bank>] [--mid <MID>]   # fields, regexes, live MID settings, cards, existing cases
 ```
 
 `context` includes the matching part of `docs/pgs-behaviour.md` – how the PGS backend really validates
 (read from its code, with confirmed bugs). Prefer cases that probe those rules and bugs.
 
-`context` for `regex` logs in to the dashboard with the tester's login from `profiles.local.json`
+`context` for `regex` and `bank-config` logs in to the dashboard with the tester's login from `profiles.local.json`
 (this computer only). Never print, copy or ask for passwords, API keys or card numbers.
 
 ## 3. Write the cases
@@ -71,6 +74,23 @@ country not sent; customer.fullName="Ann Lee"; customer.phoneNo not sent` (never
   (country_required, customer_required, customer_not_found, authentication_failed, access_denied);
   `status` on success (AWAITING_USER). Rules: docs/pgs-behaviour.md § 6.
 
+- **refund** – `purchase` = New payment / Unpaid purchase / Settled purchase (Run tab); `refunds` =
+  amounts in order separated by `;`: `30%`, `2.50`, `rest`, `rest+0.01`, `total`, `0`, `-1`, `"abc"`,
+  `not sent`; `reason` empty (default) / `not sent` / `""` / text. Expectations (`http`, `code`,
+  `message`, `status` = final purchase status) apply to the LAST step. Known answers: 400
+  `invalid_amount` "exceeds refundable amount", "greater than zero", "reason for refund is required",
+  "amount is required", "already fully refunded". Write the business expectation (202) even though the
+  sandbox PSP may refuse unsettled refunds – the run reports that as OBSERVED. Rules: § 5.
+- **bank-config** – `settings` = `name=value; …` with `2D only=1/0`, `Partial refund=1/0`,
+  `Convert to=<cur>/{other}/none`, `Allowed currencies=<list>`, `Allowed cards=<list>`,
+  `Merchant conversion=1/0`; prefer tokens: `{purchase}` / `{card}` = the purchase currency / card
+  scheme, `{other}` = a different one. `action` = Pay / Partial refund / Full refund (refunds pay first
+  with the current settings; only Partial refund matters there). Expect `routing` (Uses the MID /
+  Skips the MID), `status`, `code` (refund: payment_can_not_be_refunded), `error`
+  ("can not be processed"), `currency` (PSP currency, e.g. `{other}`). Base every case on the live
+  settings from `context` and flip them; one idea per case. Rules: § 7. Each routing change costs a
+  5-minute wait at run time (PGS MID cache) – keep the set focused.
+
 Save the rows as a JSON array of objects keyed by the column `key`s, e.g. `generated-regex.json`.
 
 ## 4. Build and check the file
@@ -87,7 +107,8 @@ corrected). Fix every `FIX` row and re-run until it reports 0 to fix. Delete the
 
 Tell the QA the file name, how many cases (positive / negative), and to upload it on
 **launcher → Test cases → <category> → Upload the filled sheet**, review the preview and click
-**Add selected cases**. Regex and PSP/edge cases make real test transactions when run.
+**Add selected cases**. Regex, PSP, edge, refund and bank & MID cases make real test transactions
+when run; bank & MID cases change shared test4 settings (restored after) and run on their own.
 
 The launcher also has **Generate with AI** on the same tab (needs `ANTHROPIC_API_KEY` in `.env`) for
 the same result without leaving the launcher.

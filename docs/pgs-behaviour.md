@@ -38,6 +38,24 @@ Flow: `controller/APIController.createPurchase` → `service/PurchaseService.cre
 | Duplicate `merchantRef`                                           | `transaction_error` – "Duplicate merchantRef Found!"                                                                                                                |
 | Customer email blocked / customer or group limits breached        | `transaction_error`                                                                                                                                                 |
 
+### Payment-method fields – `extraParam`, `upiId`, `invoiceNo` … (confirmed on test4)
+
+- `extraParam` is a free-form object (`Purchase.extraParam: Map<String,Object>`); other method-specific
+  fields (`upiId`, `invoiceNo` …) are plain top-level fields. Keys differ per payment method – the
+  dashboard's Payment Methods page lists them: `mandatoryParams` (customer / top-level fields),
+  `extraMandatoryParams` (extraParam group 1) and `extraMandatoryParams2` (group 2). A per-country
+  override (`PaymentMethodCountryExtraMandatoryParam`, by the customer's country) wins when present.
+- Create (`POST /api/v1/purchases/`) **stores them as sent and does not validate them**: missing, empty,
+  `null`, wrong format, numbers, 256 characters and unknown keys → 202 (the cashier / PSP asks or
+  checks later). `extraParam` that is not an object (text, list) → 400 `invalid_json`
+  "Request Body Not Found/MalFormed".
+- Non-card methods without user input (`user_input_required` = 0): keys from **both** groups →
+  400 `transaction_error` "Only one is allowed, Extra Mandatory Param group 1 or group 2"
+  (`PurchaseService` → `MandatoryParameter.isValidExtraMandatoryConfigPurchase`; any key of each group
+  counts, even with an empty value). With all required parameters present such a purchase skips the
+  cashier and goes straight to payment.
+- A payment method the merchant does not allow → 400 `payment_method_not_allowed` (cases for it are skipped).
+
 ## 2. Bank field regexes – `client/validation/ClientDetailsValidator.validate`
 
 Run at payment time (`commongateway/Main.createPayload` and 17 other integrations: WorldPayDirect,
@@ -98,6 +116,12 @@ The Paysafe sandbox declines 2.00 by design; 10.00 is approved.
 - test4 Paysafe: refund right after payment → PSP 3406 "The settlement you are attempting to refund
   has not been batched yet" (cancelInfo = `{amount: 300, merchantRefNum: <refundId>}`).
 
+- **Bug (confirmed on test4, RC-004):** a non-numeric refund amount (`{"amount":"abc","reason":"…"}`)
+  answers **HTTP 500** `{"message":"something went wrong","code":"exception"}` instead of a 400
+  validation error.
+- Refunds on Paysafe can stay `refund_in_process` for a long time (PSP accepted, no confirmation yet);
+  while one is pending every further refund answers 400 "Previous Refund Request already in Process".
+
 ## 6. KYC – `service/kyc/controller/KycController`, `KycOrchestrationService`
 
 Endpoints (environment root, not `/api`): `POST /kyc/create`, `GET /kyc/{kycId}`,
@@ -131,3 +155,32 @@ raw body in `x-payload-digest`), legacy `GET /api/v1/customer/{id}/kyc` (202, Ap
 - Confirmed on test4 (Sumsub sandbox): a customer created **without `phoneNo`** → `POST /kyc/create`
   answers HTTP 200 with status `KYC_FAILED`, message "Input list cannot be null." (the provider config
   cannot build the applicant) – the customer API accepts the customer, so the failure only shows at KYC.
+
+## 7. Bank / MID / merchant settings – `InitiateAction`, refund (`CANCEL_PAYMENT`)
+
+Read: `GET /admin/getAllActivePaymentBanks` (bank; also holds credentials – read only whitelisted fields),
+`GET /admin/v2/getAllPaymentBankMIDList?pp_id=` (MIDs), `GET /admin/getMerchant?m_id=` (page with the
+merchant JSON). Write: `POST /admin/setPaymentBankMID` (the MID edit form; `updateMid` rewrites **every**
+column, so all fields must be re-posted, and it always stores `is_test_data=false`),
+`POST /admin/updateCheckWhiteList {mid, flag, type:"conversionallowed"}` (merchant switch).
+
+- **Refund window:** bank `max_refund_days` > 0 → `refund_upto` = success time + N days − 1 h and
+  `refundable_amount` = total; ≤ 0 → both 0. Confirmed on test4: paysafe_payfac (180 days) →
+  refund_upto = paid + 15 548 400 s (± a few seconds).
+- **2D only (`onlyTwoD`):** 1 → bank record `authStatus` "Direct2D", purchase `twoDPayment` YES
+  (not returned by `/trans/getAllTrans`, and `authStatus` is not kept on the stored bank record). paysafe_payfac
+  (commongateway) sends the same request either way, incl. `threeDs`; with 2D only = 1 Paysafe answered
+  5068 "Payment handle provided is not permitted for Payments because of its state" in one of two runs. Merchant `trxType` 3D + MID 2D only → MID_IS_NOT_3D; a 2D
+  request (S2S) on a MID with 2D only = 0 → MID_IS_NOT_2D.
+- **Partial refund:** MID `partial_refund_allowed` ≠ 1 and amount < remaining → 400
+  `payment_can_not_be_refunded` "PaymentBankMID does not allow partial refund with authkey = … , mid=…"
+  – **the message contains the MID auth key**; the refund API answers only
+  `{"message":"payment_can_not_be_refunded","code":"payment_can_not_be_refunded"}` (confirmed on test4).
+- **Conversion:** MID `curr_convert_to` set and ≠ purchase currency: merchant `conversionAllowed` = 0 →
+  MID skipped (CONVERSION_NOT_ALLOWED, `no_mid_found`, "This customer can not be processed !");
+  = 1 → amount converted, `fx_Currency` / `fx_Amount` on the purchase, bank record currency = convert-to.
+- **Allowed currency / card:** a MID (or bank) whose `allowed_curr` / `allowed_card` does not include the
+  purchase currency / card scheme is skipped; with no other eligible MID the purchase fails.
+- **Caching:** routing loads MIDs via `MISCDaoimpl.getAllLiveMid` / `getAllActiveMid`, cached in Redis for
+  5 minutes (`cacheALM8:…`), not invalidated by `setPaymentBankMID`. A MID change reaches routing up to
+  5 minutes late. Refunds (`getMIDBy_AUTHMID`) and the merchant profile are read from the database.

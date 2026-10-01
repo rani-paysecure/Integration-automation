@@ -177,3 +177,60 @@ export function verifyFieldExpectation(
       return;
   }
 }
+
+// ── payment-method fields (extraParam.*, upiId, invoiceNo, …) ─────────────────
+
+/** Request fields every purchase has – anything else at the top level is payment-method specific. */
+const STANDARD_TOP_LEVEL = new Set([
+  'client',
+  'purchase',
+  'brand_id',
+  'paymentMethod',
+  'success_redirect',
+  'pending_redirect',
+  'failure_redirect',
+  'success_callback',
+  'failure_callback',
+]);
+
+/** extraParam (any key) or another payment-method-specific top-level field. */
+export function isPaymentMethodField(path: string): boolean {
+  const top = path.split('.')[0] ?? '';
+  return top === 'extraParam' || (!path.includes('.') && !STANDARD_TOP_LEVEL.has(top));
+}
+
+/** Payment method a case runs with: `paymentMethod` in its context, else undefined (run's). */
+export function casePaymentMethod(testCase: FieldTestCase): string | undefined {
+  const value = testCase.context?.paymentMethod;
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+}
+
+function valueAt(body: unknown, path: string): unknown {
+  let node: unknown = body;
+  for (const key of path.split('.')) {
+    if (node === null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[key];
+  }
+  return node;
+}
+
+/**
+ * Accepted payment-method fields must be stored as sent: PGS echoes the purchase,
+ * so the value at the same path in the answer must equal the request (numbers sent
+ * for text fields like upiId come back as text – compared as text then).
+ */
+export function expectStoredAsSent(response: ApiResponse, testCase: FieldTestCase): void {
+  if (!response.ok || testCase.mutation.type !== 'set' || !isPaymentMethodField(testCase.path))
+    return;
+  const sent = testCase.mutation.value;
+  const stored = valueAt(response.body, testCase.path);
+  const same =
+    JSON.stringify(stored) === JSON.stringify(sent) ||
+    (typeof sent === 'number' && stored === String(sent));
+  expect
+    .soft(
+      same,
+      `${testCase.path} stored as sent: sent ${JSON.stringify(sent)}, stored ${JSON.stringify(stored)}`,
+    )
+    .toBe(true);
+}

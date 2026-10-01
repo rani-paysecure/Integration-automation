@@ -7,6 +7,8 @@
  *   psp    → PSP request / response    (PR-xxx)  checks on what was sent to / received from the PSP
  *   edge   → Custom & edge cases       (EC-xxx)  end-to-end scenarios with an expected outcome
  *   kyc    → KYC validation            (KV-xxx)  POST /kyc/create: request / customer / auth → HTTP, code, status
+ *   refund → Refund cases              (RC-xxx)  refund steps on a purchase → HTTP, code, final status
+ *   bank-config → Bank & MID config    (BC-xxx)  flip MID / merchant settings → pay / refund → routing, status
  *
  * Each category has its own template (download from the launcher), parser and
  * JSON file under tests/test-data/uploaded-cases/. Nothing is saved on preview.
@@ -29,10 +31,7 @@ const EXPECTATIONS = ['accepted', 'rejected', 'observe', 'sanitized'];
 
 const TOP_LEVEL = [
   'brand_id',
-  'platform',
   'paymentMethod',
-  'send_receipt',
-  'skip_capture',
   'success_redirect',
   'pending_redirect',
   'failure_redirect',
@@ -73,6 +72,18 @@ function mapParameter(raw) {
   if (lower === 'purchase.products') return { path: 'purchase.products' };
   if (lower === 'purchase.products.name') return { path: 'purchase.products.0.name' };
   if (lower === 'purchase.products.price') return { path: PRICE_PATH };
+  // Payment-method parameters: any key inside extraParam (keys differ per payment method).
+  const extra = /^extra_?params?\.(.+)$/i.exec(param);
+  if (extra) {
+    if (!/^[\w-]+$/.test(extra[1]))
+      return { error: `extraParam key "${extra[1]}" may only use letters, digits, _ and -` };
+    return { path: `extraParam.${extra[1]}`, dynamic: true };
+  }
+  if (/^extra_?params?$/i.test(param)) return { path: 'extraParam', dynamic: true };
+  // A bare customer field ("country") means client.country.
+  if (clientKey && !lower.includes('.')) return { path: `client.${clientKey}` };
+  // Other payment-method fields at the top level (upiId, invoiceNo, …) – sent as written.
+  if (/^[a-z_][\w-]*$/i.test(param)) return { path: param, dynamic: true };
   if (/^[a-z_]\w*(\.\w+)+$/i.test(param))
     return { path: param, warning: `"${param}" is not a known field – sent as written` };
   return { error: `Unknown parameter "${param}"` };
@@ -95,11 +106,16 @@ function parseValue(raw, targetPath) {
   /** @type {Record<string, unknown>} */
   const context = {};
 
-  // "110001 with country=IN", "+91 9876543210 with country=DE"
-  const withCtx = /^(.*?)\s+with\s+([a-z_.]+)\s*=\s*(\S+)$/i.exec(text);
+  // "110001 with country=IN", "AE07… with paymentMethod=BANKTRANSFER; extraParam.name=QA"
+  const withCtx = /^(.*?)\s+with\s+([a-z_][\w.-]*\s*=.*)$/i.exec(text);
   if (withCtx) {
-    const key = withCtx[2].includes('.') ? withCtx[2] : `client.${withCtx[2]}`;
-    context[mapParameter(key).path || key] = withCtx[3];
+    for (const part of withCtx[2].split(';')) {
+      const m = /^\s*([a-z_][\w.-]*)\s*=\s*(.*?)\s*$/i.exec(part);
+      if (!m) continue;
+      const key = mapParameter(m[1]).path || m[1];
+      const parsed = parseValue(m[2], key);
+      if (parsed.mutation.type === 'set') context[key] = parsed.mutation.value;
+    }
     text = withCtx[1].trim();
   }
   if (/^(field )?not sent$|^missing$|^omit(ted)?$|^remove$/i.test(text))
@@ -121,12 +137,28 @@ function parseValue(raw, targetPath) {
       generated: `${n} characters`,
     };
   }
-  if (text === '[]') return { mutation: { type: 'set', value: [] }, context };
+  // JSON object / array, e.g. {"iban":"AE07…","accountNumber":"123"} for the whole extraParam.
+  if (/^[[{]/.test(text)) {
+    try {
+      return { mutation: { type: 'set', value: JSON.parse(text) }, context };
+    } catch {
+      return {
+        mutation: { type: 'set', value: text },
+        context,
+        warning: 'Looks like JSON but is not valid JSON – sent as text',
+      };
+    }
+  }
+  const literal = /^(true|false|-?\d+(?:\.\d+)?)\s*\((?:no quotes|boolean|number)\)$/i.exec(text);
+  if (literal) {
+    const v = literal[1].toLowerCase();
+    return {
+      mutation: { type: 'set', value: v === 'true' ? true : v === 'false' ? false : Number(v) },
+      context,
+    };
+  }
   if (NUMERIC_PATHS.has(targetPath) && /^-?\d+(\.\d+)?$/.test(text)) {
     return { mutation: { type: 'set', value: Number(text) }, context };
-  }
-  if (/^(true|false)$/i.test(text) && /send_receipt|skip_capture/.test(targetPath)) {
-    return { mutation: { type: 'set', value: text.toLowerCase() === 'true' }, context };
   }
   return { mutation: { type: 'set', value: text }, context };
 }
@@ -297,7 +329,8 @@ const CATEGORIES = {
         required: true,
         width: 24,
         aliases: ['param'],
-        guide: 'Request field',
+        guide:
+          'Request field – client.zip_code, purchase.total … Payment-method parameters: extraParam.<any key> (e.g. extraParam.iban), extraParam (whole object) or a top-level name (upiId, invoiceNo)',
         example: 'client.zip_code',
       },
       {
@@ -316,7 +349,7 @@ const CATEGORIES = {
         width: 28,
         aliases: ['test data / example', 'example', 'value'],
         guide:
-          'Value to send. "Field not sent" removes the field, "" sends an empty string, "256 characters" generates a long value',
+          'Value to send. "Field not sent" removes the field, "" sends an empty string, null, 123 (no quotes) = number, true (boolean), {"k":"v"} / ["x"] = JSON, "256 characters" generates a long value',
         example: '12AB5',
       },
       {
@@ -345,7 +378,8 @@ const CATEGORIES = {
         required: false,
         width: 26,
         aliases: [],
-        guide: 'Other fields to set first, e.g. client.country=US (separate several with ;)',
+        guide:
+          'Other fields to set first, separated by ; – e.g. client.country=US, or paymentMethod=UPI; extraParam.accountNumber="123" for payment-method parameters',
         example: 'client.country=US',
       },
     ],
@@ -359,6 +393,22 @@ const CATEGORIES = {
         'client.country=US',
       ],
       ['client.email', 'Email not sent', 'Field not sent', 'Validation error', 'rejected', ''],
+      [
+        'extraParam.iban',
+        'IBAN empty for bank transfer',
+        '""',
+        'Accepted – the cashier asks for it',
+        'accepted',
+        'paymentMethod=VISA; extraParam.accountNumber="123456789"',
+      ],
+      [
+        'extraParam',
+        'extraParam as text instead of an object',
+        '"iban=AE07"',
+        'Validation error',
+        'rejected',
+        '',
+      ],
       [
         'purchase.products.price',
         'Price with three decimals',
@@ -740,6 +790,15 @@ const CATEGORIES = {
   },
 };
 
+// Refund (RC) and bank & MID config (BC) categories – see refund-bank-cases.js.
+// Defined lazily below the shared helpers (parseAssignments, norm).
+let extra;
+function extraCategories() {
+  if (!extra) extra = require('./refund-bank-cases')({ parseAssignments, norm: (x) => norm(x) });
+  return extra;
+}
+Object.assign(CATEGORIES, extraCategories().CATEGORIES);
+
 const categoryOf = (id) => {
   const c = CATEGORIES[id];
   if (!c) throw new Error(`Unknown category "${id}"`);
@@ -883,7 +942,7 @@ function parseFieldRows(rows, get) {
           `${v.expected} → ${expectation}`,
         ],
         issues,
-        warnings: mapped.warning ? [mapped.warning] : [],
+        warnings: [mapped.warning, parsed.warning].filter(Boolean),
       });
     });
   }
@@ -1139,6 +1198,7 @@ const describeKycExpected = (e) =>
     .join(' · ');
 
 const PARSERS = {
+  ...extraCategories().PARSERS,
   kyc: parseKycRows,
   field: parseFieldRows,
   regex: parseRegexRows,
@@ -1146,6 +1206,7 @@ const PARSERS = {
   edge: parseEdgeRows,
 };
 const PREVIEW_COLUMNS = {
+  ...extraCategories().PREVIEW_COLUMNS,
   field: ['Parameter', 'Test case', 'Test data', 'Expected'],
   regex: ['Bank', 'Field', 'Test data', 'Expected'],
   psp: ['Test case', 'Card', 'Checks'],
@@ -1157,6 +1218,8 @@ const PREVIEW_COLUMNS = {
 
 /** Content signature – ignores id, title and source so renamed copies are caught too. */
 function signature(categoryId, c) {
+  if (categoryId === 'refund' || categoryId === 'bank-config')
+    return extraCategories().signature(categoryId, c);
   switch (categoryId) {
     case 'field':
       return JSON.stringify([
@@ -1353,7 +1416,7 @@ function appendCases(categoryId, chosen, sourceName) {
   return { added: ids.length, duplicates, ids };
 }
 
-const PATH_RE = /^[A-Za-z_]\w*(\.\w+)*$/;
+const PATH_RE = /^[A-Za-z_][\w-]*(\.[\w-]+)*$/;
 const str = (v, max) => String(v ?? '').slice(0, max);
 
 /** Re-validates what the browser sends back (never trust the preview payload). */
@@ -1368,6 +1431,8 @@ function validateCase(categoryId, d) {
     return t === 'set' ? { type: t, value: d.mutation.value } : { type: t };
   };
   const context = () => (d.context && typeof d.context === 'object' ? { context: d.context } : {});
+  if (categoryId === 'refund' || categoryId === 'bank-config')
+    return extraCategories().validate(categoryId, d, need);
   switch (categoryId) {
     case 'field':
       need(PATH_RE.test(d.path), 'invalid request field');
@@ -1491,6 +1556,8 @@ function deleteCase(caseId) {
 
 /** Short one-line description of a stored case for the launcher list. */
 function summarize(categoryId, c) {
+  if (categoryId === 'refund' || categoryId === 'bank-config')
+    return extraCategories().summarize(categoryId, c);
   switch (categoryId) {
     case 'field':
       return [
@@ -1682,4 +1749,5 @@ module.exports = {
   mapParameter,
   parseValue,
   inferExpectation,
+  summarize,
 };
