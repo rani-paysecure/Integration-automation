@@ -189,6 +189,16 @@ export async function executeTransaction(
     await page.close();
     return result;
   });
+  await recordBrowserResult(cashier, testInfo);
+  const settled = await settleTransaction(deps, input, cashier.outcome === 'rejected', testInfo);
+  return { cashier, ...settled };
+}
+
+/** Annotations / attachments for what happened in the browser (device data, 3DS, outcome). */
+export async function recordBrowserResult(
+  cashier: CashierPaymentResult,
+  testInfo: TestInfo,
+): Promise<void> {
   if (cashier.browserData) {
     const { sent, screen } = cashier.browserData;
     const fp = (key: string): string => sent[key] ?? '–';
@@ -244,9 +254,29 @@ export async function executeTransaction(
       `${cashier.outcome}${cashier.apiMessage ? `: ${cashier.apiMessage}` : ''}` +
       (cashier.visitedPages.length ? ` (via ${cashier.visitedPages.join(', ')})` : ''),
   });
+}
 
+export interface SettleInput {
+  readonly purchaseId: string;
+  readonly card?: CashierCard | undefined;
+  readonly expectedBank?: string | undefined;
+  readonly expectedMid?: string | undefined;
+  readonly request?: object | undefined;
+}
+
+/**
+ * After the payment was started (cashier PAY, S2S callback or S2S 2D): waits for the final
+ * purchase status, then checks the PSP request/response (back-office) and the webhooks.
+ * `rejected` = the payment never reached PGS processing (status read once, no PSP wait).
+ */
+export async function settleTransaction(
+  deps: Pick<TransactionDeps, 'purchaseApi' | 'backoffice'>,
+  input: SettleInput,
+  rejected: boolean,
+  testInfo: TestInfo,
+): Promise<{ finalStatus: string; psp: PspSummary; bank: BankTransaction | undefined }> {
   const finalStatus = await test.step('final purchase status', async () => {
-    if (cashier.outcome === 'rejected') {
+    if (rejected) {
       return (await deps.purchaseApi.getPurchase(input.purchaseId)).body.status.toUpperCase();
     }
     const seen = { status: '' };
@@ -269,11 +299,7 @@ export async function executeTransaction(
 
   return test.step('PSP request/response (back-office)', async () => {
     const trx = await deps.backoffice.requireTransaction(input.purchaseId, 1);
-    const bank = await waitForBankRecord(
-      deps.backoffice,
-      input.purchaseId,
-      cashier.outcome === 'rejected' ? 1 : 6,
-    );
+    const bank = await waitForBankRecord(deps.backoffice, input.purchaseId, rejected ? 1 : 6);
     const summary = summarizePsp(input.purchaseId, trx, bank, {
       expectedBank: input.expectedBank,
       expectedMid: input.expectedMid,
@@ -292,7 +318,7 @@ export async function executeTransaction(
       notes: [...summary.notes, ...webhooks.notes],
     };
     await recordPspResult(testInfo, psp, bank);
-    return { cashier, finalStatus, psp, bank };
+    return { finalStatus, psp, bank };
   });
 }
 

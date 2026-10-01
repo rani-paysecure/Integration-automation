@@ -1,0 +1,168 @@
+{
+  "nextNumber": 8,
+  "cases": [
+    {
+      "id": "S2-001",
+      "title": "Card number with spaces is rejected (Luhn)",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "card_number": "4000 0000 0000 2701"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error",
+        "messageContains": "Luhn",
+        "statuses": [
+          "CREATED"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          1
+        ],
+        "importedAt": "2026-10-01T11:51:20.500Z"
+      }
+    },
+    {
+      "id": "S2-002",
+      "title": "Empty cardholder name ends the purchase",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "cardholder_name": ""
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error",
+        "messageContains": "Card Detail is missing",
+        "statuses": [
+          "ERROR"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-01T11:51:20.500Z"
+      }
+    },
+    {
+      "id": "S2-003",
+      "title": "Four-digit year (MM/YYYY) is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "expires": "12/2031"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error",
+        "messageContains": "Invalid Card Expiry",
+        "statuses": [
+          "ERROR"
+        ]
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-01T11:51:20.500Z"
+      }
+    },
+    {
+      "id": "S2-004",
+      "title": "Extra field (deviceId) is accepted and the payment completes",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "deviceId": "QA-device-1"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-01T11:51:20.500Z"
+      }
+    },
+    {
+      "id": "S2-005",
+      "title": "Unusual browser data still pays (screen 0, Java on, language xx, UTC-5:30)",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": 0,
+        "screen_height": 0,
+        "java_enabled": "true",
+        "language": "xx",
+        "utc_offset": -330
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-01T11:51:20.500Z"
+      }
+    },
+    {
+      "id": "S2-006",
+      "title": "CVC with letters is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "cvc": "abc"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-01T11:51:20.501Z"
+      }
+    },
+    {
+      "id": "S2-007",
+      "title": "Expiry month 00 is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "expires": "00/30"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error",
+        "messageContains": "Invalid Card Expiry"
+      },
+      "source": {
+        "file": "starter set",
+        "rows": [
+          7
+        ],
+        "importedAt": "2026-10-01T11:51:20.501Z"
+      }
+    }
+  ]
+}

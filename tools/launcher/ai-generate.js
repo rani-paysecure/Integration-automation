@@ -53,6 +53,7 @@ const FOCUS_HINTS = {
     'values just inside and just outside every pattern: length boundaries, allowed vs forbidden characters, leading/trailing spaces, unicode letters, look-alike characters, words the pattern blocks',
   psp: 'amount (major vs minor units), currency, order reference = purchase ID, customer / billing data, 3DS fields, status and IDs in the response',
   edge: 'amount boundaries, currency / country mismatches, missing optional customer data, different test cards (approved, declined, 3DS challenge)',
+  s2s: 'expiry formats (MM/YY, MMYY, past, month 00 / 13, two-digit year), missing / empty / wrong-type card fields, Luhn failures, browser data values (screen 0, negative utc_offset, unknown language, java_enabled true), remember_card on / off / empty, extra fields, auth and content-type variants, second call on the same purchase',
   refund:
     'partial refunds in several steps, the exact rest, more than the rest (rest+0.01, rest+1), total twice, zero / negative / non-numeric amounts, amount or reason not sent, empty reason, refunds of an unpaid purchase, many small refunds, refunds after a full refund',
   'bank-config':
@@ -123,6 +124,7 @@ const PGS_SECTIONS = {
   psp: ['3.', '4.'],
   kyc: ['6.'],
   refund: ['5.'],
+  s2s: ['8.'],
   'bank-config': ['7.'],
 };
 function pgsBehaviour(categoryId) {
@@ -235,6 +237,21 @@ function buildContext(categoryId, ctx) {
       'PSP response fields seen in earlier runs:',
       keys.response.length ? keys.response.join(', ') : '(none recorded yet – e.g. status, id)',
       'Placeholders for Expected Value: {purchaseId} {amount} {amountMinor} {currency} {email} {country} {city} {zip} {phone} {fullName}',
+    );
+  }
+  if (categoryId === 's2s') {
+    const t = ctx.s2sTemplate || {};
+    lines.push(
+      'S2S API: POST /api/v1/p/{purchaseId}/?s2s=true (merchant key) – card payment methods only. The test creates the purchase first.',
+      'Baseline body (S2S data tab; the card comes from the Card column or the Run tab card):',
+      `- cardholder_name, card_number, expires (MM/YY), cvc from the card · remember_card=${t.remember_card || 'off'} · remote_ip=${t.remote_ip || '157.38.242.7'}`,
+      `- user_agent, screen_width, screen_height (${t.browserData === 'custom' ? 'custom values' : 'from the Run tab device'}) · accept_header=${t.accept_header || 'text/html'} · language=${t.language || 'en-US'} · java_enabled=${t.java_enabled || 'false'} · javascript_enabled=${String(t.javascript_enabled ?? true)} · color_depth=${String(t.color_depth ?? 24)} · utc_offset=${String(t.utc_offset ?? 0)}`,
+      'Request Changes: field="text"; field=12; field=true; field=null; field not sent; field=256 characters. Unknown fields are sent as extra fields.',
+      'Purchase column: New purchase | Unknown purchaseId | Second call (payment already started). Authentication: Valid | No Authorization header | Key without Bearer | Content-Type text/plain.',
+      'An accepted call answers HTTP 202 and the test continues (callback → 3DS → redirect): give Expected Purchase Status (final: PAID / ERROR) and Expected Browser Outcome.',
+      'A rejected call: Expected HTTP + Code + Message; Expected Purchase Status is the status after the call (CREATED = still payable; ERROR = PGS ended the purchase – happens for card-detail / expiry errors).',
+      'Test cards (Card column, empty = Run tab card):',
+      ...cards,
     );
   }
   if (categoryId === 'refund') {

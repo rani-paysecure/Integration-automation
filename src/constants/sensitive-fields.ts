@@ -44,6 +44,7 @@ export const FULLY_MASKED_KEYS: readonly string[] = [
   'expirymonth',
   'expiryyear',
   'cardexpiry',
+  'expires',
   'expyear',
   'track',
   'trackdata',
@@ -75,6 +76,7 @@ export const FULLY_MASKED_KEY_FRAGMENTS: readonly string[] = [
 /** Keys whose values are partially masked (last 4 characters kept). */
 export const PARTIALLY_MASKED_KEYS: readonly string[] = [
   'cardnumber',
+  'dcardnumber',
   'pan',
   'accountnumber',
   'iban',

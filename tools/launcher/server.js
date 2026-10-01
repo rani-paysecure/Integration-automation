@@ -68,6 +68,8 @@ const SETTINGS_PATHS = [
   'environments.local',
   'purchase.uat',
   'purchase.local',
+  's2s.uat',
+  's2s.local',
   'cards.uat',
   'cards.local',
 ];
@@ -446,6 +448,13 @@ async function aiContext(category, env, profileId, bank, mid = '') {
     );
     for (const c of caseImport.loadCases(category))
       ctx.existing.push(`${c.title} – ${caseImport.summarize(category, c).join(' | ')}`);
+  } else if (category === 's2s') {
+    ctx.s2sTemplate = settings.s2s?.[env];
+    ctx.existing.push(
+      'S2S-010…029 built-in: no auth, key without Bearer, text/plain, unknown purchase, Luhn, card_number / cvc / cardholder_name / expires / remember_card missing, MMYY expiry, expired 01/20, month 13, letters in the number, remote_ip / user_agent / accept_header missing, malformed JSON, second call, APM purchase',
+    );
+    for (const c of caseImport.loadCases(category))
+      ctx.existing.push(`${c.title} – ${caseImport.summarize(category, c).join(' | ')}`);
   } else if (category === 'refund') {
     ctx.currency = settings.purchase[env]?.purchase?.currency || 'EUR';
     ctx.total = settings.purchase[env]?.purchase?.total;
@@ -474,6 +483,7 @@ function listTests(env) {
         '--list',
         '--reporter=json',
         '--project=cashier-purchase',
+        '--project=s2s-purchase',
         '--project=kyc',
       ],
       {
@@ -498,7 +508,9 @@ function listTests(env) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
             const key = tags.find((t) =>
-              /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|KYC-|KV-|card-|backoffice-smoke)/.test(t),
+              /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|S2S-|S2-|s2s-card-|KYC-|KV-|card-|backoffice-smoke)/.test(
+                t,
+              ),
             );
             if (!key) continue;
             // KYC and refund cases each form one group on the Run tab; the spec's section becomes a label.
@@ -723,7 +735,9 @@ function startRun(input) {
   const args = [
     PLAYWRIGHT_CLI,
     'test',
-    ...(frameworkOnly ? ['--project=framework'] : ['--project=cashier-purchase', '--project=kyc']),
+    ...(frameworkOnly
+      ? ['--project=framework']
+      : ['--project=cashier-purchase', '--project=s2s-purchase', '--project=kyc']),
   ];
   if (!frameworkOnly) {
     const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));

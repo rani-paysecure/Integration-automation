@@ -93,6 +93,28 @@ const purchaseTemplateSchema = z.object({
   methodFields: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
 });
 
+/**
+ * Baseline S2S request (POST /api/v1/p/{purchaseId}/?s2s=true) – everything except the card,
+ * which comes from the Test cards tab. browserData "device" = user agent and screen of the
+ * device chosen on the Run tab; "custom" = the values below.
+ */
+const s2sTemplateSchema = z.object({
+  browserData: z.enum(['device', 'custom']),
+  remote_ip: z.string().trim().min(1),
+  remember_card: z.enum(['on', 'off']),
+  user_agent: z.string(),
+  accept_header: z.string(),
+  language: z.string(),
+  java_enabled: z.enum(['true', 'false']),
+  javascript_enabled: z.boolean(),
+  color_depth: z.number().int(),
+  utc_offset: z.number().int(),
+  screen_width: z.number().int(),
+  screen_height: z.number().int(),
+  /** Further fields sent with every S2S request (e.g. deviceId) – free-form. */
+  extraFields: z.record(z.string(), z.unknown()).optional(),
+});
+
 const endpointsSchema = z.object({ baseUrl: urlOrEmpty, apiBaseUrl: urlOrEmpty });
 
 const settingsSchema = z.object({
@@ -111,6 +133,7 @@ const settingsSchema = z.object({
   }),
   environments: z.object({ uat: endpointsSchema, local: endpointsSchema }),
   purchase: z.object({ uat: purchaseTemplateSchema, local: purchaseTemplateSchema }),
+  s2s: z.object({ uat: s2sTemplateSchema, local: s2sTemplateSchema }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
 });
 
@@ -153,6 +176,7 @@ module.exports = {
   OUTCOMES,
   cardSettingSchema,
   purchaseTemplateSchema,
+  s2sTemplateSchema,
   settingsSchema,
   mergeSettings,
   readJson,

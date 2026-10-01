@@ -88,6 +88,18 @@ export default defineConfig({
       },
     },
     {
+      // S2S purchase: Purchase API → S2S API (card + browser data) → callback URL in the
+      // browser → 3DS / redirect. Card payment methods only.
+      name: 's2s-purchase',
+      testDir: './tests/flows/s2s-purchase',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+          : {}),
+      },
+    },
+    {
       // KYC module (/kyc/*): API cases need no browser; the hosted page and the
       // Sumsub WebSDK cases open Chrome. Provider calls are synchronous (Sumsub: up
       // to 3 hops at 60s read timeout), hence the longer test timeout.
@@ -104,10 +116,6 @@ export default defineConfig({
           ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
           : {}),
       },
-    },
-    {
-      name: 's2s-purchase',
-      testDir: './tests/flows/s2s-purchase',
     },
     {
       name: 'session',

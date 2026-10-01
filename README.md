@@ -529,6 +529,40 @@ and restore the original value** in `finally`.
 - **paysafe_payfac finding:** its request template sends `threeDs` even on a 2D-only MID; PGS skips the 3DS step
   (Direct 2D) and Paysafe can then refuse the payment with 5068 "payment handle … not permitted … because of its state".
 
+## S2S purchase (`tests/flows/s2s-purchase`, project `s2s-purchase`)
+
+Card payment methods only (VISA, MASTER, AMEX … – APMs have no S2S on PGS and their runs skip these
+cases). Flow: Purchase API (**CREATED** + purchaseId, checkout not opened) → **S2S API**
+`POST /api/v1/p/{purchaseId}/?s2s=true` with card + browser data → **202 pending + callback_url** →
+callback opened in the browser → 3DS (if asked) → merchant redirect → final status, PSP checks and
+merchant webhook. A 2D merchant is paid inside the S2S call (no callback) and only the webhook follows.
+
+- **S2S-001…003:** CREATED purchase; run card with `remember_card` **off** / **on** (on = PGS saves
+  the card for the customer).
+- **Test cards (`@s2s-card-<id>`):** every card of the Test cards tab through S2S, same expectations as
+  the cashier – except a card the cashier rejects in the browser: S2S rejects it server-side and
+  the purchase ends as ERROR.
+- **S2S-010…029 validation** (no payment): auth, content type, unknown purchase, Luhn, missing card /
+  browser fields, expiry, malformed JSON, second call on the same purchase, APM purchase. Card-detail and
+  expiry errors end the purchase (ERROR); auth / Luhn / browser-field errors leave it payable.
+  Two confirmed PGS defects are marked as known failures: missing `card_number` → HTTP 500, expiry
+  month `13` accepted.
+- **S2S data tab** (launcher): the baseline S2S request per environment – remote_ip, remember_card,
+  browser data (from the Run tab device or custom values), extra fields – with a live **request
+  preview** (endpoint, headers, body; card masked). Saved in `settings.local.json` like Purchase data.
+  `S2S_REMOTE_IP` (shell / CI) overrides remote_ip. PGS rejects a remote_ip equal to the caller's IP.
+- **S2S cases (`S2-xxx`, Test cases tab):** upload the template or _Generate with AI_. One row =
+  purchase (new / unknown id / second call) + authentication variant + request changes on top of the S2S
+  data (`expires="12/3"; cvc not sent; screen_width=0; deviceId="QA-1"`) → expected HTTP / code /
+  message, purchase status, and the browser outcome when the call is accepted (the case then follows the
+  callback and 3DS like a customer). Stored in `tests/test-data/uploaded-cases/s2s-cases.json`.
+- **How a QA tests S2S:** Run tab → choose the tester, a **card** payment method and the card for
+  payments → select _S2S purchase_ cases (built-in S2S-xxx, test cards, uploaded S2-xxx) → Run. The report
+  shows the S2S answer, callback URL, 3DS / redirect, final status, PSP request/response and webhook per case.
+- **Starter set S2-001…007** (confirmed on test4): spaces in the card number → Luhn (still payable);
+  empty holder → ERROR; MM/YYYY → rejected; extra field and unusual browser data still pay. S2-006 (CVC
+  letters) and S2-007 (month 00) are **red on purpose** – PGS accepts them (202) instead of rejecting.
+
 ## KYC verification (`tests/flows/kyc`, project `kyc`)
 
 The former `paysecure-e2e` KYC suite, merged in as its own category. Launcher → Run → groups

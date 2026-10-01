@@ -55,4 +55,22 @@ export class PurchaseApiClient extends BaseApiClient {
   ): Promise<ApiResponse<PurchaseCreated>> {
     return this.get<PurchaseCreated>(Endpoints.purchases.byId(purchaseId), options);
   }
+
+  /**
+   * S2S card payment – POST /v1/p/{purchaseId}/?s2s=true with card and browser data.
+   * Answers 202 `{status: "pending", callback_url}` (open it in the customer's browser) or,
+   * for a 2D merchant, the purchase after the payment. Makes a REAL payment.
+   */
+  s2sPay(
+    purchaseId: string,
+    /** JSON body; a string is sent as it is (malformed-body cases). */
+    body: Record<string, unknown> | string,
+    options: CallOptions = {},
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    return this.post<Record<string, unknown>>(Endpoints.purchases.s2s(purchaseId), {
+      ...options,
+      params: { s2s: 'true' },
+      data: body,
+    });
+  }
 }

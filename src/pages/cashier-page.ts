@@ -43,6 +43,15 @@ const POST_OTP_POLL_MS = 1_000;
 /** How long the re-opened challenge is given to be answered again. */
 const OTP_RETRY_WINDOW_MS = 15_000;
 
+export interface FollowOptions {
+  readonly challenge?: ChallengeSetting | undefined;
+  readonly headed?: boolean;
+  /** Called once when the challenge page re-opens after the OTP was submitted. */
+  readonly onChallengeReshown?: () => void;
+  /** Milliseconds this call may still spend waiting for a redirect (e.g. what is left of the test timeout). */
+  readonly timeBudget?: () => number;
+}
+
 type AfterSubmit =
   | { readonly kind: 'redirect' }
   | { readonly kind: 'reshown'; readonly page: ChallengePageSnapshot }
@@ -89,21 +98,54 @@ export class CashierPage {
    * API rejects the payment. A page that never redirects (e.g. a 3DS challenge
    * waiting for input) ends as `other-page`.
    */
-  async pay(
+  async pay(redirects: RedirectUrls, options: FollowOptions = {}): Promise<CashierPaymentResult> {
+    const cashierHost = new URL(this.page.url()).host;
+    return this.follow(redirects, options, cashierHost, async () => {
+      // String expression: the project compiles without DOM types.
+      const screen = await this.page.evaluate<{ width: number; height: number }>(
+        '({ width: screen.width, height: screen.height })',
+      );
+      const npv = this.page
+        .waitForResponse((res) => NPV_PATH.test(res.url()) && res.request().method() === 'POST', {
+          timeout: PAYMENT_TIMEOUT_MS,
+        })
+        .catch(() => undefined);
+      await this.payButton().click();
+      const submission = await npv;
+      if (submission === undefined) return {};
+      return {
+        browserData: { sent: Object.fromEntries(new URL(submission.url()).searchParams), screen },
+        rejected: await this.rejectionMessage(submission),
+      };
+    });
+  }
+
+  /**
+   * S2S: opens the `callback_url` the S2S API answered with (the customer's browser
+   * continues the payment there) and follows it like {@link pay} – 3DS challenge,
+   * PSP pages, then one of the merchant redirect URLs.
+   */
+  async openCallback(
+    callbackUrl: string,
     redirects: RedirectUrls,
-    options: {
-      readonly challenge?: ChallengeSetting | undefined;
-      readonly headed?: boolean;
-      /** Called once when the challenge page re-opens after the OTP was submitted. */
-      readonly onChallengeReshown?: () => void;
-      /** Milliseconds this call may still spend waiting for a redirect (e.g. what is left of the test timeout). */
-      readonly timeBudget?: () => number;
-    } = {},
+    options: FollowOptions = {},
+  ): Promise<CashierPaymentResult> {
+    return this.follow(redirects, options, new URL(callbackUrl).host, async () => {
+      await this.page.goto(callbackUrl, { waitUntil: 'commit', timeout: PAYMENT_TIMEOUT_MS });
+      return {};
+    });
+  }
+
+  /** Starts the payment (`start`) and follows the browser to the merchant redirect. */
+  private async follow(
+    redirects: RedirectUrls,
+    options: FollowOptions,
+    cashierHost: string,
+    start: () => Promise<{ browserData?: BrowserData; rejected?: string | undefined }>,
   ): Promise<CashierPaymentResult> {
     const targets = [redirects.success, redirects.failure, redirects.pending];
     const manual = options.challenge?.action === 'manual' && options.headed === true;
     const timeout = manual ? MANUAL_CHALLENGE_TIMEOUT_MS : PAYMENT_TIMEOUT_MS;
-    const cashierHost = new URL(this.page.url()).host;
     let finished = false;
     const visited: string[] = [];
     const onNavigate = (frame: Frame): void => {
@@ -111,11 +153,6 @@ export class CashierPage {
     };
     this.page.on('framenavigated', onNavigate);
 
-    const npv = this.page
-      .waitForResponse((res) => NPV_PATH.test(res.url()) && res.request().method() === 'POST', {
-        timeout: PAYMENT_TIMEOUT_MS,
-      })
-      .catch(() => undefined);
     const redirected = this.page
       .waitForURL((url) => targets.some((target) => url.toString().startsWith(target)), {
         timeout,
@@ -128,27 +165,15 @@ export class CashierPage {
       });
 
     try {
-      // String expression: the project compiles without DOM types.
-      const screen = await this.page.evaluate<{ width: number; height: number }>(
-        '({ width: screen.width, height: screen.height })',
-      );
-      await this.payButton().click();
-      const submission = await npv;
-      const browserData: BrowserData | undefined =
-        submission === undefined
-          ? undefined
-          : { sent: Object.fromEntries(new URL(submission.url()).searchParams), screen };
-      if (submission !== undefined) {
-        const rejected = await this.rejectionMessage(submission);
-        if (rejected !== undefined) {
-          return {
-            outcome: 'rejected',
-            finalUrl: this.page.url(),
-            apiMessage: rejected,
-            visitedPages: externalPages(visited, targets),
-            ...(browserData ? { browserData } : {}),
-          };
-        }
+      const { browserData, rejected } = await start();
+      if (rejected !== undefined) {
+        return {
+          outcome: 'rejected',
+          finalUrl: this.page.url(),
+          apiMessage: rejected,
+          visitedPages: externalPages(visited, targets),
+          ...(browserData ? { browserData } : {}),
+        };
       }
       const watch = (deadline: number): Promise<ChallengeResult | undefined> =>
         watchForChallenge(this.page, options.challenge, {
