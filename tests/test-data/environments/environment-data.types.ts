@@ -1,4 +1,4 @@
-import type { PurchaseTemplate, S2sTemplate } from '@config/settings';
+import type { PurchaseTemplate, S2sTemplate, SessionTemplate } from '@config/settings';
 import type { CardDetails } from '@app-types/payment.types';
 
 /** Data that legitimately differs between LOCAL and UAT (merchants, test cards, limits). */
@@ -26,4 +26,6 @@ export interface EnvironmentTestData {
   readonly purchase: PurchaseTemplate;
   /** Baseline S2S request (launcher → S2S data); the card comes from the Test cards tab. */
   readonly s2s: S2sTemplate;
+  /** Baseline session payment bodies (launcher → Session data). */
+  readonly session: SessionTemplate;
 }

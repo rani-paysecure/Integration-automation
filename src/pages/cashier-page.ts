@@ -121,6 +121,19 @@ export class CashierPage {
   }
 
   /**
+   * Session page: clicks PAY and follows the browser (3DS challenge, then the merchant redirect). Unlike
+   * {@link pay} it does not wait for the cashier's `/npv/{id}/` request – the session page pays through a
+   * different call, and waiting for it would hold back the 3DS handling for the whole payment timeout.
+   */
+  async paySession(redirects: RedirectUrls, options: FollowOptions = {}): Promise<CashierPaymentResult> {
+    const cashierHost = new URL(this.page.url()).host;
+    return this.follow(redirects, options, cashierHost, async () => {
+      await this.payButton().click();
+      return {};
+    });
+  }
+
+  /**
    * S2S: opens the `callback_url` the S2S API answered with (the customer's browser
    * continues the payment there) and follows it like {@link pay} – 3DS challenge,
    * PSP pages, then one of the merchant redirect URLs.

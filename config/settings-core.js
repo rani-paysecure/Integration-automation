@@ -115,6 +115,19 @@ const s2sTemplateSchema = z.object({
   extraFields: z.record(z.string(), z.unknown()).optional(),
 });
 
+/**
+ * Baseline session payment: create-customer body (`{{unique}}` in merchantCustomerId = generated unique on every
+ * run; other tokens: {{uuid}} {{timestamp}} {{date}} {{random}}) and create-session body (customerId is filled in; redirects/callbacks default to the Purchase
+ * data tab). Keys are free-form – whatever the APIs accept.
+ */
+const sessionTemplateSchema = z.object({
+  /** new = create customer first, then the session; existing = create the session for `existingCustomerId`. */
+  mode: z.enum(['new', 'existing']).default('new'),
+  existingCustomerId: z.string().default(''),
+  customer: z.record(z.string(), z.unknown()),
+  session: z.record(z.string(), z.unknown()),
+});
+
 const endpointsSchema = z.object({ baseUrl: urlOrEmpty, apiBaseUrl: urlOrEmpty });
 
 const settingsSchema = z.object({
@@ -134,6 +147,7 @@ const settingsSchema = z.object({
   environments: z.object({ uat: endpointsSchema, local: endpointsSchema }),
   purchase: z.object({ uat: purchaseTemplateSchema, local: purchaseTemplateSchema }),
   s2s: z.object({ uat: s2sTemplateSchema, local: s2sTemplateSchema }),
+  session: z.object({ uat: sessionTemplateSchema, local: sessionTemplateSchema }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
 });
 
@@ -177,6 +191,7 @@ module.exports = {
   cardSettingSchema,
   purchaseTemplateSchema,
   s2sTemplateSchema,
+  sessionTemplateSchema,
   settingsSchema,
   mergeSettings,
   readJson,

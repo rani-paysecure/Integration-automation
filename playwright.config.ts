@@ -118,8 +118,15 @@ export default defineConfig({
       },
     },
     {
+      // Session payment: create customer → create session → sessionUrl in the browser → card → 3DS.
       name: 'session',
       testDir: './tests/flows/session',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+          : {}),
+      },
     },
     // Browser-based integration tests can be added later, e.g.:
     // {
