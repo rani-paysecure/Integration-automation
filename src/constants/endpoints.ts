@@ -41,6 +41,13 @@ export const Endpoints = {
     /** S2S card payment: POST with `?s2s=true` (card + browser data, merchant key). */
     s2s: (purchaseId: string) => `/v1/p/${encode(purchaseId)}/`,
   },
+  /** Session payment. Both paths confirmed against test4 (no trailing slash). */
+  customers: {
+    collection: '/v1/customer',
+  },
+  sessions: {
+    collection: '/v1/createSession',
+  },
   payments: {
     collection: '/v1/payments',
     byId: (paymentId: string) => `/v1/payments/${encode(paymentId)}`,

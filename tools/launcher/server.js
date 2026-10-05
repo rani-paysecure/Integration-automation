@@ -70,6 +70,8 @@ const SETTINGS_PATHS = [
   'purchase.local',
   's2s.uat',
   's2s.local',
+  'session.uat',
+  'session.local',
   'cards.uat',
   'cards.local',
 ];
@@ -484,6 +486,7 @@ function listTests(env) {
         '--reporter=json',
         '--project=cashier-purchase',
         '--project=s2s-purchase',
+        '--project=session',
         '--project=kyc',
       ],
       {
@@ -508,7 +511,7 @@ function listTests(env) {
             // JSON reporter lists tags without the leading '@'.
             const tags = (spec.tags || []).map((t) => (t.startsWith('@') ? t : `@${t}`));
             const key = tags.find((t) =>
-              /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|S2S-|S2-|s2s-card-|KYC-|KV-|card-|backoffice-smoke)/.test(
+              /^@(FT-|FV-|RX-|PR-|EC-|RF-|RC-|BM-|BC-|S2S-|S2-|s2s-card-|SES-|session-card-|KYC-|KV-|card-|backoffice-smoke)/.test(
                 t,
               ),
             );
@@ -737,7 +740,8 @@ function startRun(input) {
     'test',
     ...(frameworkOnly
       ? ['--project=framework']
-      : ['--project=cashier-purchase', '--project=s2s-purchase', '--project=kyc']),
+      : ['--project=cashier-purchase', '--project=s2s-purchase',
+        '--project=session', '--project=kyc']),
   ];
   if (!frameworkOnly) {
     const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));

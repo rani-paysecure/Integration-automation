@@ -404,6 +404,7 @@
           <button data-tab="environments"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg><span>Environments</span></button>
           <button data-tab="purchase"><svg viewBox="0 0 24 24"><path d="M4 5h2l2 11h10l2-8H7"/><circle cx="10" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg><span>Purchase data</span></button>
           <button data-tab="s2s"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="12" rx="2"/><path d="M14 10h7M18 7l3 3-3 3M14 15h4"/></svg><span>S2S data</span></button>
+          <button data-tab="session"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.7-3.3 3-5 6-5s5.3 1.7 6 5M16 6h5M18.5 3.5 21 6l-2.5 2.5"/></svg><span>Session data</span></button>
           <button data-tab="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span>Test cards</span></button>
           <button data-tab="cases"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5v2h6v-2M9 11l2 2 4-4M9 16.5h6"/></svg><span>Test cases</span></button>
           <button data-tab="advanced"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Advanced</span></button>
@@ -658,6 +659,38 @@
           <div class="row tight"><label for="s2sCard" style="margin: 0">Card</label><select id="s2sCard" style="max-width: 360px"></select></div>
           <pre class="preview" id="s2sPreview"></pre>
           <p class="hint">Card data is masked here and in every log and report. Flow: Purchase API (CREATED) → this request → 202 <code>pending</code> + <code>callback_url</code> → callback opened in the browser → 3DS / redirect. A 2D merchant is paid inside this call (no callback).</p>
+        </section>
+      </div>
+
+      <!-- SESSION DATA -->
+      <div data-panel="session" class="grid even hidden">
+        <section>
+          <h2>Baseline session payment – <span id="sessionEnvName"></span> <span class="badge hidden" id="sessionBadge">customised</span></h2>
+          <p class="hint">The <code>sessionUrl</code> is opened in the browser and paid with a test card (Test cards tab); the transaction is then found in the dashboard by <b>session ID</b>. Redirects and callbacks come from the Purchase data tab unless you set them in the session body. the brand ID of the selected tester is sent as the <code>BrandId</code> header and the currency from the Run tab. A session carries no payment method: the Run tab's payment method is clicked on the session page like a customer would.</p>
+          <label for="sessionMode">Customer</label>
+          <select id="sessionMode">
+            <option value="new">Option 1 – create a new customer, then create the session with its customerId</option>
+            <option value="existing">Option 2 – use an existing customerId, create the session only</option>
+          </select>
+          <div id="sessionExistingBox">
+            <label for="sessionCustomerId">Existing customerId <span class="hint">(from an earlier create-customer response)</span></label>
+            <input id="sessionCustomerId" placeholder="e.g. 6ab6aa28228e19bf7ef100d5" />
+          </div>
+          <p class="hint">Dynamic values – put these in any field and they are filled in on every run: <code>{{unique}}</code> unique reference · <code>{{uuid}}</code> · <code>{{timestamp}}</code> (epoch seconds) · <code>{{date}}</code> (yyyy-MM-dd) · <code>{{random}}</code> (6 digits) · <code>{{customerId}}</code> (session body only). <code>merchantCustomerId</code> must be unique for every new customer – keep <code>{{unique}}</code> there.</p>
+          <label for="sessionCustomer">Create customer body <span class="hint">(JSON object – used by option 1 only)</span></label>
+          <textarea id="sessionCustomer" rows="13" spellcheck="false" style="width: 100%; font: 13px ui-monospace, Menlo, Consolas, monospace"></textarea>
+          <label for="sessionBody">Create session body <span class="hint">(JSON object – <code>customerId</code> is added automatically; use <code>{{customerId}}</code> to place it elsewhere)</span></label>
+          <textarea id="sessionBody" rows="10" spellcheck="false" style="width: 100%; font: 13px ui-monospace, Menlo, Consolas, monospace"></textarea>
+          <div class="row">
+            <button id="saveSession" class="primary" type="button">Save session data</button>
+            <button id="resetSession" type="button">Reset to team default</button>
+          </div>
+          <div class="msg" id="sessionMsg"></div>
+        </section>
+        <section>
+          <h2>Request preview</h2>
+          <pre class="preview" id="sessionPreview"></pre>
+          <p class="hint">Run it on the Run tab: select <b>Session</b> cases (SES-001: new customer + session, SES-002: existing customer + session – both without payment; one case per test card makes a real payment using the option chosen above). The final status, PSP request/response and webhooks are checked like in the cashier flow.</p>
         </section>
       </div>
 
@@ -1083,7 +1116,7 @@
             if (t.transaction) tags.push(el('span', { class: 'tag transaction' }, 'transaction'));
             if (t.slow) tags.push(el('span', { class: 'tag transaction', title: 'Waits several minutes on the KYC expiry poller' }, 'slow'));
             if (t.provider) tags.push(el('span', { class: 'tag transaction', title: "Drives the provider's own UI – may break when Sumsub changes it" }, 'provider UI'));
-            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
+            details.append(el('label', { class: 'test-item' }, box2, ...(CASE_KEY.test(t.key) ? [el('span', { class: 'mono key' }, t.key.slice(1))] : [el('span', { class: 'key' })]), el('span', {}, t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|SES|KYC|KV)-\S+\s(· )?/, '').replace(/\s@(slow|sumsub)\b/g, '')), ...tags));
           }
           details.dataset.group = group;
           box.append(details);
@@ -1187,12 +1220,12 @@
         return td;
       }
       // ── report view ─────────────────────────────────────────────────────────
-      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'bank-config', 's2s', 'kyc', 'psp-check', 'other'];
-      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'bank-config': 'Bank & MID configuration', s2s: 'S2S purchase', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
+      const CATEGORY_ORDER = ['field', 'regex', 'psp', 'edge', 'card', 'refund', 'bank-config', 's2s', 'session', 'kyc', 'psp-check', 'other'];
+      const CATEGORY_NAMES = { field: 'Field validation', regex: 'Regex validation', psp: 'PSP request / response', edge: 'Custom & edge cases', card: 'Card transactions', refund: 'Refunds', 'bank-config': 'Bank & MID configuration', s2s: 'S2S purchase', session: 'Session payment', kyc: 'KYC verification', 'psp-check': 'PSP check (existing purchases)', other: 'Other' };
       const VERDICT_TEXT = { PASS: 'PASSED', FAIL: 'FAILED', OBSERVED: 'OBSERVED', SKIPPED: 'SKIPPED' };
       function categoryFromKey(key) {
         if (/^@(FT|FV)-/.test(key)) return 'field'; if (key.startsWith('@RX-')) return 'regex'; if (key.startsWith('@PR-')) return 'psp';
-        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (/^@(RF|RC)-/.test(key)) return 'refund'; if (/^@(BM|BC)-/.test(key)) return 'bank-config'; if (/^@(S2S|S2|s2s-card)-/.test(key)) return 's2s'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
+        if (key.startsWith('@EC-')) return 'edge'; if (key.startsWith('@card-')) return 'card'; if (/^@(RF|RC)-/.test(key)) return 'refund'; if (/^@(BM|BC)-/.test(key)) return 'bank-config'; if (/^@(S2S|S2|s2s-card)-/.test(key)) return 's2s'; if (/^@(SES|session-card)-/.test(key)) return 'session'; if (/^@(KYC|KV)-/.test(key)) return 'kyc'; if (['@psp-by-id', '@backoffice-smoke'].includes(key)) return 'psp-check'; return 'other';
       }
       /** Older reports have no category / items – derive what we can. */
       function normaliseRow(t) {
@@ -1213,7 +1246,7 @@
       function reportCard(t) {
         const card = el('div', { class: `rcard ${t.verdict}` });
         const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
-        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|KYC|KV)-\S+\s(· )?/, '');
+        const title = t.title.replace(/^(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|SES|KYC|KV)-\S+\s(· )?/, '');
         const head = el('div', { class: 'rcard-head' },
           el('span', { class: `badge-v ${t.verdict}` }, VERDICT_TEXT[t.verdict] || t.verdict),
           ...(caseId ? [el('span', { class: 'case-id' }, caseId)] : []),
@@ -1579,7 +1612,7 @@
       }
 
       // ── test cases (upload by category) ─────────────────────────────────────
-      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|KYC|KV)-/;
+      const CASE_KEY = /^@(FT|FV|RX|PR|EC|RF|RC|BM|BC|S2S|S2|SES|KYC|KV)-/;
       function currentCategory() { return (state.categories || []).find((c) => c.id === state.category) || (state.categories || [])[0]; }
       async function readFileBase64(file) {
         const bytes = new Uint8Array(await file.arrayBuffer()); let bin = '';
@@ -1888,9 +1921,54 @@
           say('s2sMsg', '');
         } catch (error) { say('s2sMsg', error.message, false); }
       }
+      // ── Session data ───────────────────────────────────────────────────────
+      function renderSession() {
+        const t = eff().session?.[state.env];
+        if (!t) return;
+        $('sessionEnvName').textContent = state.env.toUpperCase();
+        $('sessionBadge').classList.toggle('hidden', !isOverridden(`session.${state.env}`));
+        $('sessionMode').value = t.mode || 'new';
+        $('sessionCustomerId').value = t.existingCustomerId || '';
+        $('sessionCustomer').value = JSON.stringify(t.customer, null, 2);
+        $('sessionBody').value = JSON.stringify(t.session, null, 2);
+        renderSessionPreview();
+      }
+      function readSessionForm() {
+        const obj = (id, label) => {
+          let v; try { v = JSON.parse($(id).value); } catch { throw new Error(`${label} must be valid JSON`); }
+          if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${label} must be a JSON object`);
+          return v;
+        };
+        const mode = $('sessionMode').value;
+        const existingCustomerId = $('sessionCustomerId').value.trim();
+        if (mode === 'existing' && !existingCustomerId) throw new Error('Enter the existing customerId (or choose option 1).');
+        return { mode, existingCustomerId, customer: obj('sessionCustomer', 'Create customer body'), session: obj('sessionBody', 'Create session body') };
+      }
+      function renderSessionPreview() {
+        const existing = $('sessionMode').value === 'existing';
+        $('sessionExistingBox').classList.toggle('hidden', !existing);
+        $('sessionCustomer').disabled = existing;
+        try {
+          const t = readSessionForm();
+          const p = eff().purchase?.[state.env] || {};
+          const session = {
+            success_redirect: p.success_redirect, failure_redirect: p.failure_redirect, pending_redirect: p.pending_redirect,
+            success_callback: p.success_callback, failure_callback: p.failure_callback,
+            ...t.session, customerId: existing ? t.existingCustomerId : '<customerId from step 1>',
+          };
+          const auth = 'Authorization: Bearer <merchant key of the tester>\nBrandId: <brand ID of the tester>\nContent-Type: application/json';
+          const sample = (v) => (typeof v === 'string' ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, n) => `<${n.toLowerCase()} – new value every run>`) : Array.isArray(v) ? v.map(sample) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sample(x)])) : v);
+          const customerBody = { merchantCustomerId: '<unique – new value every run>', ...sample(t.customer) };
+          const steps = existing ? [] : [`1) POST /v1/customer\n${auth}\n\n${JSON.stringify(customerBody, null, 2)}`];
+          steps.push(`${existing ? '1' : '2'}) POST /v1/createSession\n${auth}\n\n${JSON.stringify(sample(session), null, 2)}`);
+          steps.push(`${existing ? '2' : '3'}) open sessionUrl → card → PAY → 3DS → merchant redirect\n${existing ? '3' : '4'}) dashboard: find the transaction by session ID → purchaseId → status, PSP request/response, webhooks`);
+          $('sessionPreview').textContent = steps.join('\n\n');
+          say('sessionMsg', '');
+        } catch (error) { say('sessionMsg', error.message, false); }
+      }
       function renderAll() {
         renderRunChoices(); renderRunProfiles(); renderProfiles();
-        renderEnvironments(); renderPurchase(); renderS2s(); renderCards(); renderAdvanced();
+        renderEnvironments(); renderPurchase(); renderS2s(); renderSession(); renderCards(); renderAdvanced();
       }
 
       async function init() {
@@ -1950,6 +2028,13 @@
         $('resetS2s').addEventListener('click', () => resetSettings(`s2s.${state.env}`, 's2sMsg'));
         for (const id of ['s2sRemoteIp', 's2sRemember', 's2sSource', 's2sAccept', 's2sLanguage', 's2sJava', 's2sColor', 's2sUtc', 's2sWidth', 's2sHeight', 's2sUa', 's2sJs', 's2sExtra', 's2sCard'])
           $(id).addEventListener(['s2sRemember', 's2sSource', 's2sJava', 's2sCard', 's2sJs'].includes(id) ? 'change' : 'input', renderS2sPreview);
+        $('saveSession').addEventListener('click', () => {
+          let value; try { value = readSessionForm(); } catch (error) { return say('sessionMsg', error.message, false); }
+          saveSettings(`session.${state.env}`, value, 'sessionMsg');
+        });
+        $('resetSession').addEventListener('click', () => resetSettings(`session.${state.env}`, 'sessionMsg'));
+        for (const id of ['sessionCustomer', 'sessionBody', 'sessionCustomerId']) $(id).addEventListener('input', renderSessionPreview);
+        $('sessionMode').addEventListener('change', renderSessionPreview);
         $('newCard').addEventListener('click', () => editCard(null));
         $('saveCard').addEventListener('click', saveCard);
         $('deleteCard').addEventListener('click', deleteCard);

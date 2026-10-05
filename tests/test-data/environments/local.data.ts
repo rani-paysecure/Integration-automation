@@ -4,7 +4,7 @@ import type { EnvironmentTestData } from './environment-data.types';
  * LOCAL test data. Values are NOT secrets; override via env vars where they
  * differ per tester/pipeline. Replace placeholders with real LOCAL values.
  */
-export const localData: Omit<EnvironmentTestData, 'purchase' | 's2s'> = {
+export const localData: Omit<EnvironmentTestData, 'purchase' | 's2s' | 'session'> = {
   merchant: {
     id: process.env.LOCAL_MERCHANT_ID ?? 'LOCAL-MERCHANT-PLACEHOLDER',
     defaultCurrency: 'USD',

@@ -15,6 +15,7 @@ export const mergeSettings: (base: unknown, override: unknown) => unknown = core
 export type Settings = z.infer<typeof core.settingsSchema>;
 export type PurchaseTemplate = z.infer<typeof core.purchaseTemplateSchema>;
 export type S2sTemplate = z.infer<typeof core.s2sTemplateSchema>;
+export type SessionTemplate = z.infer<typeof core.sessionTemplateSchema>;
 export type CardSetting = z.infer<typeof core.cardSettingSchema>;
 
 let cached: Settings | undefined;

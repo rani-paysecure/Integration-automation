@@ -6,6 +6,7 @@ import { BackofficeClient } from '@clients/backoffice-client';
 import { HealthApiClient } from '@clients/health-api-client';
 import { PaymentApiClient } from '@clients/payment-api-client';
 import { PurchaseApiClient } from '@clients/purchase-api-client';
+import { SessionApiClient } from '@clients/session-api-client';
 import { currentDevice, deviceContextOptions } from '@pages/devices';
 import { expect, test as baseTest } from './test.fixture';
 
@@ -15,6 +16,7 @@ interface ApiClientFixtures {
   paymentApi: PaymentApiClient;
   healthApi: HealthApiClient;
   purchaseApi: PurchaseApiClient;
+  sessionApi: SessionApiClient;
 }
 
 interface WorkerClientFixtures {
@@ -53,6 +55,9 @@ export const test = baseTest.extend<ApiClientFixtures, WorkerClientFixtures>({
   },
   purchaseApi: async ({ apiClientOptions }, use) => {
     await use(new PurchaseApiClient(apiClientOptions));
+  },
+  sessionApi: async ({ apiClientOptions }, use) => {
+    await use(new SessionApiClient(apiClientOptions));
   },
 
   backoffice: [

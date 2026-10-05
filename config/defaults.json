@@ -295,5 +295,49 @@
       "screen_width": 1920,
       "screen_height": 1080
     }
+  },
+  "session": {
+    "uat": {
+      "mode": "new",
+      "existingCustomerId": "",
+      "customer": {
+        "merchantCustomerId": "{{unique}}",
+        "fullName": "Nitendra Kumar Gautam",
+        "emailId": "nitendag@googlemail.com",
+        "phoneNo": "+918499990912",
+        "city": "juneau",
+        "stateCode": "CT",
+        "zipCode": "99999",
+        "address": "Mansarovar Jaipur",
+        "country": "US",
+        "custRegDate": "2026-09-17",
+        "successTrans": "23"
+      },
+      "session": {
+        "currency": "USD",
+        "products": [{ "name": "Product", "price": "700" }]
+      }
+    },
+    "local": {
+      "mode": "new",
+      "existingCustomerId": "",
+      "customer": {
+        "merchantCustomerId": "{{unique}}",
+        "fullName": "Nitendra Kumar Gautam",
+        "emailId": "nitendag@googlemail.com",
+        "phoneNo": "+918499990912",
+        "city": "juneau",
+        "stateCode": "CT",
+        "zipCode": "99999",
+        "address": "Mansarovar Jaipur",
+        "country": "US",
+        "custRegDate": "2026-09-17",
+        "successTrans": "23"
+      },
+      "session": {
+        "currency": "USD",
+        "products": [{ "name": "Product", "price": "700" }]
+      }
+    }
   }
 }
