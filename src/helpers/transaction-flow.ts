@@ -4,7 +4,7 @@ import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import { CashierPage, type RedirectUrls } from '../pages/cashier-page';
 import { currentDevice, deviceLabel } from '../pages/devices';
 import type { BankTransaction, MerchantWebhook } from '../schemas/backoffice.schema';
-import type { CashierCard, CashierOutcome, CashierPaymentResult } from '../types/cashier.types';
+import type { CashierCard, CashierPaymentResult } from '../types/cashier.types';
 import {
   merchantWebhookChecks,
   pspWebhookChecks,
@@ -331,13 +331,15 @@ export async function settleTransaction(
 export function challengeReshownObserved(
   result: TransactionResult,
   expected: {
-    readonly outcome?: CashierOutcome | string | undefined;
+    /** A CashierOutcome, or free text from an uploaded case. */
+    readonly outcome?: string | undefined;
     readonly statuses?: readonly string[] | undefined;
   },
 ): boolean {
   if (result.cashier.challengeReshown !== true) return false;
-  const statusGiven = expected.statuses !== undefined && expected.statuses.length > 0;
-  const statusOk = !statusGiven || (expected.statuses?.includes(result.finalStatus) ?? false);
+  const statuses = expected.statuses ?? [];
+  const statusGiven = statuses.length > 0;
+  const statusOk = !statusGiven || statuses.includes(result.finalStatus);
   const outcomeOk = expected.outcome === undefined || result.cashier.outcome === expected.outcome;
   return statusOk && (outcomeOk || statusGiven);
 }

@@ -34,7 +34,9 @@ function readIntEnv(name: string): number | undefined {
   if (raw === undefined) return undefined;
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new ConfigurationError(`${name} must be a positive whole number (dashboard merchant ID).`);
+    throw new ConfigurationError(
+      `${name} must be a positive whole number (dashboard merchant ID).`,
+    );
   }
   return value;
 }

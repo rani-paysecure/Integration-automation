@@ -125,7 +125,10 @@ export class CashierPage {
    * {@link pay} it does not wait for the cashier's `/npv/{id}/` request – the session page pays through a
    * different call, and waiting for it would hold back the 3DS handling for the whole payment timeout.
    */
-  async paySession(redirects: RedirectUrls, options: FollowOptions = {}): Promise<CashierPaymentResult> {
+  async paySession(
+    redirects: RedirectUrls,
+    options: FollowOptions = {},
+  ): Promise<CashierPaymentResult> {
     const cashierHost = new URL(this.page.url()).host;
     return this.follow(redirects, options, cashierHost, async () => {
       await this.payButton().click();
@@ -263,18 +266,20 @@ export class CashierPage {
     redirected: Promise<boolean>,
     cashierHost: string,
   ): Promise<AfterSubmit> {
-    let landed = false;
+    // Set from the promise callback – read through a function so it is re-checked after every await.
+    const state = { landed: false };
+    const landed = (): boolean => state.landed;
     void redirected.then((ok) => {
-      landed = ok;
+      state.landed = ok;
     });
     const deadline = Date.now() + POST_OTP_WATCH_MS;
-    while (!landed && Date.now() < deadline && !this.page.isClosed()) {
+    while (!landed() && Date.now() < deadline && !this.page.isClosed()) {
       await this.page.waitForTimeout(POST_OTP_POLL_MS).catch(() => undefined);
-      if (landed) break;
+      if (landed()) break;
       const page = await findReshownChallenge(this.page, cashierHost);
       if (page) return { kind: 'reshown', page };
     }
-    return landed ? { kind: 'redirect' } : { kind: 'expired' };
+    return landed() ? { kind: 'redirect' } : { kind: 'expired' };
   }
 
   private async captureReshown(

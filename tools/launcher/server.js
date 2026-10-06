@@ -32,7 +32,8 @@ const ai = require('./ai-generate');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const PROFILES_FILE = path.join(ROOT, 'profiles.local.json');
+const DATA_DIR = process.env.LAUNCHER_DATA_DIR ? path.resolve(process.env.LAUNCHER_DATA_DIR) : ROOT;
+const PROFILES_FILE = path.join(DATA_DIR, 'profiles.local.json');
 const HTML_FILE = path.join(__dirname, 'index.html');
 const REPORT_DIR = path.join(ROOT, 'reports', 'html');
 const RESULTS_CSV = path.join(ROOT, 'reports', 'field-tests', 'field-test-results.csv');
@@ -1163,7 +1164,7 @@ const server = http.createServer(async (req, res) => {
       catalogCache.clear();
       return send(res, 200, { ...result, categories: caseImport.listCategories() });
     }
-    const caseMatch = /^\/api\/test-cases\/((?:FV|RX|PR|EC)-\d{3,})$/.exec(url.pathname);
+    const caseMatch = /^\/api\/test-cases\/([A-Z][A-Z0-9]-\d{3,})$/.exec(url.pathname);
     if (method === 'DELETE' && caseMatch) {
       if (run && run.status === 'running')
         throw new HttpError(409, 'Wait for the current run to finish');
@@ -1265,6 +1266,18 @@ const server = http.createServer(async (req, res) => {
 });
 
 pruneRunHistory();
+server.on('error', (error) => {
+  if (/** @type {NodeJS.ErrnoException} */ (error).code === 'EADDRINUSE') {
+    process.stderr.write(
+      `\n  Port ${PORT} is already in use – the launcher is probably still running in another terminal.\n` +
+        `  Open http://${HOST}:${PORT} in the browser, or stop the old one first:\n` +
+        `    lsof -ti tcp:${PORT} | xargs kill\n` +
+        `  Or start this one on another port:  LAUNCHER_PORT=4174 npm run launcher\n\n`,
+    );
+    process.exit(1);
+  }
+  throw error;
+});
 server.listen(PORT, HOST, () => {
   const address = `http://${HOST}:${PORT}`;
   process.stdout.write(`\n  Test Launcher running at ${address}\n  Press Ctrl+C to stop.\n\n`);

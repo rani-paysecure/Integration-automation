@@ -165,8 +165,8 @@ Values come from (highest first): shell / CI variables → `.env.<env>` → `.en
 │   │   ├── environments/        # UAT / LOCAL data
 │   │   ├── purchase/            # baseline purchase request (shared)
 │   │   └── cashier-purchase/    # field-test cases (from field_test_cases 1.xlsx)
-│   └── examples/                # template specs – reference only, not executed
 ├── tools/launcher/              # test launcher UI (server.js + index.html)
+├── ai-skills/paysecure-qa/      # skill pack for the Paysecure AI gateway (Generate with AI)
 ├── reports/                     # generated (git-ignored)
 ├── profiles.example.json        # template – real profiles.local.json is git-ignored
 └── .env.example
@@ -419,6 +419,18 @@ npm run cases -- context <category> [--bank <bank>]  # fields, bank regexes, car
 npm run cases -- write <category> rows.json out.xlsx # rows → filled template
 npm run cases -- check <category> out.xlsx           # validate like the launcher upload
 ```
+
+## Moving the launcher to a server later
+
+The launcher is a local tool today (binds to 127.0.0.1, no login). Two shell variables already keep
+the per-machine files outside the code folder, so a later server or Docker setup can put them on a
+persistent volume without code changes:
+
+- `LAUNCHER_DATA_DIR` – folder for `profiles.local.json` and `settings.local.json` (default: project root).
+- `UPLOADED_CASES_DIR` – folder of the saved test cases (default: `tests/test-data/uploaded-cases`).
+
+Both are read by the launcher and by the test runs it starts. A shared deployment would still need
+sign-in, a run queue and a way to commit added cases – not built yet.
 
 ## Cashier purchase – pay on the cashier (end to end)
 

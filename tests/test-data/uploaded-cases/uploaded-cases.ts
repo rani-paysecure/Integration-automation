@@ -19,7 +19,11 @@ import { z } from 'zod';
 import type { FieldTestCase } from '@helpers/field-testing';
 import type { CashierOutcome } from '@app-types/cashier.types';
 
-export const UPLOADED_CASES_DIR = __dirname;
+/** Saved cases – UPLOADED_CASES_DIR points the server deployment at its git working copy. */
+export function uploadedCasesDir(): string {
+  const dir = process.env.UPLOADED_CASES_DIR;
+  return dir !== undefined && dir !== '' ? dir : __dirname;
+}
 
 /** Request path; payment-method keys may contain '-' (extraParam.account-no). */
 const fieldPath = z.string().regex(/^[A-Za-z_][\w-]*(\.[\w-]+)*$/);
@@ -236,7 +240,7 @@ export type EdgeCase = z.infer<typeof edgeCase> & {
 };
 
 function load<T>(file: string, schema: z.ZodType<T>): T[] {
-  const full = path.isAbsolute(file) ? file : path.join(UPLOADED_CASES_DIR, file);
+  const full = path.isAbsolute(file) ? file : path.join(uploadedCasesDir(), file);
   if (!fs.existsSync(full)) return [];
   const parsed = z
     .object({ cases: z.array(schema) })

@@ -4,7 +4,9 @@ import type { EnvironmentTestData } from './environment-data.types';
 import { localData } from './local.data';
 import { uatData } from './uat.data';
 
-const DATA: Readonly<Record<TestEnvironment, Omit<EnvironmentTestData, 'purchase' | 's2s' | 'session'>>> = {
+const DATA: Readonly<
+  Record<TestEnvironment, Omit<EnvironmentTestData, 'purchase' | 's2s' | 'session'>>
+> = {
   local: localData,
   uat: uatData,
 };
@@ -12,7 +14,10 @@ const DATA: Readonly<Record<TestEnvironment, Omit<EnvironmentTestData, 'purchase
 /** Environment data + the baseline purchase template from the (launcher) settings. */
 export function getEnvironmentData(env: TestEnvironment): EnvironmentTestData {
   const settings = getSettings();
-  return { ...DATA[env], purchase: settings.purchase[env], s2s: settings.s2s[env],
+  return {
+    ...DATA[env],
+    purchase: settings.purchase[env],
+    s2s: settings.s2s[env],
     session: settings.session[env],
   };
 }

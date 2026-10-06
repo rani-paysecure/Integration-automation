@@ -12,7 +12,9 @@ const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULTS_FILE = path.join(__dirname, 'defaults.json');
-const SETTINGS_FILE = path.join(ROOT, 'settings.local.json');
+/** LAUNCHER_DATA_DIR (server deployment) keeps the local files outside the code folder. */
+const DATA_DIR = process.env.LAUNCHER_DATA_DIR ? path.resolve(process.env.LAUNCHER_DATA_DIR) : ROOT;
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.local.json');
 
 const OUTCOMES = /** @type {const} */ ([
   'success-redirect',
