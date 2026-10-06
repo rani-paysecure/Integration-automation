@@ -44,6 +44,42 @@
       input[type='checkbox'] { width: auto; margin: 0; }
       input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       .check { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 10px 0 0; }
+      /* Session data */
+      .flow-steps { list-style: none; counter-reset: step; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; padding: 0; margin: 10px 0 18px; }
+      .flow-steps li { counter-increment: step; position: relative; border: 1px solid var(--border); border-radius: 12px; padding: 10px 10px 10px 40px; background: var(--surface-2); min-width: 0; }
+      .flow-steps li::before { content: counter(step); position: absolute; left: 10px; top: 10px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--brand, #5b4cf0); color: #fff; }
+      .flow-steps li b { display: block; font-size: 13.5px; line-height: 1.3; }
+      .flow-steps li span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+      .flow-steps li.skipped { opacity: 0.45; }
+      .flow-steps li.skipped span::after { content: ' – skipped'; }
+      .mode-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 6px; }
+      .mode-cards label { margin: 0; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--surface); display: block; }
+      .mode-cards label b { display: block; }
+      .mode-cards label span { display: block; font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 3px; }
+      .mode-cards input { position: absolute; opacity: 0; pointer-events: none; }
+      .mode-cards label:has(input:checked) { border-color: var(--brand, #5b4cf0); box-shadow: inset 0 0 0 1px var(--brand, #5b4cf0); background: var(--brand-soft, var(--surface-2)); }
+      .mode-cards label:has(input:focus-visible) { outline: 2px solid var(--brand, #5b4cf0); outline-offset: 2px; }
+      @media (max-width: 640px) { .mode-cards { grid-template-columns: 1fr; } }
+      .token-bar { margin: 14px 0 4px; }
+      .token-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+      .token-chips button { font: 12.5px ui-monospace, Menlo, Consolas, monospace; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; }
+      .token-chips button:hover { border-color: var(--brand, #5b4cf0); color: var(--brand, #5b4cf0); }
+      textarea.code { width: 100%; font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+      details.auto-filled { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+      details.auto-filled summary { cursor: pointer; font-weight: 600; }
+      details.auto-filled ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; }
+      .sticky-side { align-self: start; position: sticky; top: 12px; }
+      .req-steps { display: grid; gap: 10px; }
+      .req-step { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+      .req-step header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface-2); font-weight: 600; font-size: 13.5px; }
+      .req-step header .num { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; background: var(--brand, #5b4cf0); color: #fff; flex: none; }
+      .req-step header .method { font: 700 11.5px ui-monospace, Menlo, monospace; padding: 2px 6px; border-radius: 6px; background: var(--brand-soft, var(--surface)); color: var(--brand, #5b4cf0); }
+      .req-step header code { font-weight: 600; }
+      .req-step pre { margin: 0; border-radius: 0; max-height: 340px; background: var(--surface); white-space: pre-wrap; overflow-wrap: anywhere; }
+      .req-step p { margin: 0; padding: 10px 12px; font-size: 13.5px; color: var(--muted); }
+      .callout { margin-top: 14px; border-radius: 12px; padding: 12px 14px; background: var(--brand-soft, var(--surface-2)); font-size: 13.5px; }
+      .callout ul { margin: 6px 0 0; padding-left: 18px; }
+      .callout li { margin: 3px 0; }
       .segmented { display: flex; gap: 6px; flex-wrap: wrap; }
       .segmented label { margin: 0; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
       .segmented label small { font-weight: 400; color: var(--muted); font-size: 12.5px; margin-left: 4px; }
@@ -668,31 +704,68 @@
       <div data-panel="session" class="grid even hidden">
         <section>
           <h2>Baseline session payment – <span id="sessionEnvName"></span> <span class="badge hidden" id="sessionBadge">customised</span></h2>
-          <p class="hint">The <code>sessionUrl</code> is opened in the browser and paid with a test card (Test cards tab); the transaction is then found in the dashboard by <b>session ID</b>. Redirects and callbacks come from the Purchase data tab unless you set them in the session body. the brand ID of the selected tester is sent as the <code>BrandId</code> header and the currency from the Run tab. A session carries no payment method: the Run tab's payment method is clicked on the session page like a customer would.</p>
-          <label for="sessionMode">Customer</label>
-          <select id="sessionMode">
-            <option value="new">Option 1 – create a new customer, then create the session with its customerId</option>
-            <option value="existing">Option 2 – use an existing customerId, create the session only</option>
-          </select>
+          <p class="hint">What the <b>Session</b> cases on the Run tab send. Each run goes through these steps:</p>
+          <ol class="flow-steps" id="sessionFlow">
+            <li data-step="customer"><b>Create customer</b><span>POST /v1/customer</span></li>
+            <li><b>Create session</b><span>POST /v1/createSession</span></li>
+            <li><b>Pay on the session page</b><span>test card · 3DS · redirect</span></li>
+            <li><b>Check in the dashboard</b><span>found by session ID</span></li>
+          </ol>
+
+          <h3>Customer</h3>
+          <div class="mode-cards" role="radiogroup" aria-label="Customer">
+            <label><input type="radio" name="sessionMode" value="new" /><b>New customer every run</b><span>Creates the customer below, then the session with its customerId.</span></label>
+            <label><input type="radio" name="sessionMode" value="existing" /><b>Existing customer</b><span>Skips step 1 and creates the session for a customerId you already have.</span></label>
+          </div>
           <div id="sessionExistingBox">
             <label for="sessionCustomerId">Existing customerId <span class="hint">(from an earlier create-customer response)</span></label>
             <input id="sessionCustomerId" placeholder="e.g. 6ab6aa28228e19bf7ef100d5" />
           </div>
-          <p class="hint">Dynamic values – put these in any field and they are filled in on every run: <code>{{unique}}</code> unique reference · <code>{{uuid}}</code> · <code>{{timestamp}}</code> (epoch seconds) · <code>{{date}}</code> (yyyy-MM-dd) · <code>{{random}}</code> (6 digits) · <code>{{customerId}}</code> (session body only). <code>merchantCustomerId</code> must be unique for every new customer – keep <code>{{unique}}</code> there.</p>
-          <label for="sessionCustomer">Create customer body <span class="hint">(JSON object – used by option 1 only)</span></label>
-          <textarea id="sessionCustomer" rows="13" spellcheck="false" style="width: 100%; font: 13px ui-monospace, Menlo, Consolas, monospace"></textarea>
-          <label for="sessionBody">Create session body <span class="hint">(JSON object – <code>customerId</code> is added automatically; use <code>{{customerId}}</code> to place it elsewhere)</span></label>
-          <textarea id="sessionBody" rows="10" spellcheck="false" style="width: 100%; font: 13px ui-monospace, Menlo, Consolas, monospace"></textarea>
+
+          <div class="token-bar">
+            <span class="hint">Dynamic values – click to insert at the cursor, filled in on every run:</span>
+            <div class="token-chips" id="sessionTokens">
+              <button type="button" data-token="{{unique}}" title="Unique reference">{{unique}}</button>
+              <button type="button" data-token="{{uuid}}" title="Random UUID">{{uuid}}</button>
+              <button type="button" data-token="{{timestamp}}" title="Epoch seconds">{{timestamp}}</button>
+              <button type="button" data-token="{{date}}" title="yyyy-MM-dd">{{date}}</button>
+              <button type="button" data-token="{{random}}" title="6 digits">{{random}}</button>
+              <button type="button" data-token="{{customerId}}" title="Session body only">{{customerId}}</button>
+            </div>
+          </div>
+
+          <div id="sessionCustomerBox">
+            <label for="sessionCustomer">Create customer body <span class="hint">JSON · keep <code>{{unique}}</code> in <code>merchantCustomerId</code> – it must be new for every customer</span></label>
+            <textarea id="sessionCustomer" class="code" rows="13" spellcheck="false"></textarea>
+          </div>
+          <label for="sessionBody">Create session body <span class="hint">JSON · <code>customerId</code> is added automatically</span></label>
+          <textarea id="sessionBody" class="code" rows="10" spellcheck="false"></textarea>
+
+          <details class="auto-filled">
+            <summary>Filled in automatically</summary>
+            <ul>
+              <li><code>BrandId</code> header – brand ID of the tester chosen on the Run tab</li>
+              <li>Currency – the Run tab currency</li>
+              <li>Redirects and callbacks – from the Purchase data tab, unless set in the session body</li>
+              <li>Payment method – a session has none: the Run tab method is clicked on the session page, like a customer would</li>
+            </ul>
+          </details>
           <div class="row">
             <button id="saveSession" class="primary" type="button">Save session data</button>
             <button id="resetSession" type="button">Reset to team default</button>
           </div>
           <div class="msg" id="sessionMsg"></div>
         </section>
-        <section>
+        <section class="sticky-side">
           <h2>Request preview</h2>
-          <pre class="preview" id="sessionPreview"></pre>
-          <p class="hint">Run it on the Run tab: select <b>Session</b> cases (SES-001: new customer + session, SES-002: existing customer + session – both without payment; one case per test card makes a real payment using the option chosen above). The final status, PSP request/response and webhooks are checked like in the cashier flow.</p>
+          <div id="sessionPreview" class="req-steps"></div>
+          <div class="callout">
+            <b>Run it</b> on the Run tab → <b>Session</b> cases:
+            <ul>
+              <li><code>SES-001</code> new customer + session, <code>SES-002</code> existing customer + session – no payment</li>
+              <li>one case per test card – a real payment with the customer option above; final status, PSP request / response and webhooks are checked like in the cashier flow</li>
+            </ul>
+          </div>
         </section>
       </div>
 
@@ -1958,12 +2031,13 @@
         } catch (error) { say('s2sMsg', error.message, false); }
       }
       // ── Session data ───────────────────────────────────────────────────────
+      const sessionMode = () => document.querySelector('input[name="sessionMode"]:checked')?.value || 'new';
       function renderSession() {
         const t = eff().session?.[state.env];
         if (!t) return;
         $('sessionEnvName').textContent = state.env.toUpperCase();
         $('sessionBadge').classList.toggle('hidden', !isOverridden(`session.${state.env}`));
-        $('sessionMode').value = t.mode || 'new';
+        for (const r of document.querySelectorAll('input[name="sessionMode"]')) r.checked = r.value === (t.mode || 'new');
         $('sessionCustomerId').value = t.existingCustomerId || '';
         $('sessionCustomer').value = JSON.stringify(t.customer, null, 2);
         $('sessionBody').value = JSON.stringify(t.session, null, 2);
@@ -1975,15 +2049,21 @@
           if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${label} must be a JSON object`);
           return v;
         };
-        const mode = $('sessionMode').value;
+        const mode = sessionMode();
         const existingCustomerId = $('sessionCustomerId').value.trim();
-        if (mode === 'existing' && !existingCustomerId) throw new Error('Enter the existing customerId (or choose option 1).');
+        if (mode === 'existing' && !existingCustomerId) throw new Error('Enter the existing customerId (or choose "New customer every run").');
         return { mode, existingCustomerId, customer: obj('sessionCustomer', 'Create customer body'), session: obj('sessionBody', 'Create session body') };
       }
+      /** One preview card per step: number, method + path, headers and body. */
+      function reqStep(num, title, method, pathText, text) {
+        const head = el('header', {}, el('span', { class: 'num' }, String(num)), method ? el('span', { class: 'method' }, method) : '', pathText ? el('code', {}, pathText) : title);
+        return el('div', { class: 'req-step' }, head, method ? el('pre', { class: 'preview' }, text) : el('p', {}, text));
+      }
       function renderSessionPreview() {
-        const existing = $('sessionMode').value === 'existing';
+        const existing = sessionMode() === 'existing';
         $('sessionExistingBox').classList.toggle('hidden', !existing);
-        $('sessionCustomer').disabled = existing;
+        $('sessionCustomerBox').classList.toggle('hidden', existing);
+        document.querySelector('#sessionFlow [data-step="customer"]').classList.toggle('skipped', existing);
         try {
           const t = readSessionForm();
           const p = eff().purchase?.[state.env] || {};
@@ -1995,12 +2075,24 @@
           const auth = 'Authorization: Bearer <merchant key of the tester>\nBrandId: <brand ID of the tester>\nContent-Type: application/json';
           const sample = (v) => (typeof v === 'string' ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, n) => `<${n.toLowerCase()} – new value every run>`) : Array.isArray(v) ? v.map(sample) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sample(x)])) : v);
           const customerBody = { merchantCustomerId: '<unique – new value every run>', ...sample(t.customer) };
-          const steps = existing ? [] : [`1) POST /v1/customer\n${auth}\n\n${JSON.stringify(customerBody, null, 2)}`];
-          steps.push(`${existing ? '1' : '2'}) POST /v1/createSession\n${auth}\n\n${JSON.stringify(sample(session), null, 2)}`);
-          steps.push(`${existing ? '2' : '3'}) open sessionUrl → card → PAY → 3DS → merchant redirect\n${existing ? '3' : '4'}) dashboard: find the transaction by session ID → purchaseId → status, PSP request/response, webhooks`);
-          $('sessionPreview').textContent = steps.join('\n\n');
+          const steps = [];
+          let n = 1;
+          if (!existing) steps.push(reqStep(n++, '', 'POST', '/v1/customer', `${auth}\n\n${JSON.stringify(customerBody, null, 2)}`));
+          steps.push(reqStep(n++, '', 'POST', '/v1/createSession', `${auth}\n\n${JSON.stringify(sample(session), null, 2)}`));
+          steps.push(reqStep(n++, 'Pay on the session page', '', '', 'Open sessionUrl → choose the Run tab payment method → test card → PAY → 3DS → merchant redirect.'));
+          steps.push(reqStep(n, 'Check in the dashboard', '', '', 'Find the transaction by session ID → purchaseId → final status, PSP request / response and webhooks.'));
+          $('sessionPreview').replaceChildren(...steps);
           say('sessionMsg', '');
         } catch (error) { say('sessionMsg', error.message, false); }
+      }
+      /** Last focused session textarea – where a clicked {{token}} goes. */
+      let sessionTarget = 'sessionBody';
+      function insertSessionToken(token) {
+        const box = $(sessionTarget);
+        if (box.closest('.hidden')) return;
+        const start = box.selectionStart ?? box.value.length; const end = box.selectionEnd ?? start;
+        box.setRangeText(token, start, end, 'end'); box.focus();
+        renderSessionPreview();
       }
       function renderAll() {
         renderRunChoices(); renderRunProfiles(); renderProfiles();
@@ -2073,7 +2165,10 @@
         });
         $('resetSession').addEventListener('click', () => resetSettings(`session.${state.env}`, 'sessionMsg'));
         for (const id of ['sessionCustomer', 'sessionBody', 'sessionCustomerId']) $(id).addEventListener('input', renderSessionPreview);
-        $('sessionMode').addEventListener('change', renderSessionPreview);
+        for (const r of document.querySelectorAll('input[name="sessionMode"]')) r.addEventListener('change', renderSessionPreview);
+        for (const id of ['sessionCustomer', 'sessionBody']) $(id).addEventListener('focus', () => { sessionTarget = id; });
+        $('sessionTokens').addEventListener('mousedown', (e) => e.preventDefault()); // keep the textarea cursor
+        $('sessionTokens').addEventListener('click', (e) => { const b = e.target.closest('button[data-token]'); if (b) insertSessionToken(b.dataset.token); });
         $('newCard').addEventListener('click', () => editCard(null));
         $('saveCard').addEventListener('click', saveCard);
         $('deleteCard').addEventListener('click', deleteCard);
