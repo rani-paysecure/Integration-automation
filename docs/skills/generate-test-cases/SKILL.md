@@ -120,5 +120,6 @@ Tell the QA the file name, how many cases (positive / negative), and to upload i
 **Add selected cases**. Regex, PSP, edge, refund and bank & MID cases make real test transactions
 when run; bank & MID cases change shared test4 settings (restored after) and run on their own.
 
-The launcher also has **Generate with AI** on the same tab (needs `ANTHROPIC_API_KEY` in `.env`) for
-the same result without leaving the launcher.
+The launcher's **Generate with AI** does the same through the Paysecure AI gateway with the skill
+pack in `ai-skills/paysecure-qa/` (no Claude key on the QA machine) – that is the standard way; this
+file is only for running the task inside Claude Cowork / Claude Code.

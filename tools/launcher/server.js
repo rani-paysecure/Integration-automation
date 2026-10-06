@@ -381,7 +381,8 @@ function cardIdsFor(url, envOverride) {
 
 function childEnvFor(env) {
   const childEnv = { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
-  delete childEnv.ANTHROPIC_API_KEY; // tests never need it
+  delete childEnv.ANTHROPIC_API_KEY; // tests never need AI credentials
+  delete childEnv.AI_GATEWAY_TOKEN;
   return childEnv;
 }
 
@@ -740,8 +741,12 @@ function startRun(input) {
     'test',
     ...(frameworkOnly
       ? ['--project=framework']
-      : ['--project=cashier-purchase', '--project=s2s-purchase',
-        '--project=session', '--project=kyc']),
+      : [
+          '--project=cashier-purchase',
+          '--project=s2s-purchase',
+          '--project=session',
+          '--project=kyc',
+        ]),
   ];
   if (!frameworkOnly) {
     const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));
@@ -1124,6 +1129,25 @@ const server = http.createServer(async (req, res) => {
         throw new HttpError(502, error.message);
       }
     }
+    if (method === 'POST' && url.pathname === '/api/test-cases/refine') {
+      const body = await readJson(req, MAX_UPLOAD_BYTES);
+      try {
+        return send(
+          res,
+          200,
+          await ai.refineCases(String(body.session || ''), {
+            instruction: body.instruction,
+            rejected: body.rejected,
+          }),
+        );
+      } catch (error) {
+        throw new HttpError(error instanceof ai.ConversationGoneError ? 410 : 502, error.message);
+      }
+    }
+    if (method === 'POST' && url.pathname === '/api/test-cases/ai-close') {
+      const body = await readJson(req);
+      return send(res, 200, { closed: ai.closeAiSession(String(body.session || '')) });
+    }
     if (method === 'POST' && url.pathname === '/api/test-cases/append') {
       if (run && run.status === 'running')
         throw new HttpError(409, 'Wait for the current run to finish');
@@ -1275,7 +1299,10 @@ process.on('unhandledRejection', (reason) => {
   );
 });
 
-process.on('SIGINT', () => {
+function shutdown() {
   if (run && run.status === 'running') run.child.kill();
-  process.exit(0);
-});
+  ai.closeAllAiSessions(); // frees the AI gateway seat
+  setTimeout(() => process.exit(0), 400).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

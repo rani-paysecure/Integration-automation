@@ -118,6 +118,8 @@
       .ai-grid { display: grid; grid-template-columns: 110px 110px 1fr auto; gap: 8px 12px; align-items: end; margin-top: 8px; }
       .ai-grid input { margin: 0; } .ai-go button { white-space: nowrap; }
       @media (max-width: 640px) { .ai-grid { grid-template-columns: 1fr 1fr; } .ai-focus, .ai-go { grid-column: 1 / -1; } }
+      .ai-refine { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+      .ai-refine-row { display: flex; gap: 8px; flex-wrap: wrap; } .ai-refine-row input { flex: 1 1 260px; margin: 0; }
       .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13.5px; margin-top: 14px; }
       .or-line::before, .or-line::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
       table.import td.regex { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13.5px; overflow-wrap: anywhere; }
@@ -822,6 +824,14 @@
               <div class="ai-go"><button id="aiGenerate" class="primary" type="button">Generate</button></div>
             </div>
             <div class="msg" id="aiMsg"></div>
+            <div id="aiRefine" class="ai-refine hidden">
+              <label for="aiInstruction">Refine <span class="hint">– the AI remembers this conversation; unticked cases are sent as rejected</span></label>
+              <div class="ai-refine-row">
+                <input id="aiInstruction" maxlength="1000" placeholder="e.g. add 3 cases for unicode names · remove C4 · make C2 use the 3DS card" />
+                <button id="aiRefineGo" class="primary" type="button">Refine</button>
+                <button id="aiEnd" type="button">End conversation</button>
+              </div>
+            </div>
           </div>
           <div id="importPreview" class="hidden">
             <div class="row tight"><span class="summary" id="importSummary"></span><span class="hint" id="importName"></span></div>
@@ -907,7 +917,7 @@
         try { res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) } }); }
         catch { throw new Error('The launcher is not responding – check its terminal window (an error is printed there), then start it again with npm run launcher and reload this page.'); }
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        if (!res.ok) { const e = new Error(body.error || `HTTP ${res.status}`); e.status = res.status; throw e; }
         return body;
       }
       const remember = (k, v) => { try { localStorage.setItem(`launcher.${k}`, v); } catch {} };
@@ -1028,7 +1038,7 @@
         } catch (error) { useManual(`Dashboard: ${error.message}`); }
       }
       function onCurrencyChange() {
-        if (state.dash.manual) return renderRoute();
+        if (!state.dash || state.dash.manual) return renderRoute();
         const currency = $('runCurrency').value; remember(`cur.${state.env}`, currency);
         const methods = state.dash.routes.filter((r) => r.currency === currency).map((r) => r.paymentMethod);
         fill($('paymentMethod'), methods.map((m) => ({ value: m, label: m })), methods.length ? '' : 'None configured', recall(`pm.${state.env}`));
@@ -1036,12 +1046,12 @@
         renderRoute();
       }
       function currentRoute() {
-        if (state.dash.manual) return undefined;
+        if (!state.dash || state.dash.manual) return undefined;
         return state.dash.routes.find((r) => r.currency === $('runCurrency').value && r.paymentMethod === $('paymentMethod').value);
       }
       function renderRoute() {
         const box = $('routeInfo'); const route = currentRoute();
-        if (state.dash.manual) { box.textContent = 'Not checked (no dashboard routing)'; return; }
+        if (!state.dash || state.dash.manual) { box.textContent = 'Not checked (no dashboard routing)'; return; }
         if (!route) { box.textContent = '—'; return; }
         remember(`pm.${state.env}`, route.paymentMethod);
         const names = route.targets.map((t) => t.name).filter(Boolean);
@@ -1653,7 +1663,7 @@
             el('div', { class: 'cat-top' }, el('span', { class: 'cat-name' }, info.name || c.label), el('span', { class: `cat-count${c.cases.length ? '' : ' zero'}` }, String(c.cases.length))),
             el('div', { class: 'cat-desc' }, info.text),
             el('div', { class: 'cat-foot' }, el('span', { class: 'cat-prefix' }, `${c.prefix}-xxx`), info.label ? el('span', { class: 'cat-kind' }, info.label) : ''));
-          tile.addEventListener('click', () => { state.category = c.id; remember('caseCategory', c.id); state.importCases = []; renderImport(); say('importMsg', ''); renderCategories(); });
+          tile.addEventListener('click', () => { if (state.category !== c.id && state.aiSession) endAiConversation(true); state.category = c.id; remember('caseCategory', c.id); state.importCases = []; renderImport(); say('importMsg', ''); renderCategories(); });
           box.append(tile);
         }
         const total = (state.categories || []).reduce((n, c) => n + c.cases.length, 0);
@@ -1706,7 +1716,7 @@
           for (const n of c.info || []) notes.append(el('span', { class: 'hint' }, n));
           if (!notes.childElementCount) notes.append(el('span', { class: 'hint' }, 'OK'));
           body.append(el('tr', { class: c.issues.length ? 'bad' : c.duplicate ? 'dup' : '' },
-            el('td', {}, box), el('td', {}, c.rows.join(', ') || '—'), ...c.display.map((v, i) => el('td', { class: i === 0 && ['field', 'regex'].includes(state.category) ? 'mono' : 'multi' }, v || '—')), notes));
+            el('td', {}, box), el('td', { class: c.ref ? 'mono' : '' }, c.ref || c.rows.join(', ') || '—'), ...c.display.map((v, i) => el('td', { class: i === 0 && ['field', 'regex'].includes(state.category) ? 'mono' : 'multi' }, v || '—')), notes));
         }
         update();
       }
@@ -1714,7 +1724,7 @@
         const chosen = (state.importCases || []).filter((c) => c.include).map((c) => ({ rows: c.rows, data: c.data }));
         try {
           const result = await api('/api/test-cases/append', { method: 'POST', body: JSON.stringify({ category: state.category, filename: state.importFile, cases: chosen }) });
-          state.categories = result.categories; state.importCases = []; renderImport(); renderCategories();
+          state.categories = result.categories; state.importCases = []; renderImport(); renderCategories(); endAiConversation(true);
           const range = result.ids.length ? ` (${result.ids[0]}${result.ids.length > 1 ? ` – ${result.ids[result.ids.length - 1]}` : ''})` : '';
           say('importMsg', `Added ${result.added} case(s)${range}${result.duplicates ? `, skipped ${result.duplicates} that already exist` : ''}. They are on the Run tab now.`);
           loadCatalog();
@@ -1808,8 +1818,8 @@
           state.ai = await api('/api/ai/status');
           $('aiGenerate').disabled = !state.ai.configured;
           $('aiHint').textContent = state.ai.configured
-            ? `Claude (${state.ai.model}) writes cases in this category's template – checked like an upload, you choose what to add.`
-            : 'Not set up: add ANTHROPIC_API_KEY=… to .env (AI_MODEL optional), then restart the launcher.';
+            ? `${state.ai.model} (${state.ai.skills}) writes cases in this category's template – checked like an upload, you choose what to add, then refine in the same conversation.`
+            : 'Not set up: add AI_GATEWAY_URL and AI_GATEWAY_TOKEN (Paysecure AI gateway) to .env, then restart the launcher.';
         } catch { $('aiGenerate').disabled = true; }
       }
       async function generateWithAi() {
@@ -1824,10 +1834,36 @@
         try {
           const result = await api('/api/test-cases/generate', { method: 'POST', body: JSON.stringify({ category: c.id, env: state.env, profileId, bank, mid: runChoice().mid, min, max, focus: $('aiFocus').value }) });
           state.importFile = `AI · ${result.model}`; state.importCases = result.cases; state.importColumns = result.columns;
+          state.aiSession = result.session; $('aiRefine').classList.remove('hidden');
           $('importName').textContent = `· generated by ${result.model}`; renderImport();
-          say('aiMsg', `${result.cases.length} case(s) generated${result.note ? ` – ${result.note}` : ''} · ${result.usage.input + result.usage.output} tokens. Review below, then add.`, !result.note);
+          say('aiMsg', `${result.cases.length} case(s) generated${result.note ? ` – ${result.note}` : ''} · ${aiCost(result)}. Review below – add them, or ask for changes under Refine.`, !result.note);
         } catch (error) { say('aiMsg', error.message, false); }
         finally { $('aiGenerate').disabled = !state.ai?.configured; }
+      }
+      const aiCost = (r) => `${(r.usage.input + r.usage.output).toLocaleString()} tokens${r.costUsd ? ` ($${r.costUsd.toFixed(3)})` : ''}`;
+      async function refineWithAi() {
+        const instruction = $('aiInstruction').value.trim();
+        if (!state.aiSession) return say('aiMsg', 'Generate cases first.', false);
+        if (!instruction) return say('aiMsg', 'Write what should change, e.g. "add 3 cases for unicode names".', false);
+        const rejected = (state.importCases || []).filter((c) => c.ref && !c.include && !c.issues.length && !c.duplicate).map((c) => c.ref);
+        $('aiRefineGo').disabled = true; say('aiMsg', 'Refining… (usually 10–40 s)');
+        try {
+          const result = await api('/api/test-cases/refine', { method: 'POST', body: JSON.stringify({ session: state.aiSession, instruction, rejected }) });
+          state.importCases = result.cases; state.importColumns = result.columns; renderImport();
+          const ch = result.changes;
+          $('aiInstruction').value = '';
+          say('aiMsg', `+${ch.added} added · ${ch.updated} updated · −${ch.removed} removed${ch.note ? ` – ${ch.note}` : ''}${result.resumed ? ' (new gateway session, continued from your cases)' : ''} · ${aiCost(result)} · conversation total ${(result.total.input + result.total.output).toLocaleString()} tokens.`);
+        } catch (error) {
+          if (error.status === 410) endAiConversation(true);
+          say('aiMsg', error.message, false);
+        } finally { $('aiRefineGo').disabled = false; }
+      }
+      /** Ends the AI conversation (frees the gateway seat). */
+      function endAiConversation(silent = false) {
+        const session = state.aiSession; state.aiSession = undefined;
+        $('aiRefine').classList.add('hidden');
+        if (session) api('/api/test-cases/ai-close', { method: 'POST', body: JSON.stringify({ session }) }).catch(() => {});
+        if (!silent) say('aiMsg', 'AI conversation ended.');
       }
       async function loadCustom() {
         try {
@@ -2002,7 +2038,10 @@
         $('loadRegexRules').addEventListener('click', loadRegexRules);
         $('aiGenerate').addEventListener('click', generateWithAi);
         loadAiStatus();
-        $('cancelImport').addEventListener('click', () => { state.importCases = []; renderImport(); say('importMsg', ''); });
+        $('cancelImport').addEventListener('click', () => { state.importCases = []; renderImport(); say('importMsg', ''); endAiConversation(true); });
+        $('aiRefineGo').addEventListener('click', refineWithAi);
+        $('aiInstruction').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); refineWithAi(); } });
+        $('aiEnd').addEventListener('click', () => endAiConversation());
         loadCustom();
         $('stop').addEventListener('click', () => api('/api/runs/stop', { method: 'POST' }));
         $('newProfile').addEventListener('click', () => editProfile(null));
