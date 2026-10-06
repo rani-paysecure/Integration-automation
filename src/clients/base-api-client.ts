@@ -35,6 +35,9 @@ const MAX_LOGGED_BODY_CHARS = 10_000;
  * response parsing, masked logging, report steps and transport-error wrapping.
  * Domain clients extend this class and expose intention-revealing methods.
  */
+/** Per-call options exposed to tests (auth/headers overrides for negative cases). */
+export type CallOptions = Pick<RequestOptions, 'headers' | 'skipAuth' | 'timeoutMs'>;
+
 export abstract class BaseApiClient {
   protected readonly logger: Logger;
 

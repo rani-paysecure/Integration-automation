@@ -3,7 +3,7 @@ import type { PurchaseCreated } from '../schemas/purchase.schema';
 import type { ApiResponse } from '../types/api.types';
 import type { CreatePurchaseRequest } from '../types/purchase.types';
 import { BaseApiClient, type BaseApiClientOptions } from './base-api-client';
-import type { CallOptions } from './payment-api-client';
+import type { CallOptions } from './base-api-client';
 
 /** Purchase (hosted checkout) API – POST /v1/purchases/. */
 export class PurchaseApiClient extends BaseApiClient {

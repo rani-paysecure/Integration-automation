@@ -1,6 +1,10 @@
 import { expect as baseExpect, test, type APIRequestContext } from '@playwright/test';
 import { ApiRequestError } from '@clients/api-error';
-import { PaymentApiClient } from '@clients/payment-api-client';
+import {
+  BaseApiClient,
+  type BaseApiClientOptions,
+  type CallOptions,
+} from '@clients/base-api-client';
 import { expect } from '@helpers/api-matchers';
 import { expectApiError } from '@helpers/api-assertions';
 import type { HttpExchange } from '@app-types/api.types';
@@ -8,6 +12,25 @@ import { createLogger } from '@utils/logger';
 import { startMockServer, type MockServer } from './support/mock-server';
 
 const logger = createLogger({ level: 'silent' });
+
+/** Minimal client over BaseApiClient – the behaviour under test lives in the base class. */
+class TestApiClient extends BaseApiClient {
+  public constructor(options: BaseApiClientOptions) {
+    super(options);
+  }
+
+  createPayment(data: Record<string, unknown>, options: CallOptions = {}) {
+    return this.post<Record<string, unknown>>('/v1/payments', {
+      ...options,
+      data,
+      headers: { 'idempotency-key': 'test-key-1', ...options.headers },
+    });
+  }
+
+  getPayment(id: string, options: CallOptions = {}) {
+    return this.get<Record<string, unknown>>(`/v1/payments/${encodeURIComponent(id)}`, options);
+  }
+}
 
 test.describe('BaseApiClient (offline, against a local mock server)', () => {
   let server: MockServer;
@@ -32,8 +55,8 @@ test.describe('BaseApiClient (offline, against a local mock server)', () => {
     await server.close();
   });
 
-  function client(request: APIRequestContext, exchanges: HttpExchange[]): PaymentApiClient {
-    return new PaymentApiClient({
+  function client(request: APIRequestContext, exchanges: HttpExchange[]): TestApiClient {
+    return new TestApiClient({
       request,
       baseUrl: server.url,
       logger,
@@ -83,7 +106,7 @@ test.describe('BaseApiClient (offline, against a local mock server)', () => {
   });
 
   test('wraps transport failures in ApiRequestError', async ({ request }) => {
-    const unreachable = new PaymentApiClient({
+    const unreachable = new TestApiClient({
       request,
       baseUrl: 'http://127.0.0.1:1',
       logger,

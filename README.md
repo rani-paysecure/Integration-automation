@@ -179,18 +179,17 @@ Import aliases: `@config/*`, `@clients/*`, `@constants/*`, `@helpers/*`, `@schem
 
 ```ts
 import { HttpStatus } from '@constants/http';
-import { paymentResponseSchema } from '@schemas/payment.schema';
+import { purchaseCreatedSchema } from '@schemas/purchase.schema';
 import { expect, test } from '@fixtures/api.fixture';
-import { buildPaymentRequest } from '@test-data/purchase/purchase-request.factory';
+import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.factory';
 
-test('creates a payment', { tag: '@smoke' }, async ({ paymentApi, envData }) => {
-  const request = buildPaymentRequest(envData, { amount: 2_500 });
+test('creates a purchase', { tag: '@smoke' }, async ({ purchaseApi, envData, merchant }) => {
+  const request = buildPurchaseRequest(envData, merchant);
 
-  const response = await paymentApi.createPayment(request);
+  const response = await purchaseApi.createPurchase(request);
 
-  expect(response).toHaveStatus(HttpStatus.CREATED);
-  expect(response).toMatchSchema(paymentResponseSchema);
-  expect(response.body.amount).toBe(request.amount);
+  expect(response).toHaveStatus([HttpStatus.OK, HttpStatus.CREATED]);
+  expect(response).toMatchSchema(purchaseCreatedSchema);
 });
 ```
 
