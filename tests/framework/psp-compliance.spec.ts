@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   cancelInfoChecks,
   mappingChecks,
+  DEFAULT_MASKING_RULES,
   maskingChecks,
   merchantWebhookChecks,
   paymentInfoChecks,
@@ -60,12 +61,18 @@ test.describe('PSP compliance checks', () => {
   test('masked Paysafe record passes; merchant e-mail and holder name become notes', () => {
     const result = maskingChecks(bank(), { number: PAN });
     expect(result.checks.filter((c) => !c.passed)).toEqual([]);
-    expect(result.checks.map((c) => c.actual)).toEqual([
-      'masked at 1 place(s)',
-      'masked at 1 place(s)',
-      'masked at 4 place(s)',
-      'masked at 1 place(s)',
-      'not sent to the PSP',
+    expect(result.checks.map((c) => [c.name, c.actual])).toEqual([
+      ['Masking · General – customer contact data · E-mail', 'masked at 1 place(s)'],
+      [
+        'Masking · General – customer contact data · Phone number',
+        'could not verify – no field with a known key name, and the value is not known to the test',
+      ],
+      [
+        'Masking · Card payments – card details · Card number',
+        'masked at 1 place(s) · sent value not readable anywhere',
+      ],
+      ['Masking · Card payments – card details · CVV', 'masked at 1 place(s)'],
+      ['Masking · Card payments – card details · Expiry date', 'masked at 4 place(s)'],
     ]);
     expect(result.notes.join(' | ')).toContain('Merchant e-mail stored in clear');
     expect(result.notes.join(' | ')).toContain(
@@ -83,15 +90,145 @@ test.describe('PSP compliance checks', () => {
     });
     const failed = maskingChecks(leaky, { number: PAN }).checks.filter((c) => !c.passed);
     expect(failed.map((c) => c.name)).toEqual([
-      'Card number masked in PSP logs',
-      'CVV masked in PSP logs',
-      'Card expiry masked in PSP logs',
-      'E-mail masked in PSP logs',
-      'Phone masked in PSP logs',
+      'Masking · General – customer contact data · E-mail',
+      'Masking · General – customer contact data · Phone number',
+      'Masking · Card payments – card details · Card number',
+      'Masking · Card payments – card details · CVV',
+      'Masking · Card payments – card details · Expiry date',
     ]);
-    expect(failed[0]?.actual).toBe('IN CLEAR at cancelInfo.card.number, allOtherRequest[0].note');
+    expect(failed.find((c) => c.name.endsWith('Card number'))?.actual).toBe(
+      'NOT MASKED – Card number is readable at cancelInfo.card.number, allOtherRequest[0].note (by key and found by the value the test sent)',
+    );
     expect(JSON.stringify(failed)).not.toContain(PAN);
     expect(JSON.stringify(failed)).not.toContain('maria@example.com');
+  });
+
+  test('masking rules apply by payment method: bank transfer, custom keys, disabled rules', () => {
+    const record = bank({
+      paymentInfo: {
+        customer: { email: '***', phone: '***', dateOfBirth: '1990-01-01' },
+        bankAccount: { accountNumber: '12345678', iban: 'AT611904300234573201', sort_code: '***' },
+        upiId: 'maria@okbank',
+      },
+      response: [],
+    });
+    const rules = [
+      ...DEFAULT_MASKING_RULES,
+      {
+        id: 'upi',
+        name: 'UPI',
+        scope: 'methods' as const,
+        methods: ['UPI'],
+        fields: [],
+        customKeys: ['upi_id'],
+        enabled: true,
+      },
+      {
+        id: 'identity',
+        name: 'Identity',
+        scope: 'all' as const,
+        methods: [],
+        fields: ['dateOfBirth'],
+        customKeys: [],
+        enabled: false,
+      },
+    ];
+    const transfer = maskingChecks(record, undefined, { paymentMethod: 'banktransfer', rules });
+    expect(transfer.checks.map((c) => [c.name, c.passed])).toEqual([
+      ['Masking · General – customer contact data · E-mail', true],
+      ['Masking · General – customer contact data · Phone number', true],
+      ['Masking · Bank transfer – bank details · Bank account number', false],
+      ['Masking · Bank transfer – bank details · IBAN', false],
+      ['Masking · Bank transfer – bank details · Routing number / sort code', true],
+    ]);
+    expect(JSON.stringify(transfer)).not.toContain('12345678');
+    const upi = maskingChecks(record, undefined, { paymentMethod: 'UPI', rules });
+    expect(upi.checks.map((c) => [c.name, c.actual])).toEqual([
+      ['Masking · General – customer contact data · E-mail', 'masked at 1 place(s)'],
+      ['Masking · General – customer contact data · Phone number', 'masked at 1 place(s)'],
+      ['Masking · UPI · upi_id', 'NOT MASKED – upi_id is readable at paymentInfo.upiId'],
+    ]);
+    const none = maskingChecks(record, undefined, {
+      paymentMethod: 'PAYID',
+      rules: rules.slice(2),
+    });
+    expect(none.checks).toEqual([]);
+    expect(none.notes).toEqual(['No masking rule applies to payment method PAYID']);
+  });
+
+  test('values the test sent are found under any key, in form-encoded and XML payloads', () => {
+    const card = { number: PAN, cvv: '737', expiry: '12/30' };
+    const request = {
+      client: { email: 'maria@example.com', phone: '+43 660 1234567' },
+      extraParam: { accountNumber: '9876543210' },
+    };
+    const leaky = bank({
+      paymentInfo: {},
+      // PSP-specific key names, form-encoded: sc = CVV, pan_no = PAN, ed = expiry, contact = e-mail
+      allOtherRequest: [`pan_no=${PAN}&sc=737&ed=1230&contact=maria%40example.com&amount=737`],
+      response: [
+        '<resp><cust><tel>436601234567</tel></cust><acc_ref>9876543210</acc_ref><total>737</total></resp>',
+      ],
+    });
+    const rules = [
+      ...DEFAULT_MASKING_RULES,
+      {
+        id: 'bank',
+        name: 'Bank',
+        scope: 'all' as const,
+        methods: [],
+        fields: ['accountNumber'],
+        customKeys: [],
+        enabled: true,
+      },
+    ];
+    const result = maskingChecks(leaky, { card, request }, { paymentMethod: 'VISA', rules });
+    const actual: Record<string, string> = Object.fromEntries(
+      result.checks.map((c): [string, string] => [c.name.split(' · ').at(-1) ?? c.name, c.actual]),
+    );
+    expect(actual).toEqual({
+      'E-mail':
+        'NOT MASKED – E-mail is readable at allOtherRequest[0].contact (found by the value the test sent)',
+      'Phone number':
+        'NOT MASKED – Phone number is readable at response[0].tel (found by the value the test sent)',
+      'Card number':
+        'NOT MASKED – Card number is readable at allOtherRequest[0].pan_no (found by the value the test sent)',
+      // amount=737 and <total>737</total> are not taken for the CVV
+      CVV: 'NOT MASKED – CVV is readable at allOtherRequest[0].sc (found by the value the test sent)',
+      'Expiry date':
+        'NOT MASKED – Expiry date is readable at allOtherRequest[0].ed (found by the value the test sent)',
+      'Bank account number':
+        'NOT MASKED – Bank account number is readable at response[0].acc_ref (found by the value the test sent)',
+    });
+    for (const secret of [PAN, '737', 'maria@example.com', '9876543210', '1234567'])
+      expect(JSON.stringify(result)).not.toContain(secret);
+
+    // Same payloads masked → passes, and the sent values are confirmed unreadable.
+    const masked = bank({
+      paymentInfo: {},
+      allOtherRequest: ['pan_no=400000******2701&sc=***&ed=****&contact=m***%40example.com'],
+      response: ['<resp><cust><tel>43660***567</tel></cust></resp>'],
+    });
+    const ok = maskingChecks(masked, { card, request }, { paymentMethod: 'VISA' });
+    expect(ok.checks.filter((c) => !c.passed)).toEqual([]);
+    expect(ok.checks.find((c) => c.name.endsWith('CVV'))?.actual).toBe(
+      'not sent to the PSP (sent value searched in every request / response)',
+    );
+  });
+
+  test('a field neither found by key nor by value is reported as "could not verify"', () => {
+    const result = maskingChecks(bank({ paymentInfo: { x1: 'abc' }, response: [] }), undefined, {
+      paymentMethod: 'VISA',
+      isCard: false,
+    });
+    expect(result.checks.every((c) => c.passed)).toBe(true);
+    expect(result.checks.map((c) => c.actual)).toEqual([
+      'could not verify – no field with a known key name, and the value is not known to the test',
+      'could not verify – no field with a known key name, and the value is not known to the test',
+    ]);
+    expect(result.notes.join(' | ')).toContain(
+      'Warning: masking could not be verified for E-mail, Phone number',
+    );
   });
 
   test('purchase fields are mapped to the PSP request', () => {
@@ -124,6 +261,32 @@ test.describe('PSP compliance checks', () => {
     expect(paymentInfoChecks(bank({ paymentInfo: {} }), 10, 'EUR').checks[0]?.passed).toBe(false);
   });
 
+  test('payment request only in allOtherRequest: checked there, paymentInfo missing is a warning', () => {
+    const otherOnly = bank({
+      paymentInfo: {},
+      allOtherRequest: [
+        JSON.stringify({ orderId: 'pid-1', amount: '10.00', currency: 'EUR', email: '***' }),
+        JSON.stringify({ action: 'status', orderId: 'pid-1' }),
+      ],
+    });
+    const info = paymentInfoChecks(otherOnly, 10, 'EUR');
+    expect(info.checks.map((c) => [c.name, c.passed])).toEqual([
+      ['PSP request recorded (paymentInfo / allOtherRequest)', true],
+      ['Mapping: amount in PSP request', true],
+      ['Mapping: currency in PSP request', true],
+    ]);
+    expect(info.checks[0]?.actual).toBe('paymentInfo: missing · allOtherRequest: 6 field(s)');
+    expect(info.notes[0]).toContain('Warning: paymentInfo is missing');
+    const mapping = mappingChecks(request, otherOnly, 'pid-1');
+    expect(mapping.checks.find((c) => c.name === 'Mapping: purchase ID sent to PSP')?.passed).toBe(
+      true,
+    );
+    // Both present → both are used, no warning.
+    expect(
+      paymentInfoChecks(bank({ allOtherRequest: [JSON.stringify({ step: 2 })] }), 10, 'EUR').notes,
+    ).toEqual([]);
+  });
+
   test('refund request must be in cancelInfo', () => {
     expect(cancelInfoChecks(bank(), 3).checks[0]?.passed).toBe(false);
     const refund = cancelInfoChecks(
@@ -154,7 +317,27 @@ test.describe('PSP compliance checks', () => {
     // Received is what counts – a webhook the redirect / sync answer made redundant stays unconsumed.
     const zombied = pspWebhookChecks([{ pspName: 'x', status: 'zombied', receiveTime: '' }]);
     expect(zombied.checks[0]?.passed).toBe(true);
-    expect(zombied.notes[0]).toContain('x: zombied');
+    expect(zombied.notes[0]).toContain('Warning: no PSP webhook was consumed (x: zombied)');
+    // One webhook per bank config on the PSP side: the bank of the purchase consumes, the other zombies.
+    const twoConfigs = pspWebhookChecks([
+      { pspName: 'trustpayment-json', status: 'zombied', receiveTime: '' },
+      { pspName: 'trustpayments-card-json', status: 'consumed', receiveTime: '' },
+    ]);
+    expect(twoConfigs.checks.map((c) => [c.name, c.passed, c.actual])).toEqual([
+      [
+        'PSP webhook received (Webhook in)',
+        true,
+        'PSP webhook log: trustpayment-json: zombied, trustpayments-card-json: consumed',
+      ],
+      [
+        'PSP webhook consumed by the matching bank config',
+        true,
+        'trustpayments-card-json: consumed',
+      ],
+    ]);
+    expect(twoConfigs.notes).toHaveLength(1);
+    expect(twoConfigs.notes[0]).toContain('Other PSP webhook config(s) zombied – expected');
+    expect(twoConfigs.notes[0]).not.toMatch(/^warning/i);
     const fromLog = pspWebhookChecks([], 2);
     expect(fromLog.checks[0]).toMatchObject({ passed: true });
     expect(fromLog.checks[0]?.actual).toContain('2× webhook:IN');

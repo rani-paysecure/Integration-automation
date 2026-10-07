@@ -13,7 +13,9 @@
  * Checks never put the sensitive VALUES in their output – only where they were found.
  */
 import type { BankTransaction, MerchantWebhook, PspWebhook } from '../schemas/backoffice.schema';
+import * as maskingCatalog from '../../config/masking-rules';
 import type { CashierCard } from '../types/cashier.types';
+import { KNOWN_CARD_METHODS } from './card-methods';
 
 export interface ComplianceCheck {
   readonly name: string;
@@ -51,14 +53,48 @@ export const PSP_RECORD_PARTS = [
   'previousRetry',
 ] as const;
 
-function parseJsonString(value: string): unknown {
-  const trimmed = value.trim();
-  if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) return undefined;
+/** `a=1&b=2` (URL-encoded form, as many PSPs post) → { a: '1', b: '2' }. */
+function parseFormString(text: string): Json | undefined {
+  if (/\s/.test(text) || !/^[^=&]+=[^&]*(&[^=&]+=[^&]*)+$/.test(text)) return undefined;
+  const out: Json = {};
   try {
-    return JSON.parse(trimmed) as unknown;
+    for (const [k, v] of new URLSearchParams(text)) out[k] = v;
   } catch {
     return undefined;
   }
+  return Object.keys(out).length > 1 ? out : undefined;
+}
+
+/** `<a><cvv>123</cvv></a>` (XML / SOAP) → leaf elements and attributes as keys. */
+function parseXmlString(text: string): Json | undefined {
+  if (!text.startsWith('<') || !text.endsWith('>')) return undefined;
+  const out: Json = {};
+  let n = 0;
+  const put = (key: string, value: string): void => {
+    const name = key.replace(/^[\w.-]+:/, ''); // drop namespace prefix
+    const k = name in out ? `${name}[${String(n++)}]` : name;
+    out[k] = value;
+  };
+  for (const m of text.matchAll(/<([\w:.-]+)(\s[^>]*)?>([^<]*)<\/\1>/g)) {
+    if (m[1] !== undefined && m[3] !== undefined && m[3].trim() !== '') put(m[1], m[3].trim());
+  }
+  for (const m of text.matchAll(/\s([\w:.-]+)="([^"]*)"/g)) {
+    if (m[1] !== undefined && m[2] !== undefined && !m[1].startsWith('xmlns')) put(m[1], m[2]);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** A string value that holds a whole payload (JSON, form-encoded or XML) → parsed object. */
+function parseJsonString(value: string): unknown {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return undefined;
+    }
+  }
+  return parseFormString(trimmed) ?? parseXmlString(trimmed);
 }
 
 function collectLeaves(
@@ -205,58 +241,298 @@ export const SENSITIVE_CLASSES: readonly SensitiveClass[] = [
   },
 ];
 
+/** A masking rule (launcher → Masking rules; config/masking-rules.js). */
+export interface MaskingRule {
+  readonly id: string;
+  readonly name: string;
+  readonly scope: 'all' | 'card' | 'methods';
+  readonly methods: readonly string[];
+  readonly fields: readonly string[];
+  readonly customKeys: readonly string[];
+  readonly enabled: boolean;
+}
+
+/** Which payment the stored record belongs to – decides which rules apply. */
+export interface MaskingPayment {
+  readonly paymentMethod?: string | undefined;
+  /** Card payment method? Default: a card was used, or the method is a known card scheme. */
+  readonly isCard?: boolean | undefined;
+  /** Rules to apply. Default: the predefined rule sets (config/masking-rules.js). */
+  readonly rules?: readonly MaskingRule[] | undefined;
+}
+
+export const DEFAULT_MASKING_RULES = maskingCatalog.DEFAULT_RULES as readonly MaskingRule[];
+
+/** How a leaf is recognised as a value of a masking field. */
+function fieldMatcher(fieldId: string): ((leaf: Leaf) => boolean) | undefined {
+  const builtIn = SENSITIVE_CLASSES.find(
+    (c) =>
+      c.id ===
+      (
+        {
+          cardNumber: 'card',
+          cvv: 'cvv',
+          expiry: 'expiry',
+          email: 'email',
+          phone: 'phone',
+        } as Record<string, string>
+      )[fieldId],
+  );
+  if (builtIn !== undefined) return builtIn.matches;
+  const field = maskingCatalog.FIELDS.find((f) => f.id === fieldId);
+  if (field === undefined) return undefined;
+  const keys = new Set(field.keys);
+  const contains = field.contains ?? [];
+  return (l) => {
+    const k = norm(l.key);
+    return keys.has(k) || contains.some((c) => k.includes(c));
+  };
+}
+
+/** What the test sent – the values the masking check searches for under ANY key / format. */
+export interface SentValues {
+  readonly card?: Partial<Pick<CashierCard, 'number' | 'cvv' | 'expiry'>> | undefined;
+  /** Purchase request (client e-mail / phone, extraParam, method fields …). */
+  readonly request?: object | undefined;
+}
+
+interface FieldTarget {
+  readonly label: string;
+  readonly customerOnly: boolean;
+  readonly matches: (l: Leaf) => boolean;
+  /** Clear values the test sent for this field (searched everywhere). */
+  readonly values: readonly string[];
+  /** Does this leaf carry one of `values` in readable form? */
+  readonly carries: (l: Leaf) => boolean;
+}
+
+const lower = (v: string): string => v.trim().toLowerCase();
+const compact = (v: string): string => v.replace(/[\s-]/g, '').toLowerCase();
+
+/** Expiry MM/YY → every common way a PSP writes it together (12/30, 1230, 12/2030, 2030-12 …). */
+function expiryForms(expiry: string): string[] {
+  const m = /^(\d{1,2})\s*[/-]\s*(\d{2}|\d{4})$/.exec(expiry.trim());
+  if (m?.[1] === undefined || m[2] === undefined) return [];
+  const mm = m[1].padStart(2, '0');
+  const yy = m[2].slice(-2);
+  const yyyy = m[2].length === 4 ? m[2] : `20${yy}`;
+  return [
+    `${mm}/${yy}`,
+    `${mm}/${yyyy}`,
+    `${mm}${yy}`,
+    `${mm}${yyyy}`,
+    `${yy}${mm}`,
+    `${yyyy}-${mm}`,
+    `${yyyy}${mm}`,
+    `${mm}-${yy}`,
+    `${mm}-${yyyy}`,
+  ];
+}
+
+/** Leaves of the purchase request that a field's key matcher recognises → clear values sent. */
+function requestValues(request: object | undefined, matches: (l: Leaf) => boolean): string[] {
+  if (request === undefined) return [];
+  const out: Leaf[] = [];
+  collectLeaves(request, 'request', 'request', '', out);
+  return out
+    .filter(
+      (l) =>
+        !isMerchantLeaf(l) && matches(l) && !looksMasked(l.value) && l.value.trim().length >= 4,
+    )
+    .map((l) => l.value.trim());
+}
+
+/** Value-based detection per field: what counts as "this leaf shows the sent value in clear". */
+const containerOf = (path: string): string => path.replace(/(\.[^.[\]]+|\[\d+\])$/, '');
+
+function carriesFor(
+  fieldId: string,
+  values: readonly string[],
+  all: readonly Leaf[] = [],
+  pan = '',
+): (l: Leaf) => boolean {
+  if (values.length === 0) return () => false;
+  switch (fieldId) {
+    case 'cardNumber': {
+      const pans = values.map(digits).filter((v) => v.length >= 12);
+      return (l) => pans.some((pan) => digits(l.value).includes(pan));
+    }
+    case 'cvv': {
+      // 3–4 digits are common: only as the whole value, and only in a card / security-code context.
+      const cvvs = values.map((v) => v.trim()).filter((v) => /^\d{3,4}$/.test(v));
+      // Card block = the object that holds a card number / expiry (by key or by the PAN value).
+      const cardBlocks = new Set(
+        all
+          .filter(
+            (x) =>
+              CARD_KEYS.has(norm(x.key)) ||
+              EXPIRY_KEYS.has(norm(x.key)) ||
+              (pan.length >= 12 && digits(x.value).includes(pan)),
+          )
+          .map((x) => containerOf(x.path)),
+      );
+      return (l) =>
+        cvvs.includes(l.value.trim()) &&
+        !/amount|amt|total|price|currency|status|error|reason|response|result|qty|quantity|count/i.test(
+          l.key,
+        ) &&
+        (/card|cv|csc|cid|sec|code|verif/i.test(`${l.path}.${l.parent}`) ||
+          cardBlocks.has(containerOf(l.path)));
+    }
+    case 'expiry': {
+      const forms = new Set(values.flatMap(expiryForms).map(compact));
+      return (l) => forms.has(compact(l.value));
+    }
+    case 'email': {
+      const mails = values.map(lower).filter((v) => v.includes('@'));
+      return (l) => {
+        const v = l.value.toLowerCase();
+        return mails.some((m) => v.includes(m) || v.includes(encodeURIComponent(m).toLowerCase()));
+      };
+    }
+    case 'phone': {
+      // PGS normalises phones (+<country code>…) – compare the last 8 digits of a phone-sized number.
+      const tails = values
+        .map(digits)
+        .filter((d) => d.length >= 8)
+        .map((d) => d.slice(-8));
+      return (l) => {
+        const d = digits(l.value);
+        return d.length >= 8 && d.length <= 16 && tails.some((t) => d.endsWith(t));
+      };
+    }
+    default: {
+      const wanted = values.map(compact).filter((v) => v.length >= 4);
+      return (l) => wanted.some((w) => compact(l.value).includes(w));
+    }
+  }
+}
+
 /**
- * Card number, CVV, expiry, e-mail and phone must be masked in every stored
- * PSP request/response. Additionally the test card's full number must not
- * appear anywhere in clear (whatever the key).
+ * Masking rules applied to the PSP requests / responses PGS stored for a
+ * transaction (paymentInfo, cancelInfo, other requests, responses, 3DS calls –
+ * JSON, form-encoded and XML payloads are all read).
+ *
+ * A field is found two ways:
+ *  - by key name (catalog synonyms + the rule's own key names) – masked or not;
+ *  - by VALUE: the clear value the test actually sent (card number / CVV / expiry of
+ *    the test card, e-mail / phone / bank fields of the purchase request) is searched
+ *    under any key, so a PSP calling the CVV `sc` or the PAN `pan_no` is still caught.
+ * Readable anywhere → the check fails with "NOT MASKED" and where it was found.
+ * Neither found by key nor value known → "could not verify" (passes, with a warning).
+ * Checks never contain the sensitive values – only where they were found.
  */
 export function maskingChecks(
   bank: BankTransaction,
-  card?: Pick<CashierCard, 'number'>,
+  sent?: SentValues | Pick<CashierCard, 'number'>,
+  payment: MaskingPayment = {},
 ): ComplianceResult {
   const leaves = pspLeaves(bank);
   const checks: ComplianceCheck[] = [];
   const notes: string[] = [];
-  const pan = card === undefined ? '' : digits(card.number);
+  const given: SentValues = sent !== undefined && 'number' in sent ? { card: sent } : (sent ?? {});
+  const card = given.card;
+  const method = (payment.paymentMethod ?? '').trim().toUpperCase();
+  const isCard =
+    payment.isCard ?? (card?.number !== undefined || KNOWN_CARD_METHODS.includes(method));
+  const rules = maskingCatalog.applicableRules(payment.rules ?? DEFAULT_MASKING_RULES, {
+    paymentMethod: method,
+    isCard,
+  });
+  let holderRuled = false;
+  const unverified: string[] = [];
 
-  for (const cls of SENSITIVE_CLASSES) {
-    const found = leaves.filter((l) => cls.matches(l));
-    const customer = cls.customerOnly ? found.filter((l) => !isMerchantLeaf(l)) : found;
-    const clear = customer.filter((l) => !looksMasked(l.value)).map((l) => l.path);
-    if (cls.id === 'card' && pan.length >= 12) {
-      for (const l of leaves) {
-        if (digits(l.value).includes(pan) && !clear.includes(l.path)) clear.push(l.path);
+  const cardValues = (id: string): string[] => {
+    if (card === undefined) return [];
+    if (id === 'cardNumber') return card.number ? [card.number] : [];
+    if (id === 'cvv') return card.cvv ? [card.cvv] : [];
+    if (id === 'expiry') return card.expiry ? [card.expiry] : [];
+    return [];
+  };
+
+  for (const rule of rules) {
+    const targets: FieldTarget[] = [];
+    for (const id of rule.fields) {
+      const matches = fieldMatcher(id);
+      const field = maskingCatalog.FIELDS.find((f) => f.id === id);
+      if (matches === undefined || field === undefined) continue;
+      if (id === 'cardHolder') holderRuled = true;
+      const values = [...new Set([...cardValues(id), ...requestValues(given.request, matches)])];
+      targets.push({
+        label: field.label,
+        customerOnly: field.customerOnly === true,
+        matches,
+        values,
+        carries: carriesFor(id, values, leaves, digits(card?.number ?? '')),
+      });
+    }
+    for (const key of rule.customKeys) {
+      const wanted = norm(key);
+      const matches = (l: Leaf): boolean => norm(l.key) === wanted;
+      const values = requestValues(given.request, matches);
+      targets.push({
+        label: key,
+        customerOnly: false,
+        matches,
+        values,
+        carries: carriesFor('custom', values),
+      });
+    }
+    for (const t of targets) {
+      const byKey = leaves.filter((l) => t.matches(l));
+      const customer = t.customerOnly ? byKey.filter((l) => !isMerchantLeaf(l)) : byKey;
+      const clearByKey = customer.filter((l) => !looksMasked(l.value)).map((l) => l.path);
+      const clearByValue = leaves
+        .filter((l) => !clearByKey.includes(l.path) && !looksMasked(l.value) && t.carries(l))
+        .map((l) => l.path);
+      const clear = [...clearByKey, ...clearByValue];
+      const merchantClear = t.customerOnly
+        ? byKey.filter((l) => isMerchantLeaf(l) && !looksMasked(l.value)).map((l) => l.path)
+        : [];
+      if (merchantClear.length > 0) {
+        notes.push(
+          `Merchant ${t.label.toLowerCase()} stored in clear at ${merchantClear.join(', ')}`,
+        );
       }
+      const masked = customer.filter((l) => looksMasked(l.value)).length;
+      let actual: string;
+      if (clear.length > 0) {
+        actual = `NOT MASKED – ${t.label} is readable at ${clear.join(', ')}${clearByValue.length > 0 ? ` (${clearByKey.length > 0 ? 'by key and ' : ''}found by the value the test sent)` : ''}`;
+      } else if (masked > 0) {
+        actual = `masked at ${String(masked)} place(s)${t.values.length > 0 ? ' · sent value not readable anywhere' : ''}`;
+      } else if (t.values.length > 0) {
+        actual = 'not sent to the PSP (sent value searched in every request / response)';
+      } else {
+        actual =
+          'could not verify – no field with a known key name, and the value is not known to the test';
+        unverified.push(t.label);
+      }
+      checks.push({
+        name: `Masking · ${rule.name} · ${t.label}`,
+        passed: clear.length === 0,
+        expected: `${t.label} masked (***) in every stored PSP request / response`,
+        actual,
+      });
     }
-    const merchantClear = cls.customerOnly
-      ? found.filter((l) => isMerchantLeaf(l) && !looksMasked(l.value)).map((l) => l.path)
-      : [];
-    if (merchantClear.length > 0) {
-      notes.push(
-        `Merchant ${cls.label.toLowerCase()} stored in clear at ${merchantClear.join(', ')}`,
-      );
-    }
-    checks.push({
-      name: `${cls.label} masked in PSP logs`,
-      passed: clear.length === 0,
-      expected: 'masked (***) in paymentInfo / cancelInfo / other requests / responses',
-      actual:
-        clear.length > 0
-          ? `IN CLEAR at ${clear.join(', ')}`
-          : customer.length > 0
-            ? `masked at ${String(customer.length)} place(s)`
-            : 'not sent to the PSP',
-    });
   }
 
-  const holder = leaves.filter(
-    (l) =>
-      /^(card)?holder(name)?$|^nameoncard$|^cardholdername$/.test(norm(l.key)) &&
-      !looksMasked(l.value),
-  );
-  if (holder.length > 0) {
-    notes.push(`Cardholder name stored in clear at ${holder.map((l) => l.path).join(', ')}`);
+  if (unverified.length > 0) {
+    notes.push(
+      `Warning: masking could not be verified for ${[...new Set(unverified)].join(', ')} – the PSP uses no known key name and the test does not know the value; add the PSP's key name to the rule (Masking rules → Other key names)`,
+    );
   }
+  if (!holderRuled) {
+    const holder = leaves.filter(
+      (l) =>
+        /^(card)?holder(name)?$|^nameoncard$|^cardholdername$/.test(norm(l.key)) &&
+        !looksMasked(l.value),
+    );
+    if (holder.length > 0) {
+      notes.push(`Cardholder name stored in clear at ${holder.map((l) => l.path).join(', ')}`);
+    }
+  }
+  if (rules.length === 0)
+    notes.push(`No masking rule applies to payment method ${method || '(unknown)'}`);
   return { checks, notes };
 }
 
@@ -340,7 +616,7 @@ export function mappingChecks(
   bank: BankTransaction,
   purchaseId: string,
 ): ComplianceResult {
-  const leaves = pspLeaves(bank, ['paymentInfo']).filter((l) => !isMerchantLeaf(l));
+  const leaves = pspLeaves(bank, requestParts(bank)).filter((l) => !isMerchantLeaf(l));
   const checks: ComplianceCheck[] = [];
   const notSent: string[] = [];
 
@@ -396,12 +672,31 @@ export function mappingChecks(
 // ── amount / request presence ─────────────────────────────────────────────
 
 /** `paymentInfo` must hold the transaction request with the purchase amount (major or minor units). */
+/**
+ * Where PGS stored the payment request. Depending on the PSP flow it is in
+ * `paymentInfo`, in `allOtherRequest` (the list of requests of the payment's
+ * subsequent API calls), or in both – every non-empty one is checked.
+ */
+export function requestParts(bank: BankTransaction): ('paymentInfo' | 'allOtherRequest')[] {
+  return (['paymentInfo', 'allOtherRequest'] as const).filter(
+    (part) => pspLeaves(bank, [part]).length > 0,
+  );
+}
+
 export function paymentInfoChecks(
   bank: BankTransaction,
   expectedAmount: number,
   expectedCurrency: string,
 ): ComplianceResult {
-  const leaves = pspLeaves(bank, ['paymentInfo']);
+  const parts = requestParts(bank);
+  const leaves = pspLeaves(bank, parts);
+  const count = (part: string): number => pspLeaves(bank, [part]).length;
+  const notes: string[] = [];
+  if (!parts.includes('paymentInfo') && parts.includes('allOtherRequest')) {
+    notes.push(
+      'Warning: paymentInfo is missing – the payment request was taken from allOtherRequest (this PSP flow stores its API calls there)',
+    );
+  }
   const amounts = leaves.filter(
     (l) =>
       /^(amount|amt|totalamount|transactionamount|value)$/.test(norm(l.key)) && !isMerchantLeaf(l),
@@ -410,10 +705,13 @@ export function paymentInfoChecks(
   const minor = Math.round(expectedAmount * 100);
   const checks: ComplianceCheck[] = [
     {
-      name: 'paymentInfo filled (transaction request)',
-      passed: leaves.length > 0,
-      expected: 'masked request of the payment call',
-      actual: leaves.length > 0 ? `${String(leaves.length)} field(s)` : 'empty',
+      name: 'PSP request recorded (paymentInfo / allOtherRequest)',
+      passed: parts.length > 0,
+      expected: 'masked request of the payment call in paymentInfo or allOtherRequest',
+      actual:
+        parts.length > 0
+          ? `paymentInfo: ${count('paymentInfo') > 0 ? `${String(count('paymentInfo'))} field(s)` : 'missing'} · allOtherRequest: ${count('allOtherRequest') > 0 ? `${String(count('allOtherRequest'))} field(s)` : 'empty'}`
+          : 'paymentInfo and allOtherRequest both empty',
     },
   ];
   if (amounts.length > 0) {
@@ -436,7 +734,7 @@ export function paymentInfoChecks(
       actual: currencies.map((l) => `${l.path}=${l.value}`).join(', '),
     });
   }
-  return { checks, notes: [] };
+  return { checks, notes };
 }
 
 /** Refund call: PGS stores the (masked) refund request in `cancelInfo`. */
@@ -537,10 +835,17 @@ export function merchantWebhookChecks(
 }
 
 /**
- * PSP → PGS webhooks (Webhook in): when the PSP sent any, they must be logged. Whether PGS
- * consumed them is shown but not judged – a purchase that the redirect / the synchronous
- * answer already completed does not consume the webhook (it stays e.g. `zombied`), and a
- * PSP may post the same event to more than one webhook URL.
+ * PSP → PGS webhooks (Webhook in), from Monitoring → PSP Webhook log.
+ *
+ * A PSP can have several webhook configs on its side (one per bank, e.g.
+ * `trustpayments-card-json` and `trustpayment-json`) and then posts every event to
+ * each of them. PGS consumes the one whose bank processed the purchase; the others
+ * cannot find the purchase for their bank and are `zombied` – expected, shown as a note.
+ *
+ * - at least one consumed / Already_Consumed → passes (zombied siblings = note)
+ * - received but none consumed → passes as "received" with a warning: the redirect /
+ *   synchronous answer may have completed the purchase first – look at the log
+ * - none received → note only (this PSP answers synchronously or sends none)
  * `loggedIn` = number of `webhook:IN` lines in the Transaction Log (when it could be read).
  */
 export function pspWebhookChecks(
@@ -555,7 +860,21 @@ export function pspWebhookChecks(
       ],
     };
   }
-  const notConsumed = webhooks.filter((w) => !/^(already_)?consumed$/i.test(w.status));
+  const isConsumed = (w: PspWebhook): boolean => /^(already_)?consumed$/i.test(w.status);
+  const consumed = webhooks.filter(isConsumed);
+  const others = webhooks.filter((w) => !isConsumed(w));
+  const list = (ws: readonly PspWebhook[]): string =>
+    ws.map((w) => `${w.pspName}: ${w.status}`).join(', ');
+  const notes: string[] = [];
+  if (consumed.length > 0 && others.length > 0) {
+    notes.push(
+      `Other PSP webhook config(s) zombied – expected: the PSP posts to every webhook it has for PGS and only the bank of this purchase (${[...new Set(consumed.map((w) => w.pspName))].join(', ')}) can match it (${list(others)})`,
+    );
+  } else if (consumed.length === 0 && others.length > 0) {
+    notes.push(
+      `Warning: no PSP webhook was consumed (${list(others)}) – if the redirect / synchronous answer completed the purchase this is fine; otherwise the webhook config of this bank did not match the purchase`,
+    );
+  }
   return {
     checks: [
       {
@@ -564,18 +883,22 @@ export function pspWebhookChecks(
         expected: 'webhook in logged for the purchase',
         actual: [
           loggedIn ? `${String(loggedIn)}× webhook:IN in Transaction Log` : '',
-          webhooks.length
-            ? `PSP webhook log: ${webhooks.map((w) => `${w.pspName}: ${w.status}`).join(', ')}`
-            : '',
+          webhooks.length ? `PSP webhook log: ${list(webhooks)}` : '',
         ]
           .filter(Boolean)
           .join(' · '),
       },
+      ...(webhooks.length > 0
+        ? [
+            {
+              name: 'PSP webhook consumed by the matching bank config',
+              passed: true,
+              expected: 'one webhook consumed / already consumed; other configs may be zombied',
+              actual: consumed.length > 0 ? list(consumed) : `none consumed (${list(others)})`,
+            },
+          ]
+        : []),
     ],
-    notes: notConsumed.length
-      ? [
-          `Webhook in not consumed (${notConsumed.map((w) => `${w.pspName}: ${w.status}`).join(', ')}) – not judged: the redirect / synchronous answer already completed the purchase`,
-        ]
-      : [],
+    notes,
   };
 }

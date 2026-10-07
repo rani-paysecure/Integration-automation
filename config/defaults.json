@@ -29,7 +29,7 @@
         "country": "AT",
         "city": "jaipur",
         "stateCode": "WI",
-        "street_address": "K\u00e4rntner Stra\u00dfe 10",
+        "street_address": "Kärntner Straße 10",
         "zip_code": "1010",
         "date_of_birth": "2011-04-25",
         "phone": "+436601234567",
@@ -57,7 +57,7 @@
         "country": "AT",
         "city": "jaipur",
         "stateCode": "WI",
-        "street_address": "K\u00e4rntner Stra\u00dfe 10",
+        "street_address": "Kärntner Straße 10",
         "zip_code": "1010",
         "date_of_birth": "2011-04-25",
         "phone": "+436601234567",
@@ -84,7 +84,7 @@
     "uat": [
       {
         "id": "risk-rule-3ds-u",
-        "label": "Visa \u2013 risk rule fails (3DS result U)",
+        "label": "Visa – risk rule fails (3DS result U)",
         "number": "4530910000012345",
         "expiry": "12/30",
         "cvv": "123",
@@ -100,7 +100,7 @@
       },
       {
         "id": "invalid-card-details",
-        "label": "Visa 4111\u2026 rejected by cashier",
+        "label": "Visa 4111… rejected by cashier",
         "number": "4111111111111111",
         "expiry": "12/30",
         "cvv": "123",
@@ -116,7 +116,7 @@
       },
       {
         "id": "visa-3ds-challenge-pass",
-        "label": "Visa 3DS challenge \u2013 correct OTP",
+        "label": "Visa 3DS challenge – correct OTP",
         "number": "4000000000002503",
         "expiry": "12/30",
         "cvv": "123",
@@ -132,7 +132,7 @@
       },
       {
         "id": "visa-3ds-challenge-decline",
-        "label": "Visa 3DS challenge \u2013 authentication declined",
+        "label": "Visa 3DS challenge – authentication declined",
         "number": "4000000000002370",
         "expiry": "12/30",
         "cvv": "123",
@@ -148,7 +148,7 @@
       },
       {
         "id": "visa-3ds-frictionless",
-        "label": "Visa 3DS frictionless \u2013 authenticated",
+        "label": "Visa 3DS frictionless – authenticated",
         "number": "4000000000002719",
         "expiry": "12/30",
         "cvv": "123",
@@ -166,7 +166,7 @@
     "local": [
       {
         "id": "risk-rule-3ds-u",
-        "label": "Visa \u2013 risk rule fails (3DS result U)",
+        "label": "Visa – risk rule fails (3DS result U)",
         "number": "4530910000012345",
         "expiry": "12/30",
         "cvv": "123",
@@ -182,7 +182,7 @@
       },
       {
         "id": "invalid-card-details",
-        "label": "Visa 4111\u2026 rejected by cashier",
+        "label": "Visa 4111… rejected by cashier",
         "number": "4111111111111111",
         "expiry": "12/30",
         "cvv": "123",
@@ -198,7 +198,7 @@
       },
       {
         "id": "visa-3ds-challenge-pass",
-        "label": "Visa 3DS challenge \u2013 correct OTP",
+        "label": "Visa 3DS challenge – correct OTP",
         "number": "4000000000002503",
         "expiry": "12/30",
         "cvv": "123",
@@ -214,7 +214,7 @@
       },
       {
         "id": "visa-3ds-challenge-decline",
-        "label": "Visa 3DS challenge \u2013 authentication declined",
+        "label": "Visa 3DS challenge – authentication declined",
         "number": "4000000000002370",
         "expiry": "12/30",
         "cvv": "123",
@@ -230,7 +230,7 @@
       },
       {
         "id": "visa-3ds-frictionless",
-        "label": "Visa 3DS frictionless \u2013 authenticated",
+        "label": "Visa 3DS frictionless – authenticated",
         "number": "4000000000002719",
         "expiry": "12/30",
         "cvv": "123",
@@ -295,7 +295,12 @@
       },
       "session": {
         "currency": "USD",
-        "products": [{ "name": "Product", "price": "700" }]
+        "products": [
+          {
+            "name": "Product",
+            "price": "700"
+          }
+        ]
       }
     },
     "local": {
@@ -316,8 +321,47 @@
       },
       "session": {
         "currency": "USD",
-        "products": [{ "name": "Product", "price": "700" }]
+        "products": [
+          {
+            "name": "Product",
+            "price": "700"
+          }
+        ]
       }
     }
+  },
+  "masking": {
+    "rules": [
+      {
+        "id": "general",
+        "name": "General – customer contact data",
+        "description": "Every payment: the customer’s e-mail and phone must be masked in every PSP request and response.",
+        "scope": "all",
+        "methods": [],
+        "fields": ["email", "phone"],
+        "customKeys": [],
+        "enabled": true
+      },
+      {
+        "id": "card-payments",
+        "name": "Card payments – card details",
+        "description": "Card payment methods: card number, CVV and expiry date must be masked.",
+        "scope": "card",
+        "methods": [],
+        "fields": ["cardNumber", "cvv", "expiry"],
+        "customKeys": [],
+        "enabled": true
+      },
+      {
+        "id": "bank-transfer",
+        "name": "Bank transfer – bank details",
+        "description": "Bank-transfer APMs: account number, IBAN and routing / sort code must be masked.",
+        "scope": "methods",
+        "methods": ["BANKTRANSFER"],
+        "fields": ["accountNumber", "iban", "routingNumber"],
+        "customKeys": [],
+        "enabled": true
+      }
+    ]
   }
 }

@@ -30,6 +30,7 @@ const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
 const ai = require('./ai-generate');
 const cardImport = require('./card-import');
+const maskingRules = require('../../config/masking-rules');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -80,6 +81,7 @@ const SETTINGS_PATHS = [
   'sessionLibrary.local',
   'cards.uat',
   'cards.local',
+  'masking',
 ];
 
 function effectiveSettings() {
@@ -131,6 +133,12 @@ function settingsView() {
     effective: effectiveSettings(),
     defaults: settingsCore.readDefaults(),
     overridden: SETTINGS_PATHS.filter((p) => getAt(local, p) !== undefined),
+    maskingFields: maskingRules.FIELDS.map(({ id, label, group, hint }) => ({
+      id,
+      label,
+      group,
+      hint,
+    })),
   };
 }
 

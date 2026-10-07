@@ -2,12 +2,7 @@ import { expect, test, type TestInfo } from '@playwright/test';
 import type { BackofficeClient } from '../clients/backoffice-client';
 import type { PurchaseApiClient } from '../clients/purchase-api-client';
 import type { RefundDetails } from '../schemas/backoffice.schema';
-import {
-  cancelInfoChecks,
-  maskingChecks,
-  merchantWebhookChecks,
-  type ComplianceCheck,
-} from './psp-compliance';
+import { cancelInfoChecks, merchantWebhookChecks, type ComplianceCheck } from './psp-compliance';
 import { findFirstValue } from './psp-validation';
 import { waitForMerchantWebhooks } from './transaction-flow';
 
@@ -84,23 +79,17 @@ export function recordHistory(testInfo: TestInfo, details: RefundDetails | undef
   });
 }
 
-/** The refund request must be in cancelInfo, masked like every other PSP payload. */
+/** The refund request must be in cancelInfo. */
 async function verifyCancelInfo(
   deps: RefundDeps,
   purchase: RefundablePurchase,
   amount: number,
-  testInfo: TestInfo,
 ): Promise<string> {
   const bank = await deps.backoffice.getBankTransaction(purchase.purchaseId);
   expect(bank, 'bank record of the purchase').toBeDefined();
   const record = bank ?? {};
+  // Masking rules are part of the PSP checks (PSP request/response cases), not of refunds.
   expectChecks(cancelInfoChecks(record, amount).checks);
-  const masking = maskingChecks(
-    record,
-    purchase.cardNumber === undefined ? undefined : { number: purchase.cardNumber },
-  );
-  expectChecks(masking.checks);
-  testInfo.annotations.push(...masking.notes.map((description) => ({ type: 'note', description })));
   const responses = Array.isArray(record.response) ? (record.response as unknown[]) : [];
   const last = responses.at(-1);
   return findFirstValue((last as { error?: unknown } | undefined)?.error, ['message', 'code']);
@@ -169,7 +158,7 @@ export async function refundAndVerify(
   });
 
   const pspError = await test.step('refund request in cancelInfo (masked)', () =>
-    verifyCancelInfo(deps, purchase, amount, testInfo));
+    verifyCancelInfo(deps, purchase, amount));
 
   if (refused) {
     testInfo.annotations.push(

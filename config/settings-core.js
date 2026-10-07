@@ -9,6 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { z } = require('zod');
+const masking = require('./masking-rules');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULTS_FILE = path.join(__dirname, 'defaults.json');
@@ -153,6 +154,28 @@ const libraryOf = (/** @type {z.ZodTypeAny} */ template) =>
     })
     .default({ activeId: '', items: [] });
 
+/** Masking rule (launcher → Masking rules): fields that must be masked in stored PSP calls. */
+const maskingRuleSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/, 'id: lowercase letters, digits, "-"'),
+    name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(300).default(''),
+    scope: z.enum(['all', 'card', 'methods']),
+    methods: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+    fields: z.array(z.enum(masking.FIELD_IDS)).default([]),
+    /** Extra key names, e.g. upiId, vpa – matched case-insensitively, "-" / "_" ignored. */
+    customKeys: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
+    enabled: z.boolean().default(true),
+  })
+  .refine(
+    (r) => r.fields.length + r.customKeys.length > 0,
+    'a masking rule needs at least one field',
+  )
+  .refine(
+    (r) => r.scope !== 'methods' || r.methods.length > 0,
+    'list the payment methods of the rule',
+  );
+
 const settingsSchema = z.object({
   run: z.object({
     defaultEnvironment: z.enum(['uat', 'local']),
@@ -179,6 +202,14 @@ const settingsSchema = z.object({
     .object({ uat: libraryOf(sessionTemplateSchema), local: libraryOf(sessionTemplateSchema) })
     .default({ uat: { activeId: '', items: [] }, local: { activeId: '', items: [] } }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
+  /** Same for every environment: masking is a PGS rule, not an environment setting. */
+  masking: z
+    .object({ rules: z.array(maskingRuleSchema).max(50) })
+    .refine(
+      (m) => new Set(m.rules.map((r) => r.id)).size === m.rules.length,
+      'masking rule ids must be unique',
+    )
+    .default({ rules: masking.DEFAULT_RULES }),
 });
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -219,6 +250,7 @@ module.exports = {
   SETTINGS_FILE,
   OUTCOMES,
   cardSettingSchema,
+  maskingRuleSchema,
   purchaseTemplateSchema,
   s2sTemplateSchema,
   sessionTemplateSchema,

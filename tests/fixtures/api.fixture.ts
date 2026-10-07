@@ -22,7 +22,10 @@ interface WorkerClientFixtures {
 
 /** Host serving Reports → Transaction Log per environment (shares the DB with test4). */
 const DEFAULT_TRANSLOG_URL: Record<string, string | undefined> = {
+  // Reports → Transaction Log and Monitoring → PSP Webhook log are React pages served by
+  // staging; test4 cannot open them. Same dashboard login.
   uat: 'https://staging.paysecure.net',
+  local: 'https://staging.paysecure.net',
 };
 
 /**
@@ -72,7 +75,7 @@ export const test = baseTest.extend<ApiClientFixtures, WorkerClientFixtures>({
       const newContext = (storageState?: StorageState) =>
         // Own context = own cookie jar for the dashboard session.
         playwright.request.newContext(storageState === undefined ? {} : { storageState });
-      // Reports → Transaction Log lives on the React dashboard's host (staging for UAT);
+      // Transaction Log + PSP Webhook log live on the React dashboard's host (staging);
       // same login, own session. <ENV>_TRANSLOG_BASE_URL overrides, empty = do not use it.
       const logUrl =
         process.env[`${env}_TRANSLOG_BASE_URL`] ?? DEFAULT_TRANSLOG_URL[testConfig.env];

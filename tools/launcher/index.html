@@ -656,6 +656,11 @@
       .rcard-foot { margin-top: 6px !important; font-size: 12.5px !important; }
       .details-btn::after { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 2px 2px 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s; }
       .details-btn.open::after { transform: rotate(45deg); }
+      .rcard-unmasked { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 8px; padding: 7px 10px; border-radius: 8px; font-size: 12.5px; color: var(--fail); background: var(--fail-bg); border-left: 3px solid var(--fail); overflow-wrap: anywhere; }
+      .rcard-unmasked span { color: var(--text); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+      .rcard-unmasked em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--muted); }
+      .rcard-warn { margin-top: 8px; padding: 6px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: #b45309; background: var(--warn-bg); }
+      :root[data-mode='dark'] .rcard-warn { color: #f2b44c; }
       @media (max-width: 760px) { .rcard-head { flex-wrap: wrap !important; } .rcard-title { white-space: normal; flex-basis: 100% !important; order: 5; } .res-tools { margin-left: 0; width: 100%; } .res-tools select.history { flex: 1; max-width: none; } }
       @container (min-width: 760px) { .report-filters { flex-wrap: nowrap !important; } }
       @container (max-width: 560px) { .rs-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } .rcard-head { flex-wrap: wrap !important; } .rcard-title { white-space: normal; flex-basis: 100% !important; order: 5; } }
@@ -790,6 +795,56 @@
       .ci-tag.warn { color: #b45309; background: var(--warn-bg); }
       .ci-note { margin-right: auto; font-size: 12.5px; }
       @media (max-width: 820px) { .ci-row { grid-template-columns: auto 50px 1fr; } .ci-row > input.ci-label, .ci-row > select, .ci-row > .ci-tag { grid-column: 2 / -1; } }
+      /* ── Masking rules ── */
+      [data-panel='masking'] { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+      [data-panel='masking'].hidden { display: none; }
+      @media (max-width: 1100px) { [data-panel='masking'] { grid-template-columns: 1fr; } }
+      [data-panel='masking'] .sec-head > button { margin-left: 0; }
+      [data-panel='masking'] .sec-head > #mkReset { margin-left: auto; }
+      .mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-top: 12px; }
+      .mk-card { --c: #6d5ae6; --c2: #a855f7; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--c) 25%, var(--border)); background: linear-gradient(160deg, color-mix(in srgb, var(--c) 10%, var(--surface)), var(--surface) 60%); box-shadow: 0 12px 26px -20px color-mix(in srgb, var(--c) 80%, transparent); }
+      .mk-card.s-card { --c: #1c7ed6; --c2: #22b8cf; } .mk-card.s-methods { --c: #e8590c; --c2: #f59f00; }
+      .mk-card.off { opacity: 0.6; filter: saturate(0.4); }
+      .mk-top { display: flex; align-items: center; gap: 12px; }
+      .mk-icon { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, var(--c), var(--c2)); box-shadow: 0 8px 18px -8px var(--c); }
+      .mk-icon svg { width: 21px; height: 21px; }
+      .mk-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .mk-title b { font-size: 15px; line-height: 1.3; }
+      .mk-kind { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c); }
+      .mk-desc { margin: 0; font-size: 13px; color: var(--muted); }
+      .mk-applies { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
+      .mk-method { font: 700 11.5px ui-monospace, Menlo, monospace; padding: 3px 9px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
+      .mk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .mk-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+      .mk-chip::before { content: '***'; font: 700 10px ui-monospace, Menlo, monospace; color: var(--c); }
+      .mk-chip.custom { border-style: dashed; font-family: ui-monospace, Menlo, monospace; font-weight: 500; }
+      .mk-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+      .mk-actions .danger-link { margin-left: auto; color: var(--fail); }
+      .mk-switch { position: relative; flex: none; width: 40px; height: 23px; margin: 0; cursor: pointer; }
+      .mk-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+      .mk-switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--border); transition: background 0.15s; pointer-events: none; }
+      .mk-switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); transition: transform 0.15s; }
+      .mk-switch input:checked + span { background: var(--c); }
+      .mk-switch input:checked + span::after { transform: translateX(17px); }
+      .mk-switch input:focus-visible + span { outline: 2px solid var(--c); outline-offset: 2px; }
+      .mk-steps { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; font-size: 13.5px; }
+      .mk-steps b { display: block; } .mk-steps span { color: var(--muted); }
+      dialog.adv-dialog.mk-dialog { width: min(760px, calc(100vw - 32px)); }
+      .mk-scopes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      .mk-scope { --c: #6d5ae6; position: relative; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer; }
+      .mk-scope.s-card { --c: #1c7ed6; } .mk-scope.s-methods { --c: #e8590c; }
+      .mk-scope input { position: absolute; opacity: 0; }
+      .mk-scope span { font-size: 12px; color: var(--muted); font-weight: 400; }
+      .mk-scope:has(input:checked) { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); box-shadow: inset 0 0 0 1px var(--c); }
+      .mk-scope:has(input:checked) b { color: var(--c); }
+      .mk-scope:has(input:focus-visible) { outline: 2px solid var(--c); outline-offset: 2px; }
+      .mk-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .mk-fgroup { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; }
+      .mk-fgroup-t { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+      .mk-field { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+      .mk-field input { margin-top: 3px; flex: none; }
+      .mk-field small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+      @media (max-width: 640px) { .mk-scopes, .mk-fields { grid-template-columns: 1fr; } }
       /* ── Environments ── */
       .env-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
       .env-card { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--surface); }
@@ -919,6 +974,7 @@
           <button data-tab="s2s"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="12" rx="2"/><path d="M14 10h7M18 7l3 3-3 3M14 15h4"/></svg><span>S2S data</span></button>
           <button data-tab="session"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.7-3.3 3-5 6-5s5.3 1.7 6 5M16 6h5M18.5 3.5 21 6l-2.5 2.5"/></svg><span>Session data</span></button>
           <button data-tab="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span>Test cards</span></button>
+          <button data-tab="masking"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3z"/><path d="M9 12h6M9.5 9.5h5M10 14.5h4"/></svg><span>Masking rules</span></button>
           <button data-tab="cases"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5v2h6v-2M9 11l2 2 4-4M9 16.5h6"/></svg><span>Test cases</span></button>
           <button data-tab="advanced"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Advanced</span></button>
         </nav>
@@ -1437,6 +1493,26 @@
         </section>
       </div>
 
+      <!-- MASKING RULES -->
+      <div data-panel="masking" class="hidden">
+        <section>
+          <div class="sec-head"><h2>Masking rules <span class="state-pill warn hidden" id="mkBadge">customised</span></h2>
+            <button type="button" id="mkReset">Reset to team default</button><button type="button" class="primary" id="mkAdd">+ Add rule</button></div>
+          <p class="hint">Values that must never be readable in the PSP requests and responses PGS stores for a transaction (dashboard bank record: payment request, refund request, other calls, responses, 3DS). Checked in the <b>PSP checks</b> only (PSP request/response cases and PSP check by ID – not in cashier, S2S, session or refund runs) – a field in clear fails the test and the report shows <b>where</b> it was found, never the value.</p>
+          <div class="suite-chips" id="mkFilter" role="tablist" aria-label="Filter rules"></div>
+          <div class="mk-grid" id="mkRules"></div>
+          <div class="msg" id="mkMsg"></div>
+        </section>
+        <section class="mk-how">
+          <h2>How a rule is applied</h2>
+          <ol class="mk-steps">
+            <li><b>Pick the payment.</b> <span>General rules apply to every payment, card rules to card payment methods, APM rules only to the payment methods they list (e.g. BANKTRANSFER).</span></li>
+            <li><b>Find the fields.</b> <span>Each field is recognised by its key names in any stored request / response (nested JSON too) – e.g. Bank account number = accountNumber, bankAccount, acctNo … Add your own key names for anything else (upiId, vpa …).</span></li>
+            <li><b>Check the value.</b> <span>Masked = ***, xxxx or empty. A readable value fails the check; the test card's full number is also searched for under any key.</span></li>
+          </ol>
+        </section>
+      </div>
+
       <!-- ADVANCED -->
       <div data-panel="advanced" class="hidden">
         <section>
@@ -1921,7 +1997,15 @@
         };
         toggle.addEventListener('click', () => card.setOpen(!card.isOpen()));
         card.append(head, el('div', { class: 'ea' }, eaBox('expected', 'Expected', t.expectedItems, t.verdict), eaBox('actual', 'Actual', t.actualItems, t.verdict)),
-          ...(t.verdict === 'FAIL' && t.errors.length ? [el('div', { class: 'msg error' }, t.errors[0].split('\n')[0].slice(0, 300))] : []),
+          // A masking failure is shown below as "<field> is not masked" – no need to repeat the raw message.
+          ...(t.verdict === 'FAIL' && t.errors.length && !/^Masking · /.test(t.errors[0]) ? [el('div', { class: 'msg error' }, t.errors[0].split('\n')[0].slice(0, 300))] : []),
+          // Masking rules: one clear line per field that is not masked (where – never the value).
+          ...(t.psp?.checks || []).filter((c) => !c.passed && /^Masking · /.test(c.name)).map((c) => {
+            const [, rule, field] = c.name.split(' · ');
+            const where = String(c.actual || '').replace(/^NOT MASKED – .*? is readable at /, '');
+            return el('div', { class: 'rcard-unmasked' }, el('b', {}, `${field} is not masked`), el('span', {}, ` – readable at ${where}`), el('em', {}, `rule: ${rule}`));
+          }),
+          ...(t.psp?.notes || []).filter((n) => /^warning:/i.test(n)).map((n) => el('div', { class: 'rcard-warn' }, `⚠ ${n.replace(/^warning:\s*/i, '')}`)),
           el('div', { class: 'rcard-foot' }, ids, toggle));
         return card;
       }
@@ -2467,6 +2551,92 @@
           renderAll(); $('cardImportDialog').close(); state.ci = null; $('ciResult').classList.add('hidden');
           say('cardsMsg', `Added ${added.length} card${added.length === 1 ? '' : 's'} to ${state.env.toUpperCase()}.`);
         } catch (error) { say('ciMsg', error.message, false); renderCardImport(); }
+      }
+
+      // ── masking rules ─────────────────────────────────────────────────────
+      const MK_SCOPE = { all: ['General', 'All payments'], card: ['Card', 'Card payments'], methods: ['APM', 'Specific methods'] };
+      const MK_ICON = {
+        all: '<circle cx="12" cy="8" r="3.5"/><path d="M5 19c.8-3.2 3.6-5 7-5s6.2 1.8 7 5"/>',
+        card: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/>',
+        methods: '<path d="M3 10 12 4l9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/>',
+      };
+      const mkRules = () => eff().masking?.rules || [];
+      const mkFieldLabel = (id) => (state.settings.maskingFields || []).find((f) => f.id === id)?.label || id;
+      function renderMasking() {
+        const rules = mkRules();
+        $('mkBadge').classList.toggle('hidden', !isOverridden('masking'));
+        const FILTERS = { all: ['All', () => true], general: ['General', (r) => r.scope === 'all'], card: ['Card payments', (r) => r.scope === 'card'], apm: ['APMs', (r) => r.scope === 'methods'], off: ['Off', (r) => !r.enabled] };
+        const f = FILTERS[state.mkFilter] ? state.mkFilter : 'all';
+        const chips = $('mkFilter'); chips.replaceChildren();
+        for (const [id, [label, test]] of Object.entries(FILTERS)) {
+          const b = el('button', { type: 'button', role: 'tab' }, label, el('span', { class: 'n' }, String(rules.filter(test).length)));
+          b.setAttribute('aria-selected', String(id === f)); b.addEventListener('click', () => { state.mkFilter = id; renderMasking(); }); chips.append(b);
+        }
+        const box = $('mkRules'); box.replaceChildren();
+        rules.forEach((rule, index) => {
+          if (!FILTERS[f][1](rule)) return;
+          const icon = el('span', { class: 'mk-icon' }); icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MK_ICON[rule.scope]}</svg>`;
+          const toggle = el('input', { type: 'checkbox', checked: rule.enabled, onchange: () => persistMasking(rules.map((r, i) => (i === index ? { ...r, enabled: toggle.checked } : r)), toggle.checked ? `"${rule.name}" is on.` : `"${rule.name}" is off.`) });
+          const edit = el('button', { type: 'button', class: 'small' }, 'Edit'); edit.addEventListener('click', () => openMaskingRule(index));
+          const dup = el('button', { type: 'button', class: 'small' }, 'Duplicate'); dup.addEventListener('click', () => openMaskingRule(index, true));
+          const del = el('button', { type: 'button', class: 'small danger-link' }, 'Delete');
+          del.addEventListener('click', () => {
+            if (del.dataset.armed) { persistMasking(rules.filter((_, i) => i !== index), `Deleted "${rule.name}".`); return; }
+            del.dataset.armed = '1'; del.textContent = 'Click again to delete'; setTimeout(() => { delete del.dataset.armed; del.textContent = 'Delete'; }, 3000);
+          });
+          const applies = rule.scope === 'methods' ? rule.methods.map((m) => el('span', { class: 'mk-method' }, m)) : [el('span', { class: 'mk-method' }, MK_SCOPE[rule.scope][1])];
+          box.append(el('div', { class: `mk-card s-${rule.scope}${rule.enabled ? '' : ' off'}` },
+            el('div', { class: 'mk-top' }, icon, el('div', { class: 'mk-title' }, el('span', { class: 'mk-kind' }, MK_SCOPE[rule.scope][0]), el('b', {}, rule.name)), el('label', { class: 'mk-switch', title: 'Rule on / off' }, toggle, el('span', {}))),
+            ...(rule.description ? [el('p', { class: 'mk-desc' }, rule.description)] : []),
+            el('div', { class: 'mk-applies' }, el('span', { class: 'hint' }, 'Applies to'), ...applies),
+            el('div', { class: 'mk-chips' }, ...rule.fields.map((id) => el('span', { class: 'mk-chip' }, mkFieldLabel(id))), ...rule.customKeys.map((k) => el('span', { class: 'mk-chip custom', title: 'Own key name' }, k))),
+            el('div', { class: 'mk-actions' }, edit, dup, del)));
+        });
+        if (!box.childElementCount) box.append(el('p', { class: 'hint' }, rules.length ? 'No rule matches this filter.' : 'No masking rules – nothing is checked. Add one or reset to the team default.'));
+      }
+      async function persistMasking(rules, okText) {
+        await saveSettings('masking', { rules }, 'mkMsg', okText);
+      }
+      function openMaskingRule(index, duplicate = false) {
+        const rule = index === undefined ? null : mkRules()[index];
+        state.mkEditing = duplicate ? undefined : index;
+        $('mkDlgTitle').textContent = !rule ? 'Add masking rule' : duplicate ? `Duplicate ${rule.name}` : `Edit ${rule.name}`;
+        $('mkName').value = rule ? `${rule.name}${duplicate ? ' (copy)' : ''}` : ''; $('mkDesc').value = rule?.description || '';
+        const scope = rule?.scope || 'methods';
+        for (const r of document.querySelectorAll('input[name="mkScope"]')) r.checked = r.value === scope;
+        $('mkMethods').value = (rule?.methods || []).join(', '); $('mkCustom').value = (rule?.customKeys || []).join(', ');
+        $('mkEnabled').checked = rule ? rule.enabled : true;
+        const picked = new Set(rule?.fields || []);
+        const groups = new Map(); for (const f of state.settings.maskingFields || []) { if (!groups.has(f.group)) groups.set(f.group, []); groups.get(f.group).push(f); }
+        $('mkFields').replaceChildren(...[...groups].map(([group, fields]) => el('div', { class: 'mk-fgroup' }, el('span', { class: 'mk-fgroup-t' }, group),
+          ...fields.map((f) => el('label', { class: 'mk-field', title: `Recognised keys: ${f.hint}` }, el('input', { type: 'checkbox', value: f.id, checked: picked.has(f.id) }), el('span', {}, f.label, el('small', {}, f.hint)))))));
+        const methods = new Set(['BANKTRANSFER', 'PAYBYVIRTUALACCOUNT', 'INTERAC', 'PAYID', 'UPI', 'PIX', 'SEPA', ...(state.dash?.routes || []).map((r) => r.paymentMethod).filter(Boolean)]);
+        $('mkMethodList').replaceChildren(...[...methods].sort().map((m) => option(m, m)));
+        syncMkScope(); say('mkDlgMsg', ''); $('mkDialog').showModal(); $('mkName').focus();
+      }
+      function syncMkScope() {
+        const scope = document.querySelector('input[name="mkScope"]:checked')?.value;
+        $('mkMethodsBox').classList.toggle('hidden', scope !== 'methods');
+      }
+      function saveMaskingRule() {
+        const list = (v) => v.split(',').map((x) => x.trim()).filter(Boolean);
+        const rules = mkRules();
+        const name = $('mkName').value.trim();
+        const scope = document.querySelector('input[name="mkScope"]:checked')?.value || 'all';
+        const rule = { name, description: $('mkDesc').value.trim(), scope, methods: scope === 'methods' ? [...new Set(list($('mkMethods').value).map((m) => m.toUpperCase()))] : [],
+          fields: [...$('mkFields').querySelectorAll('input:checked')].map((i) => i.value), customKeys: list($('mkCustom').value), enabled: $('mkEnabled').checked };
+        if (!name) { say('mkDlgMsg', 'Give the rule a name.', false); return; }
+        if (scope === 'methods' && !rule.methods.length) { say('mkDlgMsg', 'List the payment methods this rule is for (e.g. BANKTRANSFER).', false); return; }
+        if (!rule.fields.length && !rule.customKeys.length) { say('mkDlgMsg', 'Pick at least one field or add a key name.', false); return; }
+        const editing = state.mkEditing;
+        let next;
+        if (editing !== undefined) next = rules.map((r, i) => (i === editing ? { ...r, ...rule } : r));
+        else {
+          const ids = new Set(rules.map((r) => r.id)); const base = slug(name); let id = base; let n = 2; while (ids.has(id)) id = `${base}-${n++}`;
+          next = [...rules, { id, ...rule }];
+        }
+        $('mkDialog').close();
+        persistMasking(next, editing !== undefined ? `Saved "${name}".` : `Added "${name}".`);
       }
 
       // ── advanced tab ──────────────────────────────────────────────────────
@@ -3107,7 +3277,7 @@
       }
       function renderAll() {
         renderRunChoices(); renderRunProfiles(); renderProfiles();
-        renderEnvironments(); renderPurchase(); renderS2s(); renderSession(); renderCards(); renderAdvanced();
+        renderEnvironments(); renderPurchase(); renderS2s(); renderSession(); renderCards(); renderMasking(); renderAdvanced();
       }
 
       async function init() {
@@ -3247,6 +3417,10 @@
         $('ciAdd').addEventListener('click', addImportedCards);
         $('saveCard').addEventListener('click', saveCard);
         $('deleteCard').addEventListener('click', deleteCard);
+        $('mkAdd').addEventListener('click', () => openMaskingRule());
+        $('mkReset').addEventListener('click', () => resetSettings('masking', 'mkMsg'));
+        $('mkSave').addEventListener('click', saveMaskingRule);
+        for (const r of document.querySelectorAll('input[name="mkScope"]')) r.addEventListener('change', syncMkScope);
         $('resetCards').addEventListener('click', () => { state.editingCard = null; resetSettings(`cards.${state.env}`, 'cardsMsg'); });
         $('saveAuth').addEventListener('click', () => saveSettings('auth', { apiKeyHeader: $('aHeader').value.trim(), apiKeyPrefix: $('aPrefix').value.trim(), tokenPath: $('aToken').value.trim() }, 'authMsg'));
         $('resetAuth').addEventListener('click', () => resetSettings('auth', 'authMsg'));
@@ -3343,6 +3517,26 @@
         </div>
       </div>
       <div class="hc-foot"><span class="hint ci-note">Outcome and 3DS are guessed from the page – check them before adding.</span><button type="button" data-close>Cancel</button><button type="button" class="primary" id="ciAdd" disabled>Add selected</button></div>
+    </dialog>
+    <dialog class="health adv-dialog mk-dialog" id="mkDialog" aria-labelledby="mkDlgTitle">
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3z"/><path d="M9 12h6M9.5 9.5h5M10 14.5h4"/></svg></span><div><h3 id="mkDlgTitle">Masking rule</h3><p>Which values must be masked, and for which payments.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="ai-dlg-body">
+        <label for="mkName">Rule name</label><input id="mkName" maxlength="80" placeholder="e.g. Bank transfer – bank details" />
+        <label for="mkDesc">Requirement <span class="hint">(optional – shown on the card)</span></label><input id="mkDesc" maxlength="300" placeholder="e.g. Account number and IBAN must be masked in request and response" />
+        <label>Applies to</label>
+        <div class="mk-scopes" id="mkScope" role="radiogroup">
+          <label class="mk-scope s-all"><input type="radio" name="mkScope" value="all" /><b>All payments</b><span>General – every payment method</span></label>
+          <label class="mk-scope s-card"><input type="radio" name="mkScope" value="card" /><b>Card payments</b><span>VISA, MASTER, AMEX …</span></label>
+          <label class="mk-scope s-methods"><input type="radio" name="mkScope" value="methods" /><b>Specific methods</b><span>APMs – e.g. bank transfer</span></label>
+        </div>
+        <div id="mkMethodsBox"><label for="mkMethods">Payment methods <span class="hint">(comma-separated, as on the dashboard)</span></label><input id="mkMethods" list="mkMethodList" placeholder="BANKTRANSFER, PAYBYVIRTUALACCOUNT" autocomplete="off" /><datalist id="mkMethodList"></datalist></div>
+        <label>Fields that must be masked</label>
+        <div class="mk-fields" id="mkFields"></div>
+        <label for="mkCustom">Other key names <span class="hint">(comma-separated – e.g. upiId, vpa, walletId)</span></label><input id="mkCustom" placeholder="upiId, vpa" autocomplete="off" />
+        <label class="check"><input type="checkbox" id="mkEnabled" checked /> Rule is on</label>
+        <div class="msg" id="mkDlgMsg"></div>
+      </div>
+      <div class="hc-foot"><button type="button" data-close>Cancel</button><button type="button" class="primary" id="mkSave">Save rule</button></div>
     </dialog>
     <dialog class="health adv-dialog" id="authDialog" aria-labelledby="authDialogT">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><div><h3 id="authDialogT">API authentication</h3><p>How the tester’s API key is sent with every API call.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>

@@ -102,10 +102,22 @@ function normalise(t) {
 
 const lines = (items) =>
   items.map((i) => (i.label ? `${i.label}: ${i.value}` : i.value)).join('\n');
-const firstError = (t) =>
-  String((t.errors && t.errors[0]) || '')
+/** Masking rules: one line per field that is not masked ("CVV is not masked – readable at …"). */
+const unmaskedLines = (t) =>
+  ((t.psp && t.psp.checks) || [])
+    .filter((c) => !c.passed && /^Masking · /.test(c.name))
+    .map((c) => {
+      const field = c.name.split(' · ')[2] || c.name;
+      const where = String(c.actual || '').replace(/^NOT MASKED – .*? is readable at /, '');
+      return `${field} is not masked – readable at ${where}`;
+    });
+const firstError = (t) => {
+  const unmasked = unmaskedLines(t);
+  if (unmasked.length > 0) return unmasked.join('\n').slice(0, 1000);
+  return String((t.errors && t.errors[0]) || '')
     .split('\n')[0]
     .slice(0, 300);
+};
 /** Row height that fits wrapped text: ~1.15 characters per column-width unit, 14 pt per line. */
 function fitHeight(cells, min = 18) {
   let linesNeeded = 1;
