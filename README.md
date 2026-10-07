@@ -485,18 +485,49 @@ masked PSP request/response are attached to each test in the HTML report.
 ### Automatic PSP compliance checks (every paid / failed transaction)
 
 Added to the PSP checks of every transaction (card payments, regex/PSP/edge cases, field cases
-that pay, and the by-ID check). Code: `src/helpers/psp-compliance.ts`.
+that pay, and the by-ID check). **Masking rules and the webhook checks (in / out) run only in the PSP
+checks** – PSP request/response cases (PR-xxx) and PSP check by ID – not in cashier, S2S, session or
+refund runs. Code: `src/helpers/psp-compliance.ts`.
 
-| Check                                                                      | Source                                                                       | Passes when                                                                                                                                                                                                                  |
-| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Card number / CVV / card expiry / e-mail / phone masked in PSP logs        | `paymentInfo`, `cancelInfo`, `allOtherRequest`, `response`, `response3ds`, … | value stored as `***` everywhere (PGS `maskJsonObject`); the test card's full number appears nowhere. Only the **path** is reported, never the value. Merchant e-mail/phone and a clear cardholder name are listed as notes. |
-| paymentInfo filled                                                         | `paymentInfo`                                                                | the transaction request was stored (Main.createPayload, transaction call)                                                                                                                                                    |
-| Mapping: amount / currency / purchase ID                                   | `paymentInfo`                                                                | amount = purchase total (major or minor units), currency, purchase ID sent                                                                                                                                                   |
-| Mapping: first/last name, e-mail, phone, street, city, zip, state, country | purchase `client` → `paymentInfo`                                            | the PSP received the purchase value (fields the PSP does not take → note; masked → counts as mapped)                                                                                                                         |
-| Merchant webhook sent (Webhook out)                                        | `/admin/getWebhookResponse`                                                  | a webhook with the final status exists; URL = `success_callback` (paid) / `failure_callback` (error). A non-2xx answer of the merchant URL (e.g. `Fail-405` from google.com) is a note.                                      |
-| PSP webhook received and consumed (Webhook in)                             | `/admin/pspWebhookLog/data`                                                  | any webhook the PSP sent has status `consumed` / `Already_Consumed` (none → note)                                                                                                                                            |
+| Check                                                                      | Source                                                                                                                                                                          | Passes when                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Masking · <rule> · <field> (launcher → **Masking rules**)                  | `paymentInfo`, `cancelInfo`, `allOtherRequest`, `response`, `response3ds`, …                                                                                                    | every field of every rule that applies to the payment is stored masked (`***`, `xxxx`, empty) everywhere; the test card's full number appears nowhere. Only the **path** is reported, never the value. Merchant e-mail/phone and a clear cardholder name are listed as notes.                                                                                              |
+| PSP request recorded (paymentInfo / allOtherRequest)                       | `paymentInfo`, `allOtherRequest`                                                                                                                                                | the payment request was stored in `paymentInfo` or – for PSP flows that store their API calls as a list – in `allOtherRequest` (both are checked when both are filled). Only `allOtherRequest` → passes with the report warning _paymentInfo is missing_. Amount / currency / field mapping use whichever is filled.                                                       |
+| Mapping: amount / currency / purchase ID                                   | `paymentInfo`                                                                                                                                                                   | amount = purchase total (major or minor units), currency, purchase ID sent                                                                                                                                                                                                                                                                                                 |
+| Mapping: first/last name, e-mail, phone, street, city, zip, state, country | purchase `client` → `paymentInfo`                                                                                                                                               | the PSP received the purchase value (fields the PSP does not take → note; masked → counts as mapped)                                                                                                                                                                                                                                                                       |
+| Merchant webhook sent (Webhook out)                                        | `/admin/getWebhookResponse`                                                                                                                                                     | a webhook with the final status exists; URL = `success_callback` (paid) / `failure_callback` (error). A non-2xx answer of the merchant URL (e.g. `Fail-405` from google.com) is a note.                                                                                                                                                                                    |
+| PSP webhook received / consumed by the matching bank config (Webhook in)   | Monitoring → PSP Webhook log (`/admin/pspWebhookLog/data` on **staging** – the React page cannot be opened on test4; same dashboard login; `<ENV>_TRANSLOG_BASE_URL` overrides) | a webhook was logged for the purchase. A PSP with one webhook config per bank (e.g. `trustpayments-card-json` + `trustpayment-json`) posts to all of them: the bank of the purchase consumes it, the others are `zombied` – expected, shown as a note. None consumed → report warning (fine when the redirect / sync answer completed the purchase). None received → note. |
 
 Uploaded PSP sheets also accept the check **masked** (e.g. `card.cvv` → masked).
+
+**Masking rules** (launcher → Masking rules; team default in `config/defaults.json` → `masking`,
+field catalog in `config/masking-rules.js`). Predefined rule sets:
+
+| Rule                            | Applies to           | Must be masked                            |
+| ------------------------------- | -------------------- | ----------------------------------------- |
+| General – customer contact data | every payment        | e-mail, phone                             |
+| Card payments – card details    | card payment methods | card number, CVV, expiry date             |
+| Bank transfer – bank details    | `BANKTRANSFER`       | account number, IBAN, routing / sort code |
+
+**How a field is found** – PSP key names can be anything, so every field is looked for two ways:
+
+1. **By key name** – catalog synonyms (e.g. CVV = `cvv`, `cvc`, `cvn`, `securityCode` …) plus the rule's
+   own key names; case, `_`, `-` and spaces are ignored. JSON, URL-encoded form (`a=1&b=2`) and XML
+   payloads are all read, also when stored as a string inside another field.
+2. **By the value the test sent** – the test card's number, CVV (only next to a card-like key or inside
+   the card block, never an amount) and expiry (12/30, 1230, 12/2030, 2030-12 …), and the purchase's
+   e-mail, phone (PGS-normalised, last 8 digits) and bank / method fields are searched under **any** key.
+   A PSP calling the CVV `sc` or the card number `pan_no` is still caught.
+
+Results per field: **NOT MASKED – <field> is readable at <path>** (fails; the report shows "<field> is not
+masked" per field, the Excel report lists them), _masked at N place(s)_, _not sent to the PSP_ (value
+searched everywhere), or _could not verify_ (no known key name and the value is unknown, e.g. PSP check by
+ID where the stored purchase is already masked) – passes with a warning to add the PSP's key name to the rule.
+Values never appear in reports – only where they were found.
+
+Add rules per payment method as new requirements come up (e.g. UPI → `upiId`, `vpa`): pick fields from
+the catalog (contact, card, bank, identity) and/or add your own key names. Rules can be turned off,
+duplicated or reset to the team default.
 
 ## Cashier purchase – stage 5: refunds (`@RF-…`, real refunds)
 

@@ -60,6 +60,8 @@ test.describe(
               },
               expectedBank: merchant.expectedBank,
               expectedMid: merchant.expectedMid,
+              // PSP checks: masking rules + webhook in / out.
+              pspChecks: true,
             },
             testInfo,
           );

@@ -404,10 +404,18 @@ export class BackofficeClient extends BaseApiClient {
    * the purchase (or the PSP transaction ID). Headers and body are dropped –
    * they contain signatures and cookies.
    */
-  async getPspWebhooks(searchTerms: readonly string[]): Promise<PspWebhook[]> {
+  async getPspWebhooks(searchTerms: readonly string[], lookbackDays = 7): Promise<PspWebhook[]> {
+    // The PSP webhook log is a page of the React dashboard (staging for test4) – same login.
+    if (this.transLogSource !== undefined) {
+      return this.transLogSource.getPspWebhooks(searchTerms, lookbackDays);
+    }
     const seen = new Map<string, PspWebhook>();
+    const to = Date.now();
     for (const term of searchTerms.filter(Boolean)) {
       const body = await this.getData(Endpoints.backoffice.pspWebhooks, {
+        // The log only answers for a time window (epoch ms), like its own filter.
+        from: to - lookbackDays * 86_400_000,
+        to,
         search: term,
         page: 0,
         limit: 50,
@@ -420,6 +428,7 @@ export class BackofficeClient extends BaseApiClient {
         const id = text(row.id) || `${text(row.receiveTime)}-${String(seen.size)}`;
         seen.set(id, {
           pspName: text(row.pspName),
+          purchaseId: text(row.purchaseId),
           status: text(row.status),
           receiveTime: text(row.receiveTime),
         });

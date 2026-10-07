@@ -54,6 +54,8 @@ test.describe(
             expectedMid: merchant.expectedMid,
             // Stored purchase (customer data as received) → purchase ↔ PSP mapping checks.
             request: trx,
+            // PSP checks: masking rules + webhook in / out.
+            pspChecks: true,
           });
           // Webhook in (PSP → PGS) / webhook out (PGS → merchant) for the current status.
           const webhooks = psp.attempted

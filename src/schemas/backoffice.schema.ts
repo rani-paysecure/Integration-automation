@@ -106,7 +106,10 @@ export type MerchantWebhook = z.infer<typeof merchantWebhookSchema>;
 export type RefundDetails = z.infer<typeof refundDetailsSchema>;
 /** PSP webhook received by PGS – headers and body are never kept (they hold signatures). */
 export interface PspWebhook {
+  /** PSP webhook config the PSP posted to (one PSP can have one per bank, e.g. trustpayments-card-json). */
   readonly pspName: string;
+  /** Purchase PGS matched the webhook to ('' when it could not tell). */
+  readonly purchaseId?: string;
   /** consumed / Already_Consumed / zombied */
   readonly status: string;
   readonly receiveTime: string;

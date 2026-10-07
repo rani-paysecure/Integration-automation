@@ -38,6 +38,8 @@ export interface TransactionInput {
   readonly expectedMid?: string | undefined;
   /** Purchase request that was sent – enables the purchase ↔ PSP mapping and webhook URL checks. */
   readonly request?: object | undefined;
+  /** PSP checks (masking rules + webhook in / out) – only for the PSP request/response cases. */
+  readonly pspChecks?: boolean | undefined;
 }
 
 export interface TransactionResult {
@@ -262,6 +264,8 @@ export interface SettleInput {
   readonly expectedBank?: string | undefined;
   readonly expectedMid?: string | undefined;
   readonly request?: object | undefined;
+  /** PSP checks (masking rules + webhook in / out) – only for the PSP request/response cases. */
+  readonly pspChecks?: boolean | undefined;
 }
 
 /**
@@ -305,13 +309,16 @@ export async function settleTransaction(
       expectedMid: input.expectedMid,
       request: input.request,
       card: input.card,
+      pspChecks: input.pspChecks,
     });
-    const webhooks = summary.attempted
-      ? await webhookResults(deps.backoffice, input.purchaseId, finalStatus, {
-          request: input.request,
-          pspTransId: bank?.paymentTransId,
-        })
-      : { checks: [], notes: [] };
+    // Masking rules and webhooks belong to the PSP checks, not to cashier / S2S / session runs.
+    const webhooks =
+      summary.attempted && input.pspChecks === true
+        ? await webhookResults(deps.backoffice, input.purchaseId, finalStatus, {
+            request: input.request,
+            pspTransId: bank?.paymentTransId,
+          })
+        : { checks: [], notes: [] };
     const psp: PspSummary = {
       ...summary,
       checks: [...summary.checks, ...webhooks.checks],

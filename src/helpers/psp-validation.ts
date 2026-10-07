@@ -1,8 +1,9 @@
 import type { TestInfo } from '@playwright/test';
+import { getSettings } from '../../config/settings';
 import type { BackofficeTransaction, BankTransaction } from '../schemas/backoffice.schema';
 import type { CashierCard } from '../types/cashier.types';
 import { maskSensitiveData } from '../utils/masking';
-import { mappingChecks, maskingChecks, paymentInfoChecks } from './psp-compliance';
+import { mappingChecks, maskingChecks, paymentInfoChecks, requestParts } from './psp-compliance';
 
 export const PSP_RESULT_ANNOTATION = 'psp-result';
 
@@ -100,7 +101,13 @@ export function summarizePsp(
     /** Purchase request – enables the purchase ↔ PSP field mapping checks. */
     readonly request?: object | undefined;
     /** Card used – its full number must not appear anywhere in clear. */
-    readonly card?: Pick<CashierCard, 'number'> | undefined;
+    readonly card?:
+      (Pick<CashierCard, 'number'> & Partial<Pick<CashierCard, 'cvv' | 'expiry'>>) | undefined;
+    /**
+     * PSP checks only (PSP request/response cases, PSP check by ID): apply the masking
+     * rules. Cashier, S2S and session transactions do not run them.
+     */
+    readonly pspChecks?: boolean | undefined;
   } = {},
 ): PspSummary {
   const status = trx.status.toUpperCase();
@@ -146,7 +153,11 @@ export function summarizePsp(
         name: 'PSP request recorded',
         passed: isNonEmpty(bank?.paymentInfo) || isNonEmpty(bank?.allOtherRequest),
         expected: 'request payload',
-        actual: isNonEmpty(bank?.paymentInfo) ? 'present' : 'missing',
+        actual: isNonEmpty(bank?.paymentInfo)
+          ? 'present (paymentInfo)'
+          : isNonEmpty(bank?.allOtherRequest)
+            ? 'present (allOtherRequest – paymentInfo missing)'
+            : 'missing',
       },
       {
         name: 'PSP response recorded',
@@ -178,15 +189,21 @@ export function summarizePsp(
     }
     const pspCalled =
       bank !== undefined && (isNonEmpty(bank.response) || isNonEmpty(bank.paymentTransId));
-    if (bank !== undefined) {
-      const masking = maskingChecks(bank, options.card);
+    if (bank !== undefined && options.pspChecks === true) {
+      // The card and purchase the test sent: their clear values are searched under any key.
+      const masking = maskingChecks(
+        bank,
+        { card: options.card, request: options.request },
+        { paymentMethod: trx.paymentMethod ?? '', rules: getSettings().masking.rules },
+      );
       checks.push(...masking.checks);
       notes.push(...masking.notes);
     }
     if (bank !== undefined && pspCalled) {
       const info = paymentInfoChecks(bank, expectedAmount, expectedCurrency);
       checks.push(...info.checks);
-      if (options.request !== undefined && isNonEmpty(bank.paymentInfo)) {
+      notes.push(...info.notes);
+      if (options.request !== undefined && requestParts(bank).length > 0) {
         const mapping = mappingChecks(options.request as Record<string, unknown>, bank, purchaseId);
         checks.push(...mapping.checks);
         notes.push(...mapping.notes);
