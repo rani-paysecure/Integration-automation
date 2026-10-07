@@ -1,5 +1,9 @@
 # Session flow
 
+> **Scope:** session flow execution for **cards and APMs** (APMs will be configured on the Session data tab later;
+> today the cases are card payments). The URL returned by create session opens the cashier, which shows the payment
+> details; the customer clicks **Pay** and the respective PSP flow runs.
+
 The customer pays on a hosted session page (same card form as the cashier). Two ways to get the customer:
 
 | Option       | Steps                                                                                                 |

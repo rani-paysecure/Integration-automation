@@ -95,7 +95,7 @@ Refine (only what changes – the launcher keeps everything else as it is):
 - **refund** – partial refunds in steps, the exact rest, more than the rest (rest+0.01), total twice,
   zero / negative / non-numeric amounts, amount or reason not sent, unpaid purchase, refund after a full
   refund. Expectations apply to the last step.
-- **s2s** – card methods only: expiry formats (MM/YY, MMYY, past, month 00 / 13), missing / empty /
+- **s2s** – S2S exists only to execute card payments through the API (no APMs, refunds or KYC): expiry formats (MM/YY, MMYY, past, month 00 / 13), missing / empty /
   wrong-type card fields, Luhn failures, browser data values, remember_card on / off / empty, extra
   fields, auth and content-type variants, a second call on the same purchase.
 - **bank-config** – each MID setting on and off against its current value (2D only, partial refund,

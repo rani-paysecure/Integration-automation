@@ -560,6 +560,8 @@ and restore the original value** in `finally`.
 
 ## S2S purchase (`tests/flows/s2s-purchase`, project `s2s-purchase`)
 
+> **Scope:** S2S is only for executing **card payments** through the API – nothing else (no APMs, refunds or KYC).
+
 Card payment methods only (VISA, MASTER, AMEX … – APMs have no S2S on PGS and their runs skip these
 cases). Flow: Purchase API (**CREATED** + purchaseId, checkout not opened) → **S2S API**
 `POST /api/v1/p/{purchaseId}/?s2s=true` with card + browser data → **202 pending + callback_url** →
