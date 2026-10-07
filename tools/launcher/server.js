@@ -29,6 +29,7 @@ const paymentMethodCases = require('./payment-method-cases');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
 const ai = require('./ai-generate');
+const cardImport = require('./card-import');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -1299,6 +1300,15 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.pathname === '/api/ai/status') {
       return send(res, 200, ai.aiStatus());
     }
+    // "Set up AI" window: gateway link + token go to this computer's .env only (git-ignored).
+    if (method === 'POST' && url.pathname === '/api/ai/setup') {
+      const body = await readJson(req);
+      try {
+        return send(res, 200, await ai.setupGateway(body));
+      } catch (error) {
+        throw new HttpError(400, error instanceof Error ? error.message : String(error));
+      }
+    }
     if (method === 'POST' && url.pathname === '/api/test-cases/generate') {
       const body = await readJson(req);
       const category = String(body.category || '');
@@ -1364,11 +1374,41 @@ const server = http.createServer(async (req, res) => {
       catalogCache.clear();
       return send(res, 200, { categories: caseImport.listCategories() });
     }
+    // Test cards tab: read a PSP's test-card page (or pasted text) and list the cards on it.
+    if (method === 'POST' && url.pathname === '/api/cards/import-preview') {
+      const body = await readJson(req, 4 * 1024 * 1024);
+      const env = String(body.env || '');
+      if (!isEnv(env)) throw new HttpError(400, 'Unknown environment');
+      let source = String(body.text || '');
+      let link = '';
+      if (!source.trim()) {
+        link = String(body.url || '').trim();
+        if (!link)
+          throw new HttpError(400, 'Enter the link of the PSP test-card page, or paste its text');
+        try {
+          source = await cardImport.fetchPage(link);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new HttpError(
+            502,
+            /timeout|aborted/i.test(message) ? 'The page did not answer within 20 s' : message,
+          );
+        }
+      }
+      const result = cardImport.extractCards(source);
+      const existing = new Set((effectiveSettings().cards[env] || []).map((c) => c.number));
+      return send(res, 200, {
+        source: link,
+        title: result.title,
+        defaults: result.defaults,
+        cards: result.cards.map((c) => ({ ...c, exists: existing.has(String(c.number)) })),
+      });
+    }
     if (method === 'GET' && url.pathname === '/api/settings') {
       return send(res, 200, settingsView());
     }
     if (method === 'PUT' && url.pathname === '/api/settings') {
-      const body = await readJson(req);
+      const body = await readJson(req, 1024 * 1024); // a card list imported from a PSP page can be long
       if (body.value === undefined || body.value === null)
         throw new HttpError(400, 'Missing value');
       updateSettings(String(body.path || ''), body.value);

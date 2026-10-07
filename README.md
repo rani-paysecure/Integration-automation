@@ -410,6 +410,12 @@ Settings in `.env` (launcher only, test runs never get them): `AI_GATEWAY_URL`
 `AI_GATEWAY_SKILLS`, `AI_GATEWAY_SKILL_PACK`, `AI_GATEWAY_MODEL`, `AI_SESSION_IDLE_S`. No passwords,
 API keys or card numbers are sent in prompts. Needs Node.js 22+ (built-in WebSocket).
 
+**Setting it up on a new computer:** the team's gateway link is committed in
+`config/ai-gateway.json`; the token is not (it is a secret, `.env` is git-ignored). Every tester adds it
+once: launcher → Test cases → **Add AI token…** (or Advanced → AI & skills), paste the token from your QA
+lead, then **Save & test connection**. It is written to that computer's `.env`; no restart needed.
+`AI_GATEWAY_URL` in `.env` overrides the committed link.
+
 The helper CLI still builds and checks upload files without AI:
 
 ```bash

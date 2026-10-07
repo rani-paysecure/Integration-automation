@@ -337,9 +337,15 @@ test.describe('AI test-case generation (simulated gateway WebSocket)', () => {
     expect(edge.note).toBe('');
   });
 
-  test('without gateway settings the generator explains what to set', async () => {
-    process.env.AI_GATEWAY_URL = '';
-    await expect(ai.generateCases('field', {}, {})).rejects.toThrow(/AI_GATEWAY_URL/);
+  test('without a token the generator explains what to set', async () => {
+    const token = process.env.AI_GATEWAY_TOKEN;
+    process.env.AI_GATEWAY_TOKEN = '';
+    try {
+      await expect(ai.generateCases('field', {}, {})).rejects.toThrow(/AI_GATEWAY_TOKEN/);
+    } finally {
+      if (token === undefined) delete process.env.AI_GATEWAY_TOKEN;
+      else process.env.AI_GATEWAY_TOKEN = token;
+    }
   });
 });
 

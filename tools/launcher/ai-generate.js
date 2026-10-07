@@ -57,6 +57,16 @@ const DISALLOWED_TOOLS = [
 ];
 
 /** Reads only the AI settings from .env – the token is never passed on to test runs. */
+/** Committed team default link (config/ai-gateway.json) – the token is never committed. */
+function teamGatewayUrl() {
+  try {
+    const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'ai-gateway.json'), 'utf8'));
+    return String(data.url || '').trim();
+  } catch {
+    return '';
+  }
+}
+
 function aiSettings() {
   let file = {};
   try {
@@ -66,7 +76,7 @@ function aiSettings() {
   }
   // A variable set in the environment (even empty) wins over .env.
   const read = (name) => String(process.env[name] ?? file[name] ?? '').trim();
-  const rawUrl = read('AI_GATEWAY_URL');
+  const rawUrl = read('AI_GATEWAY_URL') || teamGatewayUrl();
   let url = '';
   let urlError = '';
   if (rawUrl) {
@@ -79,6 +89,7 @@ function aiSettings() {
   const skills = read('AI_GATEWAY_SKILLS').toLowerCase() === 'inline' ? 'inline' : 'pack';
   return {
     url,
+    rawUrl,
     urlError,
     token: read('AI_GATEWAY_TOKEN'),
     model: read('AI_GATEWAY_MODEL'),
@@ -99,6 +110,12 @@ function aiStatus() {
   }
   return {
     configured: s.url !== '' && s.token !== '',
+    // For the "Set up AI" window: the link (never the token) and where the values come from.
+    gatewayUrl: s.rawUrl,
+    tokenSet: s.token !== '',
+    lockedByEnvironment: ['AI_GATEWAY_URL', 'AI_GATEWAY_TOKEN'].some(
+      (n) => process.env[n] !== undefined,
+    ),
     provider: 'gateway',
     model: s.urlError ? s.urlError : `Paysecure AI gateway (${host || 'not set'})`,
     skills: s.skills === 'pack' ? `skill pack ${s.pack}` : 'inline skill',
@@ -669,7 +686,7 @@ function requireSettings() {
   if (settings.urlError) throw new Error(settings.urlError);
   if (!settings.url || !settings.token)
     throw new Error(
-      'AI generation needs AI_GATEWAY_URL and AI_GATEWAY_TOKEN (Paysecure AI gateway) in .env – then restart the launcher',
+      'AI generation needs the AI gateway token on this computer – Test cases → "Add AI token…" (AI_GATEWAY_TOKEN in .env)',
     );
   return settings;
 }
@@ -801,8 +818,79 @@ async function refineCases(sessionId, options) {
   }
 }
 
+const ENV_FILE = path.join(ROOT, '.env');
+const readEnvFile = () => {
+  try {
+    return dotenv.parse(fs.readFileSync(ENV_FILE));
+  } catch {
+    return {};
+  }
+};
+/** Sets KEY=value lines in the local .env (git-ignored), keeping every other line as it is. */
+function writeEnvValues(values) {
+  let lines = [];
+  try {
+    lines = fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/);
+  } catch {
+    /* no .env yet */
+  }
+  for (const [key, value] of Object.entries(values)) {
+    const quoted = /[\s#"'=]/.test(value) ? JSON.stringify(value) : value;
+    const at = lines.findIndex((l) => new RegExp(`^\\s*${key}\\s*=`).test(l));
+    if (at >= 0) lines[at] = `${key}=${quoted}`;
+    else {
+      while (lines.length && lines[lines.length - 1] === '') lines.pop();
+      lines.push(`${key}=${quoted}`);
+    }
+  }
+  fs.writeFileSync(ENV_FILE, `${lines.join('\n').replace(/\n+$/, '')}\n`, { mode: 0o600 });
+}
+
+/**
+ * "Set up AI" window: saves the gateway link and token to this computer's .env
+ * (never to settings or git) and checks that the gateway accepts them.
+ * An empty token keeps the saved one.
+ */
+async function setupGateway(input) {
+  const rawUrl = String(input.url || '').trim();
+  const token = String(input.token || '').trim();
+  if (!rawUrl) throw new Error('Enter the AI gateway link');
+  try {
+    websocketUrl(rawUrl);
+  } catch {
+    throw new Error(
+      'The gateway link is not valid – it looks like http://host:8081/v1/agent/completions',
+    );
+  }
+  if (!token && !aiSettings().token) throw new Error('Enter the AI gateway token');
+  const ownUrl = rawUrl !== teamGatewayUrl() || readEnvFile().AI_GATEWAY_URL !== undefined;
+  writeEnvValues({
+    ...(ownUrl ? { AI_GATEWAY_URL: rawUrl } : {}),
+    ...(token ? { AI_GATEWAY_TOKEN: token } : {}),
+  });
+  closeAllAiSessions();
+  const settings = aiSettings();
+  let check = { ok: true, message: 'Connected to the AI gateway.' };
+  try {
+    const gw = await GatewaySession.open({
+      url: settings.url,
+      token: settings.token,
+      mode: 'chat',
+      ...(settings.model ? { model: settings.model } : {}),
+    });
+    gw.close();
+  } catch (error) {
+    check = {
+      ok: false,
+      message: `Saved, but the gateway did not accept the connection: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  return { ...aiStatus(), check };
+}
+
 module.exports = {
   aiStatus,
+  setupGateway,
   generateCases,
   refineCases,
   closeAiSession,

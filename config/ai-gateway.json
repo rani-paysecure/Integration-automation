@@ -1,0 +1,4 @@
+{
+  "$comment": "Team default AI gateway link for launcher → Test cases → Generate with AI. Not a secret. The token is NOT here – each tester adds it once via \"Add AI token…\" (stored in their git-ignored .env). AI_GATEWAY_URL in .env overrides this link.",
+  "url": "http://23.29.114.29:8081/v1/agent/completions"
+}

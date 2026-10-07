@@ -758,6 +758,38 @@
       .pd-checks:empty { display: none; }
       .pd-checks span { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
       .pd-checks .ok { color: var(--pass); background: var(--pass-bg); } .pd-checks .bad { color: var(--fail); background: var(--fail-bg); }
+      /* ── Import test cards ── */
+      .ci-open { display: inline-flex; align-items: center; gap: 6px; }
+      .ci-open svg { width: 15px; height: 15px; color: var(--brand, var(--accent)); }
+      dialog.adv-dialog.card-import { width: min(1000px, calc(100vw - 32px)); }
+      .ci-url { display: flex; gap: 8px; }
+      .ci-url input { flex: 1; margin: 0; }
+      .ci-paste { margin-top: 10px; font-size: 13px; }
+      .ci-paste summary { cursor: pointer; color: var(--brand, var(--accent)); font-weight: 600; }
+      .ci-paste textarea { width: 100%; margin: 8px 0; font: 12.5px ui-monospace, Menlo, monospace; }
+      .ci-source { margin: 12px 0 4px; font-size: 13.5px; overflow-wrap: anywhere; }
+      .ci-defaults label { margin-top: 6px; }
+      .ci-bar { display: flex; align-items: center; gap: 12px; margin: 12px 0 8px; }
+      .ci-bar .check { margin: 0; font-weight: 600; font-size: 13.5px; }
+      .ci-count { font-size: 12.5px; font-weight: 700; color: var(--brand, var(--accent)); background: var(--brand-soft, var(--surface-2)); padding: 3px 10px; border-radius: 999px; }
+      .ci-bar input { margin: 0 0 0 auto; max-width: 260px; font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
+      .ci-list { max-height: min(40vh, 460px); overflow: auto; border: 1px solid var(--border); border-radius: 14px; padding: 6px; background: var(--brand-soft-2, var(--surface-2)); }
+      .ci-group { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px 8px; margin: 6px 0; }
+      .ci-ghead { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+      .ci-ghead span { flex: 1; min-width: 0; }
+      .ci-ghead em { font-style: normal; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+      .ci-row { display: grid; grid-template-columns: auto 58px 170px minmax(140px, 1fr) 150px 160px auto; gap: 8px; align-items: center; padding: 5px 6px; border-radius: 9px; }
+      .ci-row:hover { background: var(--surface-2); }
+      .ci-row.on { background: color-mix(in srgb, var(--brand, var(--accent)) 6%, transparent); }
+      .ci-row.exists { opacity: 0.55; }
+      .ci-row input.ci-label, .ci-row select { margin: 0; font-size: 12.5px; padding: 5px 8px; min-width: 0; }
+      .ci-num { font-size: 12.5px; white-space: nowrap; }
+      .ci-scheme { font: 800 10.5px/1 system-ui, sans-serif; letter-spacing: 0.04em; text-align: center; padding: 5px 4px; border-radius: 6px; color: #fff; background: #7c7a99; }
+      .ci-scheme.visa { background: #1a3f9c; } .ci-scheme.master { background: linear-gradient(135deg, #2b2b3a, #c2410c); } .ci-scheme.amex { background: #0e7490; }
+      .ci-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+      .ci-tag.warn { color: #b45309; background: var(--warn-bg); }
+      .ci-note { margin-right: auto; font-size: 12.5px; }
+      @media (max-width: 820px) { .ci-row { grid-template-columns: auto 50px 1fr; } .ci-row > input.ci-label, .ci-row > select, .ci-row > .ci-tag { grid-column: 2 / -1; } }
       /* ── Environments ── */
       .env-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
       .env-card { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--surface); }
@@ -1247,6 +1279,7 @@
           <div id="cardRows" class="pay-cards"></div>
           <div class="row">
             <button id="newCard" type="button">+ Add card</button>
+            <button id="importCards" type="button" class="ci-open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg> Import from PSP link</button>
             <button id="resetCards" type="button">Reset to team default</button>
           </div>
           <div class="msg" id="cardsMsg"></div>
@@ -2355,6 +2388,87 @@
         state.editingCard = null; saveSettings(`cards.${state.env}`, next, 'cardsMsg', 'Card deleted.');
       }
 
+      // ── import test cards from a PSP's test-card page ─────────────────────
+      const CI_OUTCOMES = [['success-redirect', 'Approved'], ['failure-redirect', 'Declined'], ['rejected', 'Rejected by cashier'], ['pending-redirect', 'Pending'], ['other-page', 'Other page']];
+      const CI_STATUS = { 'success-redirect': ['PAID'], 'failure-redirect': ['ERROR'], rejected: ['CREATED'], 'pending-redirect': ['PENDING'], 'other-page': ['CREATED'], timeout: ['CREATED'] };
+      const ciScheme = (s) => ({ VISA: 'visa', MASTERCARD: 'master', AMEX: 'amex' })[s] || 'other';
+      function openCardImport() {
+        $('ciSub').textContent = `Adds the cards to ${state.env.toUpperCase()}. Paste the link of the PSP's public test-card page – every test card on it is listed here to pick from.`;
+        say('ciMsg', ''); $('cardImportDialog').showModal(); $('ciUrl').focus();
+      }
+      async function findImportCards(fromText) {
+        const body = { env: state.env, ...(fromText ? { text: $('ciText').value } : { url: $('ciUrl').value }) };
+        const button = fromText ? $('ciFetchText') : $('ciFetch'); const old = button.textContent;
+        button.disabled = true; button.textContent = 'Reading…'; say('ciMsg', '');
+        try {
+          const r = await api('/api/cards/import-preview', { method: 'POST', body: JSON.stringify(body) });
+          if (!r.cards.length) { $('ciResult').classList.add('hidden'); say('ciMsg', 'No test card numbers found on this page. If the cards are inside a PDF or behind a login, paste the table text instead.', false); return; }
+          state.ci = { defaults: r.defaults, cards: r.cards.map((c, i) => ({ ...c, i, sel: !c.exists })) };
+          $('ciExpiry').value = r.defaults.expiry; $('ciCvv').value = r.defaults.cvv; $('ciFilter').value = '';
+          const fresh = r.cards.filter((c) => !c.exists).length;
+          $('ciSource').replaceChildren(el('b', {}, r.title || (fromText ? 'Pasted text' : r.source)), el('span', {}, ` · ${r.cards.length} card${r.cards.length === 1 ? '' : 's'} found${fresh < r.cards.length ? ` · ${r.cards.length - fresh} already added` : ''}`));
+          if (!r.defaults.expiryFound) $('ciSource').append(el('span', { class: 'hint' }, ' · no expiry on the page – any future date is used'));
+          $('ciResult').classList.remove('hidden'); renderCardImport();
+        } catch (error) { say('ciMsg', error.message, false); }
+        finally { button.disabled = false; button.textContent = old; }
+      }
+      function renderCardImport() {
+        const ci = state.ci; if (!ci) return;
+        const q = $('ciFilter').value.trim().toLowerCase();
+        const shown = ci.cards.filter((c) => !q || `${c.scheme} ${c.number} ${c.label} ${c.group} ${c.detail} ${outcomeTag(c.expectedOutcome)[1]}`.toLowerCase().includes(q));
+        ci.shown = shown; const list = $('ciList'); list.replaceChildren();
+        const groups = new Map(); for (const c of shown) { if (!groups.has(c.group)) groups.set(c.group, []); groups.get(c.group).push(c); }
+        for (const [group, cards] of groups) {
+          const pickable = cards.filter((c) => !c.exists);
+          const head = el('input', { type: 'checkbox', checked: pickable.length > 0 && pickable.every((c) => c.sel), disabled: !pickable.length });
+          head.indeterminate = pickable.some((c) => c.sel) && !pickable.every((c) => c.sel);
+          head.addEventListener('change', () => { for (const c of pickable) c.sel = head.checked; renderCardImport(); });
+          const box = el('div', { class: 'ci-group' }, el('label', { class: 'ci-ghead' }, head, el('span', {}, group), el('em', {}, `${cards.length}`)));
+          for (const c of cards) {
+            const pick = el('input', { type: 'checkbox', checked: c.sel, disabled: c.exists });
+            pick.addEventListener('change', () => { c.sel = pick.checked; renderCardImport(); });
+            const label = el('input', { class: 'ci-label', value: c.label, title: c.label, ariaLabel: 'Scenario name' });
+            label.addEventListener('input', () => { c.label = label.value; });
+            const outcome = el('select', { ariaLabel: 'Expected cashier result' }, ...CI_OUTCOMES.map(([v, t]) => option(v, t)));
+            outcome.value = c.expectedOutcome; outcome.addEventListener('change', () => { c.expectedOutcome = outcome.value; c.expectedStatuses = CI_STATUS[outcome.value]; });
+            const tds = el('select', { ariaLabel: '3DS challenge' }, option('none', 'No 3DS challenge'), option('manual', '3DS · OTP by tester'), option('otp', '3DS · OTP auto'));
+            tds.value = c.challenge; tds.addEventListener('change', () => { c.challenge = tds.value; });
+            box.append(el('div', { class: `ci-row${c.exists ? ' exists' : ''}${c.sel ? ' on' : ''}`, title: c.detail },
+              pick, el('span', { class: `ci-scheme ${ciScheme(c.scheme)}` }, ({ MASTERCARD: 'MC', DISCOVER: 'DISC', UNIONPAY: 'UPI', MAESTRO: 'MAES' })[c.scheme] || c.scheme),
+              el('span', { class: 'ci-num mono' }, c.number.replace(/(\d{4})(?=\d)/g, '$1 ')),
+              label, outcome, tds,
+              ...(c.exists ? [el('span', { class: 'ci-tag' }, 'Already added')] : !c.confident ? [el('span', { class: 'ci-tag warn', title: 'The page does not say clearly – check the expected result' }, 'Check')] : [])));
+          }
+          list.append(box);
+        }
+        if (!shown.length) list.append(el('p', { class: 'hint' }, 'No card matches the filter.'));
+        const pickable = ci.cards.filter((c) => !c.exists); const n = pickable.filter((c) => c.sel).length;
+        $('ciAll').checked = pickable.length > 0 && n === pickable.length; $('ciAll').indeterminate = n > 0 && n < pickable.length; $('ciAll').disabled = !pickable.length;
+        $('ciCount').textContent = `${n} of ${pickable.length} selected`;
+        $('ciAdd').disabled = !n; $('ciAdd').textContent = n ? `Add ${n} card${n === 1 ? '' : 's'}` : 'Add selected';
+      }
+      async function addImportedCards() {
+        const ci = state.ci; const cards = eff().cards[state.env];
+        const expiry = $('ciExpiry').value.trim(); const cvv = $('ciCvv').value.trim(); const holder = $('ciHolder').value.trim() || 'Test Customer';
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) { say('ciMsg', 'Expiry must be MM/YY, e.g. 12/30.', false); return; }
+        if (!/^\d{3,4}$/.test(cvv)) { say('ciMsg', 'CVV must be 3–4 digits.', false); return; }
+        const ids = new Set(cards.map((c) => c.id)); const added = [];
+        for (const c of ci.cards.filter((x) => x.sel && !x.exists)) {
+          const base = slug(c.label || `${c.scheme} ${c.number.slice(-4)}`); let id = base; let n = 2; while (ids.has(id)) id = `${base}-${n++}`; ids.add(id);
+          added.push({ id, label: (c.label || `${c.scheme} •••• ${c.number.slice(-4)}`).trim(), number: c.number,
+            expiry: c.expiry !== ci.defaults.expiry ? c.expiry : expiry,
+            cvv: c.cvv !== ci.defaults.cvv ? c.cvv : c.scheme === 'AMEX' && cvv.length === 3 && !ci.defaults.cvvFound ? '1234' : cvv,
+            holderName: holder, expectedOutcome: c.expectedOutcome, expectedStatuses: c.expectedStatuses || CI_STATUS[c.expectedOutcome], enabled: $('ciEnable').checked,
+            challenge: { action: c.challenge, otp: '', submit: '' } });
+        }
+        $('ciAdd').disabled = true;
+        try {
+          state.settings = await api('/api/settings', { method: 'PUT', body: JSON.stringify({ path: `cards.${state.env}`, value: [...cards, ...added] }) });
+          renderAll(); $('cardImportDialog').close(); state.ci = null; $('ciResult').classList.add('hidden');
+          say('cardsMsg', `Added ${added.length} card${added.length === 1 ? '' : 's'} to ${state.env.toUpperCase()}.`);
+        } catch (error) { say('ciMsg', error.message, false); renderCardImport(); }
+      }
+
       // ── advanced tab ──────────────────────────────────────────────────────
       function renderAdvanced() {
         const s = eff();
@@ -2602,13 +2716,33 @@
         s2s: 'e.g. expiry formats, missing / wrong card fields, browser data values, remember_card, auth headers',
         'bank-config': 'e.g. each MID setting on / off, conversion with the merchant switch on and off, allowed currencies / cards',
       };
+      function openAiSetup() {
+        const ai = state.ai || {};
+        $('aiSetupUrl').value = ai.gatewayUrl || ''; $('aiSetupToken').value = '';
+        $('aiSetupToken').placeholder = ai.tokenSet ? 'Saved – leave empty to keep it' : 'Paste the gateway token';
+        $('aiSetupLocked').classList.toggle('hidden', !ai.lockedByEnvironment);
+        say('aiSetupMsg', ''); $('aiInfoDialog').close(); $('aiSetupDialog').showModal();
+        (ai.gatewayUrl ? $('aiSetupToken') : $('aiSetupUrl')).focus();
+      }
+      async function saveAiSetup() {
+        const button = $('aiSetupSave'); button.disabled = true; button.textContent = 'Connecting…';
+        try {
+          const r = await api('/api/ai/setup', { method: 'POST', body: JSON.stringify({ url: $('aiSetupUrl').value, token: $('aiSetupToken').value }) });
+          $('aiSetupToken').value = '';
+          await loadAiStatus();
+          say('aiSetupMsg', r.check.message, r.check.ok);
+          if (r.check.ok) setTimeout(() => { if ($('aiSetupDialog').open) $('aiSetupDialog').close(); }, 1200);
+        } catch (error) { say('aiSetupMsg', error.message, false); }
+        finally { button.disabled = false; button.textContent = 'Save & test connection'; }
+      }
       async function loadAiStatus() {
         try {
           state.ai = await api('/api/ai/status');
-          $('aiGenerate').disabled = !state.ai.configured; $('aiOpen').disabled = !state.ai.configured;
+          $('aiGenerate').disabled = !state.ai.configured; $('aiOpen').disabled = false;
+          $('aiOpen').lastChild.textContent = state.ai.configured ? ' Generate…' : state.ai.gatewayUrl ? ' Add AI token…' : ' Set up AI…';
           $('aiHint').textContent = state.ai.configured
             ? `${state.ai.model} (${state.ai.skills}) writes cases in this category's template – checked like an upload, you choose what to add, then refine in the same conversation.`
-            : 'Not set up: add AI_GATEWAY_URL and AI_GATEWAY_TOKEN (Paysecure AI gateway) to .env, then restart the launcher.';
+            : state.ai.gatewayUrl ? 'One-time step on this computer: click "Add AI token…" and paste the AI gateway token (ask your QA lead).' : 'Not set up on this computer yet – click "Set up AI…" and paste the gateway link and token (ask your QA lead).';
         } catch { $('aiGenerate').disabled = true; $('aiOpen').disabled = true; }
         renderAdvanced();
       }
@@ -3019,7 +3153,10 @@
         $('appendCases').addEventListener('click', appendImport);
         $('loadRegexRules').addEventListener('click', loadRegexRules);
         $('aiGenerate').addEventListener('click', generateWithAi);
-        $('aiOpen').addEventListener('click', openAiDialog);
+        $('aiOpen').addEventListener('click', () => (state.ai?.configured ? openAiDialog() : openAiSetup()));
+        $('aiSetupFromInfo').addEventListener('click', openAiSetup);
+        $('aiSetupSave').addEventListener('click', saveAiSetup);
+        $('aiSetupToken').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveAiSetup(); });
         for (const id of ['aiCancel', 'aiDlgClose']) $(id).addEventListener('click', () => $('aiDialog').close());
         $('aiDialog').addEventListener('click', (e) => { if (e.target === $('aiDialog')) $('aiDialog').close(); });
         loadAiStatus();
@@ -3101,6 +3238,13 @@
         $('sessionTokens').addEventListener('mousedown', (e) => e.preventDefault()); // keep the textarea cursor
         $('sessionTokens').addEventListener('click', (e) => { const b = e.target.closest('button[data-token]'); if (b) insertSessionToken(b.dataset.token); });
         $('newCard').addEventListener('click', () => { editCard(null); renderCards(); $('cLabel').focus(); });
+        $('importCards').addEventListener('click', openCardImport);
+        $('ciFetch').addEventListener('click', () => findImportCards(false));
+        $('ciUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') findImportCards(false); });
+        $('ciFetchText').addEventListener('click', () => findImportCards(true));
+        $('ciFilter').addEventListener('input', renderCardImport);
+        $('ciAll').addEventListener('change', () => { for (const c of state.ci?.shown || state.ci?.cards || []) if (!c.exists) c.sel = $('ciAll').checked; renderCardImport(); });
+        $('ciAdd').addEventListener('click', addImportedCards);
         $('saveCard').addEventListener('click', saveCard);
         $('deleteCard').addEventListener('click', deleteCard);
         $('resetCards').addEventListener('click', () => { state.editingCard = null; resetSettings(`cards.${state.env}`, 'cardsMsg'); });
@@ -3173,6 +3317,33 @@
         <button type="button" class="primary" id="aiGenerate"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg> Generate</button>
       </div>
     </dialog>
+    <dialog class="health adv-dialog card-import" id="cardImportDialog" aria-labelledby="ciTitle">
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></span><div><h3 id="ciTitle">Import test cards from a PSP page</h3><p id="ciSub">Paste the link of the PSP's public test-card page – every test card on it is listed here to pick from.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="ai-dlg-body">
+        <div class="ci-url"><input id="ciUrl" type="url" placeholder="https://help.psp.com/…/test-cards" autocomplete="off" /><button type="button" class="primary" id="ciFetch">Find cards</button></div>
+        <details class="ci-paste"><summary>Page needs a login or is a PDF? Paste its text instead</summary>
+          <textarea id="ciText" rows="5" spellcheck="false" placeholder="Copy the card table from the page and paste it here"></textarea>
+          <button type="button" class="small" id="ciFetchText">Find cards in this text</button>
+        </details>
+        <div class="msg" id="ciMsg"></div>
+        <div id="ciResult" class="hidden">
+          <div class="ci-source" id="ciSource"></div>
+          <div class="cols-3 ci-defaults">
+            <div><label for="ciExpiry">Expiry <span class="hint">(MM/YY)</span></label><input id="ciExpiry" /></div>
+            <div><label for="ciCvv">CVV</label><input id="ciCvv" inputmode="numeric" /></div>
+            <div><label for="ciHolder">Cardholder name</label><input id="ciHolder" value="Test Customer" /></div>
+          </div>
+          <div class="ci-bar">
+            <label class="check"><input type="checkbox" id="ciAll" /> Select all</label>
+            <span class="ci-count" id="ciCount"></span>
+            <input id="ciFilter" placeholder="Filter – visa, step up, declined…" autocomplete="off" />
+          </div>
+          <div class="ci-list" id="ciList"></div>
+          <label class="check"><input type="checkbox" id="ciEnable" checked /> Turn the cards on (each one becomes a card test case on the Run tab)</label>
+        </div>
+      </div>
+      <div class="hc-foot"><span class="hint ci-note">Outcome and 3DS are guessed from the page – check them before adding.</span><button type="button" data-close>Cancel</button><button type="button" class="primary" id="ciAdd" disabled>Add selected</button></div>
+    </dialog>
     <dialog class="health adv-dialog" id="authDialog" aria-labelledby="authDialogT">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><div><h3 id="authDialogT">API authentication</h3><p>How the tester’s API key is sent with every API call.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
       <div class="ai-dlg-body">
@@ -3198,11 +3369,24 @@
       <div class="hc-foot"><button id="resetRun" type="button">Reset to default</button><button id="saveRun" class="primary" type="button">Save changes</button></div>
     </dialog>
     <dialog class="health adv-dialog" id="aiInfoDialog" aria-labelledby="aiInfoDialogT">
-      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg></span><div><h3 id="aiInfoDialogT">AI &amp; skills</h3><p>Read from .env when the launcher starts – nothing to save here.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg></span><div><h3 id="aiInfoDialogT">AI &amp; skills</h3><p>The AI gateway this computer uses for "Generate".</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
       <div class="ai-dlg-body">
         <div class="kv-grid" id="aiInfo"></div>
-        <p class="hint" style="margin-top: 12px">Change it in <code>.env</code> (<code>AI_GATEWAY_URL</code>, <code>AI_GATEWAY_TOKEN</code>, optional <code>AI_GATEWAY_SKILLS</code>, <code>AI_GATEWAY_MODEL</code>, <code>AI_SESSION_IDLE_S</code>) and restart the launcher. The skill rules live in <code>ai-skills/paysecure-qa/</code>.</p></div>
-      <div class="hc-foot"><button type="button" class="primary" data-close>Close</button></div>
+        <p class="hint" style="margin-top: 12px">Link and token are kept in this computer's <code>.env</code> (never in git). Optional extras there: <code>AI_GATEWAY_SKILLS</code>, <code>AI_GATEWAY_MODEL</code>, <code>AI_SESSION_IDLE_S</code>. The skill rules live in <code>ai-skills/paysecure-qa/</code>.</p></div>
+      <div class="hc-foot"><button type="button" id="aiSetupFromInfo">Set up / change gateway…</button><button type="button" class="primary" data-close>Close</button></div>
+    </dialog>
+    <dialog class="health adv-dialog" id="aiSetupDialog" aria-labelledby="aiSetupT">
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg></span><div><h3 id="aiSetupT">Set up AI test case generation</h3><p>One-time step on this computer: paste the AI gateway token (ask your QA lead). The team's gateway link is already filled in.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="ai-dlg-body">
+        <label for="aiSetupUrl">Gateway link</label>
+        <input id="aiSetupUrl" placeholder="http://…:8081/v1/agent/completions" autocomplete="off" spellcheck="false" />
+        <label for="aiSetupToken">Token</label>
+        <div class="pw-box"><input id="aiSetupToken" type="password" autocomplete="new-password" spellcheck="false" /></div>
+        <p class="hint" style="margin-top: 10px">Saved only in this computer's <code>.env</code> file, which git ignores – the token is never committed, shown again or written to a log. No restart needed.</p>
+        <p class="msg warn hidden" id="aiSetupLocked">AI_GATEWAY_URL / AI_GATEWAY_TOKEN are also set as environment variables when the launcher starts – those win over what you save here.</p>
+        <div class="msg" id="aiSetupMsg"></div>
+      </div>
+      <div class="hc-foot"><button type="button" data-close>Cancel</button><button type="button" class="primary" id="aiSetupSave">Save &amp; test connection</button></div>
     </dialog>
     <dialog class="health adv-dialog" id="dataDialog" aria-labelledby="dataDialogT">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><div><h3 id="dataDialogT">Data &amp; storage</h3><p>Everything stays on this computer unless you commit it.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
