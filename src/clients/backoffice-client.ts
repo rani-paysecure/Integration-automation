@@ -167,8 +167,13 @@ export class BackofficeClient extends BaseApiClient {
         password: this.credentials.password,
         _csrf: loginCsrf,
       },
+      // The dashboard redirects to http:// after login; following that drops the https
+      // session, so judge the login by the redirect target and stay on https.
+      maxRedirects: 0,
     });
-    if (!result.ok || isLoginFailure(result.raw.url())) {
+    const { location } = result.raw.headers();
+    const target = location ? new URL(location, result.raw.url()).toString() : result.raw.url();
+    if (result.status < 300 || result.status >= 400 || isLoginFailure(target)) {
       throw new ConfigurationError(
         `Back-office login failed for "${this.credentials.username}" (HTTP ${result.status}). ` +
           'Check the dashboard username/password of your tester profile. Note: the dashboard ' +

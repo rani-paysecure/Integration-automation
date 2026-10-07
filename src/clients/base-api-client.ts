@@ -123,6 +123,7 @@ export abstract class BaseApiClient {
             ...(options.params ? { params: { ...options.params } } : {}),
             ...(options.data !== undefined ? { data: options.data } : {}),
             ...(options.form ? { form: { ...options.form } } : {}),
+            ...(options.maxRedirects !== undefined ? { maxRedirects: options.maxRedirects } : {}),
           });
         } catch (error: unknown) {
           const wrapped = new ApiRequestError(method, maskUrl(url), error);
