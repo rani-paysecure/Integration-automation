@@ -17,6 +17,8 @@ export interface RequestOptions {
   readonly timeoutMs?: number;
   /** Send the request without authentication headers (negative auth tests). */
   readonly skipAuth?: boolean;
+  /** Redirects to follow (Playwright default 20); 0 = return the 3xx response itself. */
+  readonly maxRedirects?: number;
 }
 
 /** Normalised response returned by every API client call. */

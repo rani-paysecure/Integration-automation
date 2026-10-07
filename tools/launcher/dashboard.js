@@ -65,7 +65,12 @@ class DashboardClient {
     this.storeCookies(res);
     const location = res.headers.get('location');
     if (res.status >= 300 && res.status < 400 && location && redirects < 5) {
-      return this.request(new URL(location, url).toString(), { method: 'GET' }, redirects + 1);
+      const next = new URL(location, url);
+      // The dashboard redirects to http:// after login; following that drops the
+      // https session cookie, so stay on https for the same host.
+      const current = new URL(url);
+      if (next.host === current.host && current.protocol === 'https:') next.protocol = 'https:';
+      return this.request(next.toString(), { method: 'GET' }, redirects + 1);
     }
     return { res, url };
   }
