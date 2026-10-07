@@ -187,6 +187,8 @@ column, so all fields must be re-posted, and it always stores `is_test_data=fals
 
 ## 8. S2S card payment – `APIController.s2s` → `PurchaseService.s2s` (confirmed on test4)
 
+> **Scope:** S2S is only for executing **card payments** through the API. It has no other purpose – no APMs, refunds or KYC.
+
 `POST /api/v1/p/{purchaseId}/?s2s=true`, body `S2s`: cardholder_name, card_number, expires (MM/YY),
 cvc, remember_card, remote_ip, user_agent, accept_header (the last three `@NotNull`), language,
 java_enabled, javascript_enabled, color_depth, utc_offset, screen_width / screen_height.
@@ -217,3 +219,15 @@ callback_url:"<checkout host>/api/v1/payment/<purchaseId>/"}`, purchase PENDINGE
   remember_card values other than on / off, screen 0, unknown language, extra body fields. Rejected:
   expiry MM/YYYY ("Invalid Card Expiry"), empty cardholder_name ("Card Detail is missing", ERROR), spaces
   in the card number (Luhn, still CREATED).
+
+## 9. Session flow – customer → session → hosted cashier
+
+> **Scope:** the session flow executes payments for **cards and APMs**. Today only cards are automated; APM
+> configuration will be added to the launcher's Session data tab later.
+
+1. Create customer (`POST /v1/customer`, unique `merchantCustomerId`) – or reuse an existing `customerId`.
+2. Create session (`POST /v1/createSession`) – the answer carries the URL of the hosted cashier
+   (`sessionUrl` in today's response) and the `sessionId`.
+3. That URL opens the **cashier**: it shows the order / payment details, the customer chooses the payment method
+   (card or APM) and clicks **Pay** – then the respective PSP flow runs (3DS for cards, the APM's own pages for APMs).
+4. The transaction is found in the back-office by `sessionId` → `purchaseId` → status, PSP request / response, webhooks.

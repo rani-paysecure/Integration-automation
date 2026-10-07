@@ -21,7 +21,6 @@ export const Headers = {
   AUTHORIZATION: 'authorization',
   CONTENT_TYPE: 'content-type',
   CORRELATION_ID: 'x-correlation-id',
-  IDEMPOTENCY_KEY: 'idempotency-key',
 } as const;
 
 export const ContentType = {

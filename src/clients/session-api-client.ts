@@ -2,7 +2,7 @@ import { Endpoints } from '../constants/endpoints';
 import type { ApiResponse } from '../types/api.types';
 import type { CustomerCreated, SessionCreated } from '../types/session.types';
 import { BaseApiClient, type BaseApiClientOptions } from './base-api-client';
-import type { CallOptions } from './payment-api-client';
+import type { CallOptions } from './base-api-client';
 
 /** Session payment API: create customer (POST) → create session (POST, needs the customerId). */
 export class SessionApiClient extends BaseApiClient {

@@ -1,18 +1,22 @@
 # Session flow
 
+> **Scope:** session flow execution for **cards and APMs** (APMs will be configured on the Session data tab later;
+> today the cases are card payments). The URL returned by create session opens the cashier, which shows the payment
+> details; the customer clicks **Pay** and the respective PSP flow runs.
+
 The customer pays on a hosted session page (same card form as the cashier). Two ways to get the customer:
 
-| Option       | Steps                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------- |
+| Option       | Steps                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
 | **new**      | `POST` create customer (`merchantCustomerId` unique every run) → `customerId` → `POST` create session |
-| **existing** | `POST` create session straight away for a `customerId` created earlier (no create customer)        |
+| **existing** | `POST` create session straight away for a `customerId` created earlier (no create customer)           |
 
 Then, for both: `sessionUrl` opened in the customer's browser → card → PAY → 3DS challenge if the bank asks →
 merchant redirect → back-office Transactions: search by **session ID**, the row carries the `purchaseId` →
 final status, PSP request/response and merchant webhooks (same checks as the cashier flow).
 
-| Spec                               | Cases                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------- |
+| Spec                               | Cases                                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `01-session-card-payments.spec.ts` | SES-001 new customer + session · SES-002 existing customer + session · one case per test card (`@session-card-<id>`) |
 
 Choose new / existing (and the customer ID) on the launcher's **Session data** tab; `SESSION_CUSTOMER_ID` in the shell

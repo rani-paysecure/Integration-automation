@@ -13,7 +13,7 @@ on:
         options: [uat]
         default: uat
       grep:
-        description: Optional tag / title filter (e.g. @smoke)
+        description: Optional tag / title filter (e.g. @field-validation or S2S-010)
         required: false
         default: ''
 

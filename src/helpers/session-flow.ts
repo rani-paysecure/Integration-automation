@@ -164,7 +164,8 @@ export async function openSessionPage(
     ];
     for (const candidate of candidates) {
       const target = candidate.first();
-      if ((await candidate.count()) === 0 || !(await target.isVisible().catch(() => false))) continue;
+      if ((await candidate.count()) === 0 || !(await target.isVisible().catch(() => false)))
+        continue;
       await target.click({ timeout: 5_000 }).catch(() => undefined);
       if (await cardVisible(4_000)) {
         testInfo.annotations.push({
@@ -186,7 +187,13 @@ export async function openSessionPage(
   });
   throw new Error(
     `Card form not found on the session page after choosing ${paymentMethod ?? '(no payment method)'}. ` +
-      `Clickable items on the page: ${clickable.map((t) => t.trim()).filter(Boolean).slice(0, 15).join(' | ') || '(none)'}`,
+      `Clickable items on the page: ${
+        clickable
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .slice(0, 15)
+          .join(' | ') || '(none)'
+      }`,
   );
 }
 
@@ -202,9 +209,10 @@ export async function createSession(
     let merchantCustomerId = '';
     if (input.customer.mode === 'new') {
       const customer = await api.createCustomer(input.customer.body, { headers });
-      expect([200, 201, 202], `create customer: API answered HTTP ${String(customer.status)} (expected 200/201/202) – ${apiError(customer.body) || 'no error text'} – check the path ${Endpoints.customers.collection} and the request body`).toContain(
-        customer.status,
-      );
+      expect(
+        [200, 201, 202],
+        `create customer: API answered HTTP ${String(customer.status)} (expected 200/201/202) – ${apiError(customer.body) || 'no error text'} – check the path ${Endpoints.customers.collection} and the request body`,
+      ).toContain(customer.status);
       const customerBody: CustomerCreated = customer.body;
       customerId = text(customerBody.customerId);
       expect(customerId, 'customerId in the create-customer response').not.toBe('');
@@ -221,9 +229,10 @@ export async function createSession(
     });
 
     const session = await api.createSession(input.sessionBody(customerId), { headers });
-    expect([200, 201, 202], `create session: API answered HTTP ${String(session.status)} (expected 200/201/202) – ${apiError(session.body) || 'no error text'} – check the path ${Endpoints.sessions.collection} and the request body`).toContain(
-      session.status,
-    );
+    expect(
+      [200, 201, 202],
+      `create session: API answered HTTP ${String(session.status)} (expected 200/201/202) – ${apiError(session.body) || 'no error text'} – check the path ${Endpoints.sessions.collection} and the request body`,
+    ).toContain(session.status);
     const sessionBody: SessionCreated = session.body;
     const sessionUrl = text(sessionBody.sessionUrl);
     const sessionId = text(sessionBody.sessionId);
@@ -273,13 +282,7 @@ export async function findPurchaseIdBySession(
       'POST',
       `${Endpoints.backoffice.transactions}?${query.toString()}`,
     );
-    let rows: unknown[] = [];
-    try {
-      const parsed: unknown = JSON.parse(response.text);
-      rows = Array.isArray(parsed) ? (parsed as unknown[]) : [];
-    } catch {
-      rows = [];
-    }
+    const rows = parseRows(response.text);
     const records = rows.filter(
       (row): row is Record<string, unknown> => typeof row === 'object' && row !== null,
     );
@@ -293,7 +296,17 @@ export async function findPurchaseIdBySession(
   }
 }
 
-const CARD_FIELDS = (card: CashierCard): Array<{ id: string; value: string; digits: boolean }> => [
+/** Transaction list rows from a backoffice answer; [] when it is not a JSON array. */
+function parseRows(body: string): unknown[] {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return Array.isArray(parsed) ? (parsed as unknown[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+const CARD_FIELDS = (card: CashierCard): { id: string; value: string; digits: boolean }[] => [
   { id: '#cardNumber', value: card.number, digits: true },
   { id: '#cardholderName', value: card.holderName, digits: false },
   { id: '#cardMonthyear', value: card.expiry.replace('/', ''), digits: true },
@@ -318,7 +331,10 @@ export async function fillCardOnSessionPage(
   const missing = async (): Promise<string[]> => {
     const bad: string[] = [];
     for (const field of fields) {
-      const actual = await page.locator(field.id).inputValue().catch(() => '');
+      const actual = await page
+        .locator(field.id)
+        .inputValue()
+        .catch(() => '');
       if (!sameValue(actual, field.value, field.digits)) bad.push(field.id.slice(1));
     }
     return bad;

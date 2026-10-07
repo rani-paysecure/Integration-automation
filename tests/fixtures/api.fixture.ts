@@ -3,8 +3,6 @@ import type { Browser, Page } from '@playwright/test';
 import path from 'node:path';
 import { FileSessionStore, type StorageState } from '@clients/backoffice-session';
 import { BackofficeClient } from '@clients/backoffice-client';
-import { HealthApiClient } from '@clients/health-api-client';
-import { PaymentApiClient } from '@clients/payment-api-client';
 import { PurchaseApiClient } from '@clients/purchase-api-client';
 import { SessionApiClient } from '@clients/session-api-client';
 import { currentDevice, deviceContextOptions } from '@pages/devices';
@@ -13,8 +11,6 @@ import { expect, test as baseTest } from './test.fixture';
 interface ApiClientFixtures {
   /** Opens a cashier page; the browser starts only when a payment is actually made. */
   openCashierPage: () => Promise<Page>;
-  paymentApi: PaymentApiClient;
-  healthApi: HealthApiClient;
   purchaseApi: PurchaseApiClient;
   sessionApi: SessionApiClient;
 }
@@ -46,12 +42,6 @@ export const test = baseTest.extend<ApiClientFixtures, WorkerClientFixtures>({
       return context.newPage();
     });
     await browser?.close();
-  },
-  paymentApi: async ({ apiClientOptions }, use) => {
-    await use(new PaymentApiClient(apiClientOptions));
-  },
-  healthApi: async ({ apiClientOptions }, use) => {
-    await use(new HealthApiClient(apiClientOptions));
   },
   purchaseApi: async ({ apiClientOptions }, use) => {
     await use(new PurchaseApiClient(apiClientOptions));

@@ -12,7 +12,9 @@ const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULTS_FILE = path.join(__dirname, 'defaults.json');
-const SETTINGS_FILE = path.join(ROOT, 'settings.local.json');
+/** LAUNCHER_DATA_DIR (server deployment) keeps the local files outside the code folder. */
+const DATA_DIR = process.env.LAUNCHER_DATA_DIR ? path.resolve(process.env.LAUNCHER_DATA_DIR) : ROOT;
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.local.json');
 
 const OUTCOMES = /** @type {const} */ ([
   'success-redirect',
@@ -130,6 +132,27 @@ const sessionTemplateSchema = z.object({
 
 const endpointsSchema = z.object({ baseUrl: urlOrEmpty, apiBaseUrl: urlOrEmpty });
 
+/** A named, saved version of a baseline template (launcher → S2S data / Session data). */
+const libraryOf = (/** @type {z.ZodTypeAny} */ template) =>
+  z
+    .object({
+      activeId: z.string().default(''),
+      items: z
+        .array(
+          z.object({
+            id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/),
+            name: z.string().trim().min(1).max(80),
+            type: z.string().trim().min(1).max(40),
+            description: z.string().max(300).default(''),
+            updatedAt: z.string().default(''),
+            template,
+          }),
+        )
+        .max(50)
+        .default([]),
+    })
+    .default({ activeId: '', items: [] });
+
 const settingsSchema = z.object({
   run: z.object({
     defaultEnvironment: z.enum(['uat', 'local']),
@@ -148,6 +171,13 @@ const settingsSchema = z.object({
   purchase: z.object({ uat: purchaseTemplateSchema, local: purchaseTemplateSchema }),
   s2s: z.object({ uat: s2sTemplateSchema, local: s2sTemplateSchema }),
   session: z.object({ uat: sessionTemplateSchema, local: sessionTemplateSchema }),
+  /** Saved versions of the S2S / session baseline (launcher). The active one is copied to s2s / session. */
+  s2sLibrary: z
+    .object({ uat: libraryOf(s2sTemplateSchema), local: libraryOf(s2sTemplateSchema) })
+    .default({ uat: { activeId: '', items: [] }, local: { activeId: '', items: [] } }),
+  sessionLibrary: z
+    .object({ uat: libraryOf(sessionTemplateSchema), local: libraryOf(sessionTemplateSchema) })
+    .default({ uat: { activeId: '', items: [] }, local: { activeId: '', items: [] } }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
 });
 

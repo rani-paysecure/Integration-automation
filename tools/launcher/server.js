@@ -32,7 +32,8 @@ const ai = require('./ai-generate');
 const { z } = require('zod');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const PROFILES_FILE = path.join(ROOT, 'profiles.local.json');
+const DATA_DIR = process.env.LAUNCHER_DATA_DIR ? path.resolve(process.env.LAUNCHER_DATA_DIR) : ROOT;
+const PROFILES_FILE = path.join(DATA_DIR, 'profiles.local.json');
 const HTML_FILE = path.join(__dirname, 'index.html');
 const REPORT_DIR = path.join(ROOT, 'reports', 'html');
 const RESULTS_CSV = path.join(ROOT, 'reports', 'field-tests', 'field-test-results.csv');
@@ -72,6 +73,10 @@ const SETTINGS_PATHS = [
   's2s.local',
   'session.uat',
   'session.local',
+  's2sLibrary.uat',
+  's2sLibrary.local',
+  'sessionLibrary.uat',
+  'sessionLibrary.local',
   'cards.uat',
   'cards.local',
 ];
@@ -187,6 +192,187 @@ async function routingFor(env, profileId) {
       targets: r.targets.map((t) => ({ id: t.id, name: t.name })),
     })),
   }));
+}
+
+/**
+ * Dashboard health check of a tester (Testers tab → Check dashboard): login, merchant, Limits/Charges
+ * routing, KYC Bank MID and the saved KYC switch – each step ok / warn / fail / skip with a reason.
+ * Fresh data: the client cache is cleared first. Nothing is changed on the dashboard.
+ */
+async function dashboardHealth(env, profileId) {
+  /** @type {{id:string, title:string, status:'ok'|'warn'|'fail'|'skip', detail:string, action?:string}[]} */
+  const steps = [];
+  const add = (id, title, status, detail, action) =>
+    steps.push({ id, title, status, detail, ...(action ? { action } : {}) });
+  const skipRest = (from) => {
+    const all = [
+      ['login', 'Dashboard connection'],
+      ['merchant', 'Merchant'],
+      ['routing', 'Limits / Charges routing'],
+      ['kyc', 'KYC Bank MID'],
+      ['switch', 'KYC cases on the Run tab'],
+    ];
+    for (const [id, title] of all.slice(all.findIndex(([i]) => i === from)))
+      if (!steps.some((st) => st.id === id))
+        add(id, title, 'skip', 'Not checked – fix the step above first');
+  };
+  const message = (error) => (error instanceof Error ? error.message : String(error));
+  const baseUrl = isEnv(env) ? effectiveSettings().environments[env].baseUrl || '' : '';
+  const result = (extra = {}) => ({
+    env: env.toUpperCase(),
+    dashboardUrl: baseUrl,
+    steps,
+    ...extra,
+  });
+
+  const profile = readProfiles().profiles.find((p) => p.id === profileId);
+  if (profile && !profile.environments?.[env]) {
+    add(
+      'login',
+      'Dashboard connection',
+      'fail',
+      `${profile.name} has no ${env.toUpperCase()} credentials`,
+      `Switch the environment at the top, or add ${env.toUpperCase()} credentials for ${profile.name} and save.`,
+    );
+    skipRest('merchant');
+    return result();
+  }
+  let client;
+  let creds;
+  try {
+    ({ client, creds } = dashboardFor(env, profileId));
+  } catch (error) {
+    add(
+      'login',
+      'Dashboard connection',
+      'fail',
+      message(error),
+      'Add the dashboard username and password of this tester, then save.',
+    );
+    skipRest('merchant');
+    return result();
+  }
+  client.clearCache();
+  try {
+    await client.login();
+    add(
+      'login',
+      'Dashboard connection',
+      'ok',
+      `Signed in to ${new URL(baseUrl).host} as ${creds.dashboard.username}`,
+    );
+  } catch (error) {
+    add(
+      'login',
+      'Dashboard connection',
+      'fail',
+      message(error),
+      'Check the dashboard username / password (and the dashboard URL in Environments).',
+    );
+    skipRest('merchant');
+    return result();
+  }
+
+  if (!creds.merchant) {
+    add(
+      'merchant',
+      'Merchant',
+      'fail',
+      'No merchant chosen for this tester',
+      'Click "Load merchants", pick the merchant of this brand and save the tester.',
+    );
+    skipRest('routing');
+    return result();
+  }
+  const merchant = creds.merchant;
+  try {
+    const found = (await client.merchants()).find((m) => m.id === merchant.id);
+    if (!found) {
+      add(
+        'merchant',
+        'Merchant',
+        'fail',
+        `${merchant.name} (ID ${merchant.id}) is not visible to ${creds.dashboard.username}`,
+        'Pick another merchant, or use a dashboard login that can see this one.',
+      );
+      skipRest('routing');
+      return result({ merchant: merchant.name });
+    }
+    add('merchant', 'Merchant', 'ok', `${found.name} (ID ${found.id}) found in the dashboard`);
+  } catch (error) {
+    add('merchant', 'Merchant', 'fail', message(error));
+    skipRest('routing');
+    return result({ merchant: merchant.name });
+  }
+
+  try {
+    const routes = await client.routing(merchant.id);
+    const currencies = [...new Set(routes.map((r) => r.currency))];
+    const methods = [...new Set(routes.map((r) => r.paymentMethod))];
+    if (routes.length === 0)
+      add(
+        'routing',
+        'Limits / Charges routing',
+        'warn',
+        'No currency / payment-method routes configured',
+        'Add routing in Merchant → Limits/Charges – otherwise the Run tab cannot pick a currency, payment method or MID.',
+      );
+    else
+      add(
+        'routing',
+        'Limits / Charges routing',
+        'ok',
+        `${routes.length} route${routes.length === 1 ? '' : 's'} · ${currencies.slice(0, 6).join(', ')}${currencies.length > 6 ? ' …' : ''} · ${methods.slice(0, 5).join(', ')}${methods.length > 5 ? ' …' : ''}`,
+      );
+  } catch (error) {
+    add(
+      'routing',
+      'Limits / Charges routing',
+      'warn',
+      `Could not read the routing: ${message(error)}`,
+    );
+  }
+
+  let kyc = { enabled: false, provider: '', mid: '' };
+  try {
+    const setup = await client.kycSetup(merchant.id);
+    kyc = { enabled: setup.enabled, provider: setup.provider || '', mid: setup.mid || '' };
+    if (setup.enabled)
+      add(
+        'kyc',
+        'KYC Bank MID',
+        'ok',
+        `${[kyc.provider, kyc.mid].filter(Boolean).join(' – ') || `Bank MID ${setup.bankMidId}`} configured`,
+      );
+    else
+      add(
+        'kyc',
+        'KYC Bank MID',
+        'warn',
+        'No KYC Bank MID configured – KYC cases would fail with kyc_not_enabled',
+        'Select a KYC Bank MID in Merchant Details → Kyc Configuration, then check again.',
+      );
+  } catch (error) {
+    add('kyc', 'KYC Bank MID', 'warn', `Could not read the Kyc Configuration: ${message(error)}`);
+  }
+
+  const saved = creds.kyc?.enabled === true;
+  if (saved === kyc.enabled)
+    add(
+      'switch',
+      'KYC cases on the Run tab',
+      'ok',
+      saved ? 'On – matches the dashboard' : 'Off – matches the dashboard',
+    );
+  else
+    add(
+      'switch',
+      'KYC cases on the Run tab',
+      'warn',
+      `Saved as ${saved ? 'on' : 'off'}, the dashboard says ${kyc.enabled ? 'on' : 'off'} – switched below`,
+      'Click "Save tester" to keep the corrected KYC switch.',
+    );
+  return result({ merchant: merchant.name, kyc });
 }
 
 function environments() {
@@ -381,7 +567,8 @@ function cardIdsFor(url, envOverride) {
 
 function childEnvFor(env) {
   const childEnv = { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
-  delete childEnv.ANTHROPIC_API_KEY; // tests never need it
+  delete childEnv.ANTHROPIC_API_KEY; // tests never need AI credentials
+  delete childEnv.AI_GATEWAY_TOKEN;
   return childEnv;
 }
 
@@ -740,8 +927,12 @@ function startRun(input) {
     'test',
     ...(frameworkOnly
       ? ['--project=framework']
-      : ['--project=cashier-purchase', '--project=s2s-purchase',
-        '--project=session', '--project=kyc']),
+      : [
+          '--project=cashier-purchase',
+          '--project=s2s-purchase',
+          '--project=session',
+          '--project=kyc',
+        ]),
   ];
   if (!frameworkOnly) {
     const escaped = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&'));
@@ -1015,6 +1206,9 @@ const server = http.createServer(async (req, res) => {
           ...caseImport.markDuplicates('regex', generated.cases),
         });
       }
+      if (what === 'health') {
+        return send(res, 200, await dashboardHealth(env, profileId));
+      }
       if (what === 'routing') {
         return send(res, 200, await routingFor(env, profileId));
       }
@@ -1124,6 +1318,25 @@ const server = http.createServer(async (req, res) => {
         throw new HttpError(502, error.message);
       }
     }
+    if (method === 'POST' && url.pathname === '/api/test-cases/refine') {
+      const body = await readJson(req, MAX_UPLOAD_BYTES);
+      try {
+        return send(
+          res,
+          200,
+          await ai.refineCases(String(body.session || ''), {
+            instruction: body.instruction,
+            rejected: body.rejected,
+          }),
+        );
+      } catch (error) {
+        throw new HttpError(error instanceof ai.ConversationGoneError ? 410 : 502, error.message);
+      }
+    }
+    if (method === 'POST' && url.pathname === '/api/test-cases/ai-close') {
+      const body = await readJson(req);
+      return send(res, 200, { closed: ai.closeAiSession(String(body.session || '')) });
+    }
     if (method === 'POST' && url.pathname === '/api/test-cases/append') {
       if (run && run.status === 'running')
         throw new HttpError(409, 'Wait for the current run to finish');
@@ -1139,7 +1352,7 @@ const server = http.createServer(async (req, res) => {
       catalogCache.clear();
       return send(res, 200, { ...result, categories: caseImport.listCategories() });
     }
-    const caseMatch = /^\/api\/test-cases\/((?:FV|RX|PR|EC)-\d{3,})$/.exec(url.pathname);
+    const caseMatch = /^\/api\/test-cases\/([A-Z][A-Z0-9]-\d{3,})$/.exec(url.pathname);
     if (method === 'DELETE' && caseMatch) {
       if (run && run.status === 'running')
         throw new HttpError(409, 'Wait for the current run to finish');
@@ -1241,6 +1454,18 @@ const server = http.createServer(async (req, res) => {
 });
 
 pruneRunHistory();
+server.on('error', (error) => {
+  if (/** @type {NodeJS.ErrnoException} */ (error).code === 'EADDRINUSE') {
+    process.stderr.write(
+      `\n  Port ${PORT} is already in use – the launcher is probably still running in another terminal.\n` +
+        `  Open http://${HOST}:${PORT} in the browser, or stop the old one first:\n` +
+        `    lsof -ti tcp:${PORT} | xargs kill\n` +
+        `  Or start this one on another port:  LAUNCHER_PORT=4174 npm run launcher\n\n`,
+    );
+    process.exit(1);
+  }
+  throw error;
+});
 server.listen(PORT, HOST, () => {
   const address = `http://${HOST}:${PORT}`;
   process.stdout.write(`\n  Test Launcher running at ${address}\n  Press Ctrl+C to stop.\n\n`);
@@ -1275,7 +1500,10 @@ process.on('unhandledRejection', (reason) => {
   );
 });
 
-process.on('SIGINT', () => {
+function shutdown() {
   if (run && run.status === 'running') run.child.kill();
-  process.exit(0);
-});
+  ai.closeAllAiSessions(); // frees the AI gateway seat
+  setTimeout(() => process.exit(0), 400).unref();
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

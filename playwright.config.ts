@@ -128,11 +128,5 @@ export default defineConfig({
           : {}),
       },
     },
-    // Browser-based integration tests can be added later, e.g.:
-    // {
-    //   name: 'e2e-chromium',
-    //   testDir: './tests/e2e',
-    //   use: { ...devices['Desktop Chrome'] },
-    // },
   ],
 });

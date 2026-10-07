@@ -165,8 +165,8 @@ Values come from (highest first): shell / CI variables → `.env.<env>` → `.en
 │   │   ├── environments/        # UAT / LOCAL data
 │   │   ├── purchase/            # baseline purchase request (shared)
 │   │   └── cashier-purchase/    # field-test cases (from field_test_cases 1.xlsx)
-│   └── examples/                # template specs – reference only, not executed
 ├── tools/launcher/              # test launcher UI (server.js + index.html)
+├── ai-skills/paysecure-qa/      # skill pack for the Paysecure AI gateway (Generate with AI)
 ├── reports/                     # generated (git-ignored)
 ├── profiles.example.json        # template – real profiles.local.json is git-ignored
 └── .env.example
@@ -179,18 +179,17 @@ Import aliases: `@config/*`, `@clients/*`, `@constants/*`, `@helpers/*`, `@schem
 
 ```ts
 import { HttpStatus } from '@constants/http';
-import { paymentResponseSchema } from '@schemas/payment.schema';
+import { purchaseCreatedSchema } from '@schemas/purchase.schema';
 import { expect, test } from '@fixtures/api.fixture';
-import { buildPaymentRequest } from '@test-data/purchase/purchase-request.factory';
+import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.factory';
 
-test('creates a payment', { tag: '@smoke' }, async ({ paymentApi, envData }) => {
-  const request = buildPaymentRequest(envData, { amount: 2_500 });
+test('creates a purchase', { tag: '@smoke' }, async ({ purchaseApi, envData, merchant }) => {
+  const request = buildPurchaseRequest(envData, merchant);
 
-  const response = await paymentApi.createPayment(request);
+  const response = await purchaseApi.createPurchase(request);
 
-  expect(response).toHaveStatus(HttpStatus.CREATED);
-  expect(response).toMatchSchema(paymentResponseSchema);
-  expect(response.body.amount).toBe(request.amount);
+  expect(response).toHaveStatus([HttpStatus.OK, HttpStatus.CREATED]);
+  expect(response).toMatchSchema(purchaseCreatedSchema);
 });
 ```
 
@@ -383,17 +382,35 @@ rules, phone repair, "NA" handling) used by the regex tests; refresh its country
 
 ## AI-generated test cases
 
-Two ways, same result (cases in the category's template, validated like an upload, you choose what to add):
+**Launcher → Test cases → Generate with AI**, through the **Paysecure AI gateway** (WebSocket). No
+Claude / Anthropic API key is stored in this project.
 
-- **Launcher → Test cases → Generate with AI.** Choose the category (for regex also the bank in _From
-  the dashboard_), min / max number of cases and an optional focus. Claude gets the template, the
-  request fields, the bank's live field regexes, the test-card IDs, PSP field names seen in earlier
-  runs and the existing cases, and returns new cases. For regex the bank's own regex decides Valid /
-  Invalid. Needs `ANTHROPIC_API_KEY` in `.env` (`AI_MODEL` optional, default `claude-haiku-4-5-20251001`);
-  only the launcher reads the key. No passwords, API keys or card numbers are sent.
-- **Claude skill `generate-test-cases`** (`docs/skills/generate-test-cases/SKILL.md`) for use in Claude
-  (Cowork / Claude Code): "generate 15–25 regex cases for paysafe_payfac". It uses the helper CLI and
-  writes an upload-ready Excel file:
+1. **Generate** – choose the category (for regex also the bank in _From the dashboard_), min / max and
+   an optional focus. The launcher opens a gateway session and sends the template columns plus live
+   context: request fields, the bank's field regexes, MID settings, test-card IDs, PSP field names
+   seen in earlier runs, PGS behaviour and the existing cases. The answer is validated like an upload;
+   for regex the bank's own regex decides Valid / Invalid.
+2. **Refine** – type what should change ("add 3 cases for unicode names", "remove C4", "make C2 use the
+   3DS card") and press Refine. The same conversation answers only the changes (add / update / remove
+   by ref C1, C2 …); unticked cases are sent as rejected so they are not suggested again. Repeat as
+   often as needed, then **Add selected cases**.
+3. The conversation ends when you add or cancel, switch category, click _End conversation_, or after
+   `AI_SESSION_IDLE_S` (default 300 s) unused – this frees the gateway seat. A later Refine on the same
+   preview opens a new gateway session seeded with the current cases, so nothing is lost.
+
+**Skills.** The rules live in the skill pack `ai-skills/paysecure-qa/` (source of truth, versioned
+with the launcher). Deploy it to the gateway (`bundles/skills/paysecure-qa`, see its README): the
+launcher then opens an _agent_ session with that pack (file, shell and web tools disabled) and calls
+`paysecure-qa__generate-test-cases`. While the pack is not deployed – or with `AI_GATEWAY_SKILLS=inline`
+– the launcher opens a cheaper _chat_ session and sends the same SKILL.md as the system prompt. New
+skills for other tasks go into the same pack.
+
+Settings in `.env` (launcher only, test runs never get them): `AI_GATEWAY_URL`
+(`ws://<host>:8081/v1/agent`; an `http://` URL of the host also works), `AI_GATEWAY_TOKEN`, optional
+`AI_GATEWAY_SKILLS`, `AI_GATEWAY_SKILL_PACK`, `AI_GATEWAY_MODEL`, `AI_SESSION_IDLE_S`. No passwords,
+API keys or card numbers are sent in prompts. Needs Node.js 22+ (built-in WebSocket).
+
+The helper CLI still builds and checks upload files without AI:
 
 ```bash
 npm run cases -- spec <category>                     # columns, allowed values, card IDs
@@ -401,6 +418,18 @@ npm run cases -- context <category> [--bank <bank>]  # fields, bank regexes, car
 npm run cases -- write <category> rows.json out.xlsx # rows → filled template
 npm run cases -- check <category> out.xlsx           # validate like the launcher upload
 ```
+
+## Moving the launcher to a server later
+
+The launcher is a local tool today (binds to 127.0.0.1, no login). Two shell variables already keep
+the per-machine files outside the code folder, so a later server or Docker setup can put them on a
+persistent volume without code changes:
+
+- `LAUNCHER_DATA_DIR` – folder for `profiles.local.json` and `settings.local.json` (default: project root).
+- `UPLOADED_CASES_DIR` – folder of the saved test cases (default: `tests/test-data/uploaded-cases`).
+
+Both are read by the launcher and by the test runs it starts. A shared deployment would still need
+sign-in, a run queue and a way to commit added cases – not built yet.
 
 ## Cashier purchase – pay on the cashier (end to end)
 
@@ -530,6 +559,8 @@ and restore the original value** in `finally`.
   (Direct 2D) and Paysafe can then refuse the payment with 5068 "payment handle … not permitted … because of its state".
 
 ## S2S purchase (`tests/flows/s2s-purchase`, project `s2s-purchase`)
+
+> **Scope:** S2S is only for executing **card payments** through the API – nothing else (no APMs, refunds or KYC).
 
 Card payment methods only (VISA, MASTER, AMEX … – APMs have no S2S on PGS and their runs skip these
 cases). Flow: Purchase API (**CREATED** + purchaseId, checkout not opened) → **S2S API**

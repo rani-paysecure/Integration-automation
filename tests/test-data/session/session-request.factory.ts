@@ -46,9 +46,13 @@ function tokenValue(name: string, customerId: string | undefined): string | unde
 /** Fills the {{tokens}} in every string of a body (unknown tokens stay as typed). */
 export function resolveTokens<T>(value: T, customerId?: string): T {
   if (typeof value === 'string') {
-    return value.replace(TOKEN, (whole, name: string) => tokenValue(name, customerId) ?? whole) as T;
+    return value.replace(
+      TOKEN,
+      (whole, name: string) => tokenValue(name, customerId) ?? whole,
+    ) as T;
   }
-  if (Array.isArray(value)) return value.map((item) => resolveTokens(item, customerId)) as T;
+  if (Array.isArray(value))
+    return (value as unknown[]).map((item) => resolveTokens(item, customerId)) as T;
   if (typeof value === 'object' && value !== null) {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [key, resolveTokens(item, customerId)]),
@@ -64,7 +68,8 @@ export function buildCustomerRequest(
   const body: SessionBody = { ...resolveTokens(structuredClone(template.customer)), ...overrides };
   // The API needs a unique merchantCustomerId – add one when the body has none.
   const id = body.merchantCustomerId;
-  if (typeof id !== 'string' || id.trim() === '') body.merchantCustomerId = uniqueMerchantCustomerId();
+  if (typeof id !== 'string' || id.trim() === '')
+    body.merchantCustomerId = uniqueMerchantCustomerId();
   return body;
 }
 

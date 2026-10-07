@@ -9,7 +9,12 @@ import { ConfigurationError } from './errors';
  * in `profiles.local.json` (git-ignored, never committed). Select one with
  * `TEST_PROFILE=<id>` or from the launcher UI (`npm run launcher`).
  */
-export const PROFILES_FILE = path.resolve(__dirname, '..', 'profiles.local.json');
+export const PROFILES_FILE = path.join(
+  process.env.LAUNCHER_DATA_DIR
+    ? path.resolve(process.env.LAUNCHER_DATA_DIR)
+    : path.resolve(__dirname, '..'),
+  'profiles.local.json',
+);
 
 const dashboardSchema = z.object({
   username: z.string().trim().min(1, 'dashboard username is required'),
