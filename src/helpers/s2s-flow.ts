@@ -132,6 +132,8 @@ export async function continueS2s(
       request: input.request,
       expectedBank: input.expectedBank,
       expectedMid: input.expectedMid,
+      // Masking rules + webhook in / out are reported for S2S and session payments too.
+      pspChecks: true,
     },
     false,
     testInfo,

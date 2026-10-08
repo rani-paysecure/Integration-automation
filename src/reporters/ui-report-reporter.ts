@@ -6,6 +6,7 @@ import type { FieldCaseMeta, FieldResultMeta } from '../helpers/field-testing';
 import { PSP_RESULT_ANNOTATION, type PspSummary } from '../helpers/psp-validation';
 import { PSP_FIELD_CHECKS_ANNOTATION, type PspFieldCheckResult } from '../helpers/psp-field-checks';
 import type { HttpExchange } from '../types/api.types';
+import { collapsePolls, type ReportExchange } from '../utils/exchanges';
 import { maskSensitiveData, maskString } from '../utils/masking';
 import { classify, type CategoryId, type Polarity, type ReportItem } from './report-classification';
 
@@ -48,7 +49,8 @@ export interface UiTestRow {
   readonly pspFieldChecks: readonly PspFieldCheckResult[];
   readonly pspRequest: unknown;
   readonly pspResponse: unknown;
-  readonly exchanges: readonly HttpExchange[];
+  /** HTTP calls of the test – repeated identical status polls collapsed (see `repeats`). */
+  readonly exchanges: readonly ReportExchange[];
   readonly errors: readonly string[];
   readonly annotations: Readonly<Record<string, string>>;
 }
@@ -118,8 +120,9 @@ export default class UiReportReporter implements Reporter {
     const fieldCase = parseJson(values[FIELD_CASE_ANNOTATION]) as FieldCaseMeta | undefined;
     const fieldResult = parseJson(values[FIELD_RESULT_ANNOTATION]) as FieldResultMeta | undefined;
     const psp = parseJson(values[PSP_RESULT_ANNOTATION]) as PspSummary | undefined;
-    const exchanges = (parseJson(attachmentText(result, 'http-exchanges.json')) ??
-      []) as HttpExchange[];
+    const exchanges = collapsePolls(
+      (parseJson(attachmentText(result, 'http-exchanges.json')) ?? []) as HttpExchange[],
+    );
 
     const key =
       test.tags.find((tag) =>
