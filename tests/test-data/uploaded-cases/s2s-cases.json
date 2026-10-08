@@ -1,5 +1,5 @@
 {
-  "nextNumber": 8,
+  "nextNumber": 2058,
   "cases": [
     {
       "id": "S2-001",
@@ -162,6 +162,1126 @@
           7
         ],
         "importedAt": "2026-10-01T11:51:20.501Z"
+      }
+    },
+    {
+      "id": "S2-2008",
+      "title": "Card not saved (remember_card off)",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": "off"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2009",
+      "title": "Card saved for the customer (remember_card on)",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": "on"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2010",
+      "title": "remember_card not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "remember_card"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2011",
+      "title": "remember_card empty still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": ""
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2012",
+      "title": "remember_card invalid value is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": "yes"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2013",
+      "title": "remember_card as boolean true",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": true
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          7
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2014",
+      "title": "remote_ip not sent is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "remote_ip"
+      ],
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          8
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2015",
+      "title": "remote_ip empty is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remote_ip": ""
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          9
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2016",
+      "title": "remote_ip null is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remote_ip": null
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          10
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2017",
+      "title": "remote_ip out-of-range octet is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remote_ip": "999.10.10.10"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          11
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2018",
+      "title": "remote_ip plain text is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remote_ip": "abc"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          12
+        ],
+        "importedAt": "2026-10-08T09:40:50.769Z"
+      }
+    },
+    {
+      "id": "S2-2019",
+      "title": "remote_ip IPv6 is accepted",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remote_ip": "2001:db8::1"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          13
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2020",
+      "title": "java_enabled false (string) pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "java_enabled": "false"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          14
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2021",
+      "title": "java_enabled true (string) pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "java_enabled": "true"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          15
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2022",
+      "title": "java_enabled boolean false pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "java_enabled": false
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          16
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2023",
+      "title": "java_enabled not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "java_enabled"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          17
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2024",
+      "title": "java_enabled invalid value is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "java_enabled": "maybe"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          18
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2025",
+      "title": "javascript_enabled true pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": true
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          19
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2026",
+      "title": "javascript_enabled false pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": false
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          20
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2027",
+      "title": "JS disabled with screen/colour/utc/java fields not sent pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": false
+      },
+      "remove": [
+        "color_depth",
+        "utc_offset",
+        "screen_width",
+        "screen_height",
+        "java_enabled"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          21
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2028",
+      "title": "javascript_enabled not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "javascript_enabled"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          22
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2029",
+      "title": "javascript_enabled as string \"true\" pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": "true"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          23
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2030",
+      "title": "javascript_enabled invalid value is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": "yes"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          24
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2031",
+      "title": "JS disabled on Visa frictionless 3DS card pays",
+      "card": "visa-3ds-frictionless",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": false
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          25
+        ],
+        "importedAt": "2026-10-08T09:40:50.770Z"
+      }
+    },
+    {
+      "id": "S2-2032",
+      "title": "JS disabled on Visa 3DS challenge card pays",
+      "card": "visa-3ds-challenge-pass",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "javascript_enabled": false
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          26
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2033",
+      "title": "color_depth not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "color_depth"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          27
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2034",
+      "title": "color_depth 1 (lowest 3DS value) pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": 1
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          28
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2035",
+      "title": "color_depth 48 (highest 3DS value) pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": 48
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          29
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2036",
+      "title": "color_depth non-standard 30 pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": 30
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          30
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2037",
+      "title": "color_depth 0 still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": 0
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          31
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2038",
+      "title": "color_depth as string \"24\" pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": "24"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          32
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2039",
+      "title": "color_depth text is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": "abc"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          33
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2040",
+      "title": "color_depth negative is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "color_depth": -1
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          34
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2041",
+      "title": "utc_offset not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "utc_offset"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          35
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2042",
+      "title": "utc_offset 300 (UTC-5) pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "utc_offset": 300
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          36
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2043",
+      "title": "utc_offset lower boundary -840 pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "utc_offset": -840
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          37
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2044",
+      "title": "utc_offset upper boundary 720 pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "utc_offset": 720
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          38
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2045",
+      "title": "utc_offset out of range 9999 is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "utc_offset": 9999
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          39
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2046",
+      "title": "utc_offset text is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "utc_offset": "abc"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          40
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2047",
+      "title": "screen_width not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "screen_width"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          41
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2048",
+      "title": "screen_height not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "screen_height"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          42
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2049",
+      "title": "Screen width and height not sent still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "screen_width",
+        "screen_height"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          43
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2050",
+      "title": "Screen size as numbers pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": 1280,
+        "screen_height": 900
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          44
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2051",
+      "title": "Mobile screen size 390x844 pays",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": "390",
+        "screen_height": "844"
+      },
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          45
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2052",
+      "title": "Negative screen size is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": -100,
+        "screen_height": -100
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          46
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2053",
+      "title": "Screen size text is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": "abc",
+        "screen_height": "abc"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          47
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2054",
+      "title": "Screen width over 6 digits is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "screen_width": 1000000
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          48
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2055",
+      "title": "Colour, utc and screen fields all not sent (JS on) still pays",
+      "purchase": "new",
+      "auth": "valid",
+      "remove": [
+        "color_depth",
+        "utc_offset",
+        "screen_width",
+        "screen_height"
+      ],
+      "expected": {
+        "http": 202,
+        "statuses": [
+          "PAID"
+        ],
+        "outcome": "success-redirect"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          49
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2056",
+      "title": "Save card but remote_ip missing is rejected",
+      "purchase": "new",
+      "auth": "valid",
+      "set": {
+        "remember_card": "on"
+      },
+      "remove": [
+        "remote_ip"
+      ],
+      "expected": {
+        "http": 400,
+        "code": "transaction_error"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          50
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
+      }
+    },
+    {
+      "id": "S2-2057",
+      "title": "Second call after card saved is rejected",
+      "purchase": "second",
+      "auth": "valid",
+      "set": {
+        "remember_card": "on"
+      },
+      "expected": {
+        "http": 400,
+        "code": "transaction_error",
+        "messageContains": "can be paid for"
+      },
+      "source": {
+        "file": "s2s-cases-browser-fields_1.xlsx",
+        "rows": [
+          51
+        ],
+        "importedAt": "2026-10-08T09:40:50.771Z"
       }
     }
   ]
