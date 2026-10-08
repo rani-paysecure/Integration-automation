@@ -424,7 +424,12 @@ export async function executeSessionTransaction(
     {
       purchaseId,
       card: input.card,
-      request: input.sessionBody(ids.customerId),
+      // Session body + the customer the test created: their clear e-mail / phone / address are
+      // searched in every PSP request (paymentInfo AND allOtherRequest) by value, under any key.
+      request: {
+        ...input.sessionBody(ids.customerId),
+        ...(input.customer.mode === 'new' ? { customer: input.customer.body } : {}),
+      },
       expectedBank: input.expectedBank,
       expectedMid: input.expectedMid,
       // Masking rules + webhook in / out are reported for S2S and session payments too.

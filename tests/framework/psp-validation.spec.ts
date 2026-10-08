@@ -75,6 +75,32 @@ test.describe('Back-office / PSP validation helpers', () => {
     ]);
   });
 
+  test('PSP error text comes from the newest answer, also from form-encoded payloads', () => {
+    const declined = summarizePsp(
+      'pid-1',
+      { ...trx, status: 'ERROR' },
+      {
+        ...bank,
+        response: [
+          'requesttypedescription=THREEDQUERY&errorcode=0&errormessage=Ok',
+          'requesttypedescription=AUTH&errorcode=70000&errormessage=Decline',
+        ],
+      },
+    );
+    expect([declined.gatewayCode, declined.gatewayMessage]).toEqual(['70000', 'Decline']);
+    const json = summarizePsp(
+      'pid-1',
+      { ...trx, status: 'ERROR' },
+      {
+        ...bank,
+        response: [
+          { status: 'FAILED', error: { code: '3022', message: 'The card has been declined' } },
+        ],
+      },
+    );
+    expect([json.gatewayCode, json.gatewayMessage]).toEqual(['3022', 'The card has been declined']);
+  });
+
   test('unpaid purchase without PSP record is "not attempted"', () => {
     const summary = summarizePsp('pid-1', { ...trx, status: 'CREATED' }, undefined);
     expect(summary.attempted).toBe(false);

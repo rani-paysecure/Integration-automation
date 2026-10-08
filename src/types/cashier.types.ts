@@ -10,18 +10,40 @@ export interface CashierCard {
 }
 
 export interface ChallengeSetting {
-  readonly action: 'none' | 'otp' | 'manual';
+  readonly action: 'none' | 'otp' | 'manual' | 'flow';
   /** OTP to type; empty = read the "(OTP: 1234)" hint shown on test ACS pages. */
   readonly otp: string;
   /** Text of the submit button; empty = Submit / Continue / Verify / Confirm / OK. */
   readonly submit: string;
+  /** action "flow": ids on the 3DS flows page. */
+  readonly flowId?: string;
+  readonly scenarioId?: string;
+  /** action "flow": the scenario's steps, resolved from settings (values filled in). */
+  readonly flow?: ResolvedThreeDsFlow | undefined;
+}
+
+export type ThreeDsAction = 'waitText' | 'fill' | 'click' | 'select' | 'check' | 'wait' | 'expire';
+
+/** One bank's 3DS scenario, ready to run on the 3DS page. */
+export interface ResolvedThreeDsFlow {
+  readonly bank: string;
+  readonly scenario: string;
+  readonly outcome: 'success' | 'failure' | 'pending' | 'timeout' | 'other';
+  readonly steps: readonly {
+    readonly action: ThreeDsAction;
+    readonly target: string;
+    /** Value with {detail} placeholders filled in. */
+    readonly value: string;
+    /** Shown in the report instead of the value (secrets / customer data are not printed). */
+    readonly shown: string;
+  }[];
 }
 
 /** What happened on the 3DS challenge page, when one was shown. */
 export interface ChallengeResult {
   readonly shown: boolean;
   readonly host: string;
-  readonly action: 'none' | 'otp' | 'manual';
+  readonly action: 'none' | 'otp' | 'manual' | 'flow';
   /** e.g. "OTP entered, Submit pressed" / "completed by tester" / "not handled". */
   readonly detail: string;
   /** The OTP was typed and submitted (not just shown). */
