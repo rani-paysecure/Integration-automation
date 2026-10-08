@@ -23,6 +23,29 @@ function shownValue(value: string, details: Flow['details']): string {
     .join(' + ');
 }
 
+/** Scenario id of "Automatic": type every 3DS page field, then Submit / Continue. */
+export const AUTO_SCENARIO = 'auto';
+/** Button texts tried (in order) by the Automatic scenario. */
+export const AUTO_SUBMIT = 'Submit|Continue|Confirm|Authenticate|Verify|Next|OK|Proceed';
+
+type Scenario = Flow['scenarios'][number];
+
+/** Automatic scenario: each 3DS field (step 2) typed into the field with its name, then Submit. */
+function automaticScenario(flow: Flow): Scenario {
+  return {
+    id: AUTO_SCENARIO,
+    name: 'Automatic',
+    description: '',
+    outcome: 'success',
+    steps: [
+      ...flow.details
+        .filter((d) => d.key !== '' && d.value !== '')
+        .map((d) => ({ action: 'fill' as const, target: d.label || d.key, value: `{${d.key}}` })),
+      { action: 'click' as const, target: AUTO_SUBMIT, value: '' },
+    ],
+  };
+}
+
 /** The scenario a card points to, steps resolved – or undefined when it no longer exists. */
 export function resolveThreeDsFlow(
   flowId: string,
@@ -30,10 +53,14 @@ export function resolveThreeDsFlow(
   flows: readonly Flow[] = getSettings().threeDsFlows.flows,
 ): ResolvedThreeDsFlow | undefined {
   const flow = flows.find((f) => f.id === flowId);
-  const scenario = flow?.scenarios.find((s) => s.id === scenarioId);
-  if (flow === undefined || scenario === undefined) return undefined;
+  if (flow === undefined) return undefined;
+  const scenario =
+    scenarioId === AUTO_SCENARIO || scenarioId === ''
+      ? automaticScenario(flow)
+      : flow.scenarios.find((s) => s.id === scenarioId);
+  if (scenario === undefined) return undefined;
   return {
-    bank: flow.label || flow.bank,
+    bank: flow.bank,
     scenario: scenario.name,
     outcome: scenario.outcome,
     steps: scenario.steps.map((step) => ({
