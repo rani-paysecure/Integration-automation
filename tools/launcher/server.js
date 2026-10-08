@@ -1006,6 +1006,12 @@ function startRun(input) {
   return run.id;
 }
 
+/** History file name of a run (same as the UI reporter): finish time in UTC, e.g. 2026-10-06T12-18-14. */
+const runStamp = (finishedAt) =>
+  String(finishedAt || '')
+    .replace(/[:.]/g, '-')
+    .slice(0, 19);
+
 /**
  * Keeps only the newest `run.keepRuns` reports (Advanced → Logging & reports, default 5)
  * in reports/ui/history – the Report tab's run list. latest.json is never touched.
@@ -1237,19 +1243,29 @@ const server = http.createServer(async (req, res) => {
       (url.pathname === '/api/report' || url.pathname === '/api/report.xlsx')
     ) {
       const name = String(url.searchParams.get('run') || 'latest');
-      const file =
+      const latestFile = path.join(UI_REPORT_DIR, 'latest.json');
+      let file =
         name === 'latest'
-          ? path.join(UI_REPORT_DIR, 'latest.json')
+          ? latestFile
           : /^[0-9T-]{19}$/.test(name)
             ? path.join(UI_REPORT_DIR, 'history', `${name}.json`)
             : undefined;
+      // A run already pruned from history may still be the latest one.
+      if (file && !fs.existsSync(file) && name !== 'latest' && fs.existsSync(latestFile)) {
+        const latest = JSON.parse(fs.readFileSync(latestFile, 'utf8'));
+        if (runStamp(latest.finishedAt) === name) file = latestFile;
+      }
       if (!file || !fs.existsSync(file)) throw new HttpError(404, 'No report yet');
       const report = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (url.pathname === '/api/report') return send(res, 200, report);
-      // One presentable workbook (Summary + Results) for sharing.
-      const stamp = String(report.finishedAt || '')
-        .slice(0, 16)
-        .replace(/[:T]/g, '-');
+      // One presentable workbook (Summary + Results) for sharing – named after the run's
+      // local finish time (the time shown on the report page), not UTC.
+      const finished = report.finishedAt ? new Date(report.finishedAt) : undefined;
+      const two = (n) => String(n).padStart(2, '0');
+      const stamp =
+        finished && !Number.isNaN(finished.getTime())
+          ? `${finished.getFullYear()}-${two(finished.getMonth() + 1)}-${two(finished.getDate())}_${two(finished.getHours())}-${two(finished.getMinutes())}-${two(finished.getSeconds())}`
+          : '';
       res.writeHead(200, {
         'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'content-disposition': `attachment; filename="test-report-${stamp || name}.xlsx"`,

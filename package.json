@@ -15,7 +15,6 @@
     "test:s2s": "playwright test --project=s2s-purchase",
     "test:kyc": "playwright test --project=kyc",
     "test:kyc:all": "cross-env KYC_INCLUDE_SLOW=1 playwright test --project=kyc",
-    "test:s2s": "playwright test --project=s2s-purchase",
     "test:session": "playwright test --project=session",
     "test:framework": "playwright test --project=framework",
     "test:headed": "playwright test --headed",
