@@ -1936,7 +1936,11 @@
       async function loadHistory() {
         const { runs } = await api('/api/reports').catch(() => ({ runs: [] }));
         const h = $('history'); h.replaceChildren(option('latest', 'Latest run'));
-        for (const r of runs) h.append(option(r, `Run ${r.slice(0, 10)} ${r.slice(11).replace(/-/g, ':')} UTC`));
+        // History files are named by UTC finish time – show them in this computer's local time.
+        for (const r of runs) {
+          const at = new Date(`${r.slice(0, 10)}T${r.slice(11).replace(/-/g, ':')}Z`);
+          h.append(option(r, Number.isNaN(at.getTime()) ? `Run ${r}` : `Run ${at.toLocaleString([], { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}`));
+        }
       }
       const pretty = (value) => (value === undefined || value === null || value === '' ? '—' : typeof value === 'string' ? value : JSON.stringify(value, null, 2));
       function kv(label, value) { return el('div', { class: 'kv' }, el('span', { class: 'hint' }, label.charAt(0).toUpperCase() + label.slice(1)), el('b', {}, value || '—')); }
@@ -2069,7 +2073,9 @@
         for (const f of [fVerdict, fCat, fPol]) f.addEventListener('change', render);
         fText.addEventListener('input', render);
         render();
-        const csvButton = el('a', { href: `/api/report.xlsx?run=${encodeURIComponent(name)}`, class: 'download-btn', title: 'Download report (Excel)' }, '⬇ Excel');
+        // Pin the download to the exact run on screen (not "latest", which a newer run may have replaced).
+        const runId = String(report.finishedAt || '').replace(/[:.]/g, '-').slice(0, 19) || name;
+        const csvButton = el('a', { href: `/api/report.xlsx?run=${encodeURIComponent(runId)}`, class: 'download-btn', title: `Download this run as Excel (finished ${new Date(report.finishedAt).toLocaleString()})` }, '⬇ Excel');
         const pwLink = el('a', { href: '/report/', target: '_blank', rel: 'noopener', class: 'small-link', title: 'Open the Playwright HTML report' }, 'Playwright ↗');
         view.replaceChildren(header, tabs, el('div', { class: 'report-filters' }, fVerdict, fCat, fPol, fText, el('span', { class: 'report-actions' }, expandAll, csvButton, ...(name === 'latest' ? [pwLink] : []))), list);
       }
