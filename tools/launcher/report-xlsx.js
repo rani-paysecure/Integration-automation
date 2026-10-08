@@ -427,7 +427,14 @@ async function reportWorkbook(report) {
       '',
       lines(t.expectedItems),
       lines(t.actualItems),
-      t.purchaseId || '',
+      [
+        t.purchaseId || '',
+        t.annotations && t.annotations['session id']
+          ? `Session: ${t.annotations['session id']}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n'),
       t.pspTransactionId || '',
       Number(((t.durationMs || 0) / 1000).toFixed(1)),
       t.verdict === 'FAIL' ? firstError(t) : '',

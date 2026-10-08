@@ -65,7 +65,7 @@ test.describe('PSP compliance checks', () => {
       ['Masking · General – customer contact data · E-mail', 'masked at 1 place(s)'],
       [
         'Masking · General – customer contact data · Phone number',
-        'could not verify – no field with a known key name, and the value is not known to the test',
+        'masked at 1 place(s) (merchant / sub-merchant block) · no customer phone number sent to the PSP',
       ],
       [
         'Masking · Card payments – card details · Card number',
@@ -229,6 +229,41 @@ test.describe('PSP compliance checks', () => {
     expect(result.notes.join(' | ')).toContain(
       'Warning: masking could not be verified for E-mail, Phone number',
     );
+  });
+
+  test('paymentInfo empty: masking is checked in allOtherRequest (masked sub-merchant phone, session customer)', () => {
+    const record = bank({
+      paymentInfo: {},
+      allOtherRequest: [
+        {
+          paymentFacilitator: { subMerchant: { name: 'Shop', phone: '***', email: '***' } },
+          profile: { firstName: 'Nitendra', email: '***' },
+        },
+      ],
+      response: [],
+    });
+    const noValues = maskingChecks(record, undefined, { paymentMethod: 'VISA', isCard: false });
+    expect(noValues.checks.every((c) => c.passed)).toBe(true);
+    expect(noValues.checks.map((c) => c.actual)).toEqual([
+      'masked at 1 place(s)',
+      'masked at 1 place(s) (merchant / sub-merchant block) · no customer phone number sent to the PSP',
+    ]);
+    expect(noValues.notes.join(' | ')).not.toContain('could not be verified');
+
+    // The session customer's phone is known → searched by value in allOtherRequest as well.
+    const leaked = bank({
+      paymentInfo: {},
+      allOtherRequest: [{ profile: { mobileNo: '+447700900123' } }],
+      response: [],
+    });
+    const result = maskingChecks(
+      leaked,
+      { request: { customer: { phone: '+447700900123' } } },
+      { paymentMethod: 'VISA', isCard: false },
+    );
+    const phone = result.checks.find((c) => c.name.endsWith('Phone number'));
+    expect(phone?.passed).toBe(false);
+    expect(phone?.actual).toContain('allOtherRequest[0].profile.mobileNo');
   });
 
   test('purchase fields are mapped to the PSP request', () => {

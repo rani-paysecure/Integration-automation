@@ -85,7 +85,7 @@ function parseXmlString(text: string): Json | undefined {
 }
 
 /** A string value that holds a whole payload (JSON, form-encoded or XML) → parsed object. */
-function parseJsonString(value: string): unknown {
+export function parseJsonString(value: string): unknown {
   const trimmed = value.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
@@ -495,6 +495,11 @@ export function maskingChecks(
         );
       }
       const masked = customer.filter((l) => looksMasked(l.value)).length;
+      // Only a merchant / sub-merchant block carries the field (e.g. paymentFacilitator.subMerchant.phone)
+      // and it is masked → the stored request shows it masked; nothing readable to report.
+      const merchantMasked = t.customerOnly
+        ? byKey.filter((l) => isMerchantLeaf(l) && looksMasked(l.value)).length
+        : 0;
       let actual: string;
       if (clear.length > 0) {
         actual = `NOT MASKED – ${t.label} is readable at ${clear.join(', ')}${clearByValue.length > 0 ? ` (${clearByKey.length > 0 ? 'by key and ' : ''}found by the value the test sent)` : ''}`;
@@ -502,6 +507,8 @@ export function maskingChecks(
         actual = `masked at ${String(masked)} place(s)${t.values.length > 0 ? ' · sent value not readable anywhere' : ''}`;
       } else if (t.values.length > 0) {
         actual = 'not sent to the PSP (sent value searched in every request / response)';
+      } else if (merchantMasked > 0) {
+        actual = `masked at ${String(merchantMasked)} place(s) (merchant / sub-merchant block) · no customer ${t.label.toLowerCase()} sent to the PSP`;
       } else {
         actual =
           'could not verify – no field with a known key name, and the value is not known to the test';
@@ -665,7 +672,12 @@ export function mappingChecks(
             : mismatched.map((l) => `${l.path}="${l.value}"`).join(', '),
     });
   }
-  const notes = notSent.length > 0 ? [`Not in the PSP request: ${notSent.join(', ')}`] : [];
+  const notes =
+    notSent.length > 0
+      ? [
+          `Customer fields not sent to the PSP (not in paymentInfo or allOtherRequest): ${notSent.join(', ')}`,
+        ]
+      : [];
   return { checks, notes };
 }
 

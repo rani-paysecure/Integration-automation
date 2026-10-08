@@ -57,11 +57,14 @@ const cardSettingSchema = z.object({
    */
   challenge: z
     .object({
-      action: z.enum(['none', 'otp', 'manual']),
+      action: z.enum(['none', 'otp', 'manual', 'flow']),
       otp: z.string().trim().max(40).default(''),
       submit: z.string().trim().max(40).default(''),
+      /** action "flow": the bank's 3DS flow (3DS flows page) and which of its scenarios this card runs. */
+      flowId: z.string().trim().max(48).default(''),
+      scenarioId: z.string().trim().max(48).default(''),
     })
-    .default({ action: 'none', otp: '', submit: '' }),
+    .default({ action: 'none', otp: '', submit: '', flowId: '', scenarioId: '' }),
 });
 
 const purchaseTemplateSchema = z.object({
@@ -154,6 +157,72 @@ const libraryOf = (/** @type {z.ZodTypeAny} */ template) =>
     })
     .default({ activeId: '', items: [] });
 
+/**
+ * 3DS flows (launcher → 3DS flows): per bank / PSP, what its 3DS page asks for and the
+ * steps of each test scenario. Cards link to a scenario (card challenge action "flow").
+ */
+const flowSlug = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{0,47}$/, 'id: lowercase letters, digits, "-"');
+const THREE_DS_ACTIONS = /** @type {const} */ ([
+  'waitText', // wait until this text is on the 3DS page (identifies the page / next page)
+  'fill', // type a value into the field with this label / placeholder / name
+  'click', // click the button / link with this text
+  'select', // choose an option (value) in the dropdown with this label ('' = first dropdown)
+  'check', // tick the checkbox with this label
+  'wait', // pause `value` seconds
+  'expire', // do nothing more – let the 3DS page time out (timeout scenarios)
+]);
+const threeDsStepSchema = z.object({
+  action: z.enum(THREE_DS_ACTIONS),
+  /** Visible text / label / placeholder / name (or a CSS selector starting with "css="). */
+  target: z.string().trim().max(200).default(''),
+  /** Literal, or {key} of a 3DS detail, e.g. {otp}, {sortCode}. */
+  value: z.string().trim().max(200).default(''),
+});
+const threeDsFlowSchema = z.object({
+  id: flowSlug,
+  /** Bank / PSP name as on the dashboard (Banks), e.g. trustpayments-card-json. */
+  bank: z.string().trim().min(1).max(80),
+  label: z.string().trim().max(80).default(''),
+  methods: z.array(z.string().trim().min(1).max(40)).max(40).default([]),
+  /** What the 3DS page asks for: OTP, sort code, account number, e-mail … – used as {key} in steps. */
+  details: z
+    .array(
+      z.object({
+        key: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/, 'detail key: letters, digits, "_"'),
+        label: z.string().trim().max(80).default(''),
+        value: z.string().max(200).default(''),
+      }),
+    )
+    .max(30)
+    .default([]),
+  docsUrl: z.string().trim().max(500).default(''),
+  notes: z.string().max(4000).default(''),
+  /** Screenshots, videos, PDFs in psp-flows/<id>/ (uploaded on the 3DS flows page). */
+  attachments: z
+    .array(
+      z.object({
+        file: z.string().regex(/^[\w.() -]{1,120}$/),
+        caption: z.string().max(200).default(''),
+      }),
+    )
+    .max(40)
+    .default([]),
+  scenarios: z
+    .array(
+      z.object({
+        id: flowSlug,
+        name: z.string().trim().min(1).max(80),
+        outcome: z.enum(['success', 'failure', 'pending', 'timeout', 'other']),
+        description: z.string().max(500).default(''),
+        steps: z.array(threeDsStepSchema).max(30).default([]),
+      }),
+    )
+    .max(40)
+    .default([]),
+});
+
 /** Masking rule (launcher → Masking rules): fields that must be masked in stored PSP calls. */
 const maskingRuleSchema = z
   .object({
@@ -202,6 +271,14 @@ const settingsSchema = z.object({
     .object({ uat: libraryOf(sessionTemplateSchema), local: libraryOf(sessionTemplateSchema) })
     .default({ uat: { activeId: '', items: [] }, local: { activeId: '', items: [] } }),
   cards: z.object({ uat: z.array(cardSettingSchema), local: z.array(cardSettingSchema) }),
+  /** 3DS flows per bank / PSP – the same in every environment. */
+  threeDsFlows: z
+    .object({ flows: z.array(threeDsFlowSchema).max(50) })
+    .refine(
+      (t) => new Set(t.flows.map((f) => f.id)).size === t.flows.length,
+      '3DS flow ids must be unique',
+    )
+    .default({ flows: [] }),
   /** Same for every environment: masking is a PGS rule, not an environment setting. */
   masking: z
     .object({ rules: z.array(maskingRuleSchema).max(50) })
@@ -251,6 +328,7 @@ module.exports = {
   OUTCOMES,
   cardSettingSchema,
   maskingRuleSchema,
+  threeDsFlowSchema,
   purchaseTemplateSchema,
   s2sTemplateSchema,
   sessionTemplateSchema,

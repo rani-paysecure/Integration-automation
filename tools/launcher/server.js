@@ -41,6 +41,22 @@ const REPORT_DIR = path.join(ROOT, 'reports', 'html');
 const RESULTS_CSV = path.join(ROOT, 'reports', 'field-tests', 'field-test-results.csv');
 const PSP_CSV = path.join(ROOT, 'reports', 'psp-validation', 'psp-validation-results.csv');
 const UI_REPORT_DIR = path.join(ROOT, 'reports', 'ui');
+/** Screenshots / videos / docs per 3DS flow: psp-flows/<flow id>/<file> (videos stay local – git-ignored). */
+const FLOW_FILES_DIR = path.join(DATA_DIR, 'psp-flows');
+const FLOW_FILE_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.pdf': 'application/pdf',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/plain; charset=utf-8',
+};
+const MAX_FLOW_FILE_BYTES = 200 * 1024 * 1024;
 const PLAYWRIGHT_CLI = require.resolve('@playwright/test/cli', { paths: [ROOT] });
 
 const HOST = '127.0.0.1';
@@ -82,6 +98,7 @@ const SETTINGS_PATHS = [
   'cards.uat',
   'cards.local',
   'masking',
+  'threeDsFlows',
 ];
 
 function effectiveSettings() {
@@ -1149,6 +1166,68 @@ const server = http.createServer(async (req, res) => {
         'x-content-type-options': 'nosniff',
       });
       return fs.createReadStream(file).pipe(res);
+    }
+    // 3DS flows: files (screenshots, a recording, PSP docs) of one bank's flow.
+    const flowFile = /^\/api\/three-ds\/([a-z0-9][a-z0-9-]{0,47})\/files(?:\/([^/]+))?$/.exec(
+      url.pathname,
+    );
+    if (flowFile) {
+      const dir = path.join(FLOW_FILES_DIR, flowFile[1]);
+      const name = flowFile[2] === undefined ? '' : decodeURIComponent(flowFile[2]);
+      const safe = (n) => /^[\w.() -]{1,120}$/.test(n) && !n.startsWith('.');
+      if (method === 'GET' && name === '') {
+        const files = fs.existsSync(dir)
+          ? fs
+              .readdirSync(dir)
+              .filter((f) => safe(f) && FLOW_FILE_TYPES[path.extname(f).toLowerCase()])
+              .map((f) => ({ file: f, bytes: fs.statSync(path.join(dir, f)).size }))
+          : [];
+        return send(res, 200, { files });
+      }
+      if (!safe(name) || !FLOW_FILE_TYPES[path.extname(name).toLowerCase()]) {
+        throw new HttpError(
+          400,
+          'File type not supported – use PNG / JPG / GIF / WEBP, PDF, MP4 / MOV / WEBM or TXT / MD',
+        );
+      }
+      const file = path.join(dir, name);
+      if (method === 'GET') {
+        if (!fs.existsSync(file)) throw new HttpError(404, 'Not found');
+        res.writeHead(200, {
+          'content-type': FLOW_FILE_TYPES[path.extname(name).toLowerCase()],
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        });
+        return fs.createReadStream(file).pipe(res);
+      }
+      if (method === 'PUT') {
+        // Raw body (no JSON / base64) so a screen recording of a few minutes fits.
+        fs.mkdirSync(dir, { recursive: true });
+        const tmp = `${file}.part`;
+        await new Promise((resolve, reject) => {
+          let size = 0;
+          const out = fs.createWriteStream(tmp);
+          req.on('data', (chunk) => {
+            size += chunk.length;
+            if (size > MAX_FLOW_FILE_BYTES) {
+              req.destroy();
+              out.destroy();
+              fs.rmSync(tmp, { force: true });
+              reject(new HttpError(413, 'File too large (max 200 MB)'));
+            }
+          });
+          req.pipe(out);
+          out.on('finish', resolve);
+          out.on('error', reject);
+          req.on('error', reject);
+        });
+        fs.renameSync(tmp, file);
+        return send(res, 200, { file: name, bytes: fs.statSync(file).size });
+      }
+      if (method === 'DELETE') {
+        fs.rmSync(file, { force: true });
+        return send(res, 200, { deleted: name });
+      }
     }
     if (method === 'GET' && url.pathname === '/') {
       const html = fs.readFileSync(HTML_FILE, 'utf8').replace('__LAUNCHER_TOKEN__', TOKEN);

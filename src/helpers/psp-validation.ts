@@ -3,7 +3,13 @@ import { getSettings } from '../../config/settings';
 import type { BackofficeTransaction, BankTransaction } from '../schemas/backoffice.schema';
 import type { CashierCard } from '../types/cashier.types';
 import { maskSensitiveData } from '../utils/masking';
-import { mappingChecks, maskingChecks, paymentInfoChecks, requestParts } from './psp-compliance';
+import {
+  mappingChecks,
+  maskingChecks,
+  parseJsonString,
+  paymentInfoChecks,
+  requestParts,
+} from './psp-compliance';
 
 export const PSP_RESULT_ANNOTATION = 'psp-result';
 
@@ -45,9 +51,19 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Depth-first search for the first primitive value under one of `keys`. */
+const normKey = (key: string): string => key.toLowerCase().replace(/[-_\s]/g, '');
+
+/**
+ * Depth-first search for the first primitive value under one of `keys` (case, "_" and "-"
+ * ignored: `errorMessage` = `error_message` = `errormessage`). Strings holding a JSON,
+ * form-encoded or XML payload are searched too.
+ */
 export function findFirstValue(value: unknown, keys: readonly string[], depth = 0): string {
   if (depth > 6) return '';
+  if (typeof value === 'string') {
+    const parsed = parseJsonString(value);
+    return parsed === undefined ? '' : findFirstValue(parsed, keys, depth + 1);
+  }
   if (Array.isArray(value)) {
     for (const item of value) {
       const found = findFirstValue(item, keys, depth + 1);
@@ -56,12 +72,14 @@ export function findFirstValue(value: unknown, keys: readonly string[], depth = 
     return '';
   }
   if (!isObject(value)) return '';
-  for (const key of keys) {
-    const candidate = value[key];
-    if (typeof candidate === 'string' || typeof candidate === 'number') return String(candidate);
+  const wanted = keys.map(normKey);
+  for (const want of wanted) {
+    const hit = Object.entries(value).find(([k]) => normKey(k) === want)?.[1];
+    if ((typeof hit === 'string' && hit.trim() !== '') || typeof hit === 'number')
+      return String(hit);
   }
   for (const nested of Object.values(value)) {
-    if (typeof nested === 'object' && nested !== null) {
+    if ((typeof nested === 'object' && nested !== null) || typeof nested === 'string') {
       const found = findFirstValue(nested, keys, depth + 1);
       if (found !== '') return found;
     }
@@ -73,6 +91,40 @@ function firstResponse(bank: BankTransaction | undefined): unknown {
   const response = bank?.response;
   return Array.isArray(response) ? response[0] : response;
 }
+
+/** PSP answers newest first (the last answer carries the final result / error), 3DS answers after. */
+function responsesNewestFirst(bank: BankTransaction | undefined): unknown[] {
+  const list = (v: unknown): unknown[] =>
+    Array.isArray(v) ? (v as unknown[]).slice() : v === undefined || v === null ? [] : [v];
+  return [
+    ...list(bank?.response).reverse(),
+    ...list((bank as Json | undefined)?.response3ds).reverse(),
+  ];
+}
+
+/** Error / result text of the PSP – newest answer first. */
+const PSP_CODE_KEYS = [
+  'responseCode',
+  'resultCode',
+  'errorCode',
+  'error_code',
+  'reasonCode',
+  'code',
+  'returnCode',
+];
+const PSP_MESSAGE_KEYS = [
+  'responseCodeDescription',
+  'errorMessage',
+  'error_message',
+  'errorDescription',
+  'responseMessage',
+  'resultMessage',
+  'statusMessage',
+  'reason',
+  'declineReason',
+  'message',
+  'description',
+];
 
 function isNonEmpty(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
@@ -253,13 +305,8 @@ export function summarizePsp(
     pspAmount: Number.isFinite(pspAmount) ? String(pspAmount) : '',
     pspCurrency: bank?.currency ?? '',
     pspStatus: findFirstValue(response, ['status', 'transactionStatus', 'state']),
-    gatewayCode: findFirstValue(response, ['responseCode', 'resultCode', 'code', 'errorCode']),
-    gatewayMessage: findFirstValue(response, [
-      'responseCodeDescription',
-      'message',
-      'description',
-      'errorMessage',
-    ]),
+    gatewayCode: findFirstValue(responsesNewestFirst(bank), PSP_CODE_KEYS),
+    gatewayMessage: findFirstValue(responsesNewestFirst(bank), PSP_MESSAGE_KEYS),
     errorMessage: trx.errorMsg ?? '',
     checks,
     notes,
@@ -274,16 +321,28 @@ export async function recordPspResult(
 ): Promise<void> {
   testInfo.annotations.push({ type: PSP_RESULT_ANNOTATION, description: JSON.stringify(summary) });
   if (bank === undefined) return;
+  // Every non-empty part, with payloads stored as strings (JSON / form / XML) shown parsed.
+  const parts = (names: readonly string[]): unknown => {
+    const record = bank as Json;
+    const readable = (v: unknown): unknown =>
+      typeof v === 'string' ? (parseJsonString(v) ?? v) : Array.isArray(v) ? v.map(readable) : v;
+    const filled = names.filter((n) => isNonEmpty(record[n]));
+    if (filled.length === 0) return null;
+    if (filled.length === 1) return readable(record[filled[0] ?? '']);
+    return Object.fromEntries(filled.map((n) => [n, readable(record[n])]));
+  };
   await testInfo.attach('psp-request.json', {
     body: JSON.stringify(
-      maskSensitiveData(bank.paymentInfo ?? bank.allOtherRequest ?? null),
+      maskSensitiveData(
+        parts(['paymentInfo', 'allOtherRequest', 'allOtherRequest3ds', 'cancelInfo']),
+      ),
       null,
       2,
     ),
     contentType: 'application/json',
   });
   await testInfo.attach('psp-response.json', {
-    body: JSON.stringify(maskSensitiveData(bank.response ?? null), null, 2),
+    body: JSON.stringify(maskSensitiveData(parts(['response', 'response3ds'])), null, 2),
     contentType: 'application/json',
   });
 }

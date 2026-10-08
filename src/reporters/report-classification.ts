@@ -153,6 +153,88 @@ const pspCheckLabel = (name: string): string =>
 const item = (label: string, value: string | undefined): ReportItem[] =>
   value === undefined || value === '' ? [] : [{ label, value }];
 
+/** "PSP webhook log: a: zombied, b: consumed" → [{ name, status }]. */
+function webhookList(actual: string): { name: string; status: string }[] {
+  const list = /PSP webhook log: (.*)$/.exec(actual)?.[1] ?? '';
+  return list
+    .split(', ')
+    .map((part) => /^(.*): ([\w-]+)$/.exec(part.trim()))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => ({ name: m[1] ?? '', status: m[2] ?? '' }));
+}
+
+/**
+ * PSP notes as named rows instead of generic "Note" lines:
+ *  - Warning: … is shown as the yellow warning on the card – not repeated here;
+ *  - customer fields the PSP did not get → "Not sent to PSP";
+ *  - merchant webhook (webhook:out) and PSP webhook (webhook:in) each get their own row,
+ *    a zombied webhook of another bank as "Other bank's webhook".
+ */
+function structuredPspNotes(psp: PspSummary): ReportItem[] {
+  const items: ReportItem[] = [];
+  const used = new Set<string>();
+  const find = (re: RegExp): string | undefined => psp.notes.find((n) => re.test(n));
+  const take = (note: string | undefined): string | undefined => {
+    if (note !== undefined) used.add(note);
+    return note;
+  };
+
+  const notSent = take(find(/^Customer fields not sent to the PSP|^Not in the PSP request/));
+  if (notSent !== undefined) {
+    items.push({
+      label: 'Not sent to PSP',
+      value: `${notSent.replace(/^[^:]*:\s*/, '')} – not in paymentInfo or allOtherRequest (this PSP's request does not include them)`,
+    });
+  }
+
+  const out = psp.checks.find((c) => c.name.startsWith('Merchant webhook sent'));
+  const refused = take(find(/^Merchant endpoint did not accept/));
+  if (out !== undefined) {
+    const answer = refused === undefined ? '' : /webhook: ([^(]*)/.exec(refused)?.[1]?.trim();
+    items.push({
+      label: 'Merchant webhook (webhook:out)',
+      value: `${out.passed ? 'Sent' : 'NOT sent'} – ${out.actual}${answer ? ` · merchant URL answered ${answer} (expected with a test callback URL that does not accept POST)` : ''}`,
+    });
+  }
+
+  const received = psp.checks.find((c) => c.name.startsWith('PSP webhook received'));
+  take(find(/^Other PSP webhook config/));
+  const none = take(find(/^No PSP webhook/));
+  const hooks = received === undefined ? [] : webhookList(received.actual);
+  const consumed = hooks.filter((h) => /^(already_)?consumed$/i.test(h.status));
+  const others = hooks.filter((h) => !/^(already_)?consumed$/i.test(h.status));
+  if (none !== undefined) {
+    items.push({
+      label: 'PSP webhook (webhook:in)',
+      value: 'None received – this PSP answers synchronously or sends no webhook for this flow',
+    });
+  } else if (hooks.length > 0) {
+    items.push({
+      label: 'PSP webhook (webhook:in)',
+      value:
+        consumed.length > 0
+          ? `Passed – ${consumed.map((h) => `${h.name}: ${h.status === 'consumed' ? 'Consumed' : 'Already consumed'}`).join(', ')} (bank of this transaction)`
+          : `Not consumed – ${others.map((h) => `${h.name}: ${h.status}`).join(', ')}`,
+    });
+    if (consumed.length > 0) {
+      for (const h of others) {
+        items.push({
+          label: "Other bank's webhook",
+          value: `${h.name}: ${h.status === 'zombied' ? 'Zombied' : h.status} – posted to another bank's webhook config; it does not belong to this transaction's bank (expected)`,
+        });
+      }
+    }
+  } else if (received !== undefined) {
+    items.push({ label: 'PSP webhook (webhook:in)', value: received.actual });
+  }
+
+  for (const note of psp.notes) {
+    if (used.has(note) || /^warning:/i.test(note)) continue; // warnings: yellow box on the card
+    items.push({ label: 'Note', value: note });
+  }
+  return items;
+}
+
 export function classify(input: ClassifyInput): Classification {
   const category = categoryOf(input.key);
   const { values, fieldCase, fieldResult, psp, pspFieldChecks } = input;
@@ -203,6 +285,18 @@ export function classify(input: ClassifyInput): Classification {
       })),
     );
   }
+  // S2S calls: "HTTP 400 · transaction_error: Invalid Card Expiry …" → HTTP / Result / Message.
+  const s2s = /^HTTP (\d{3})(?: · ([\w.-]+)(?::\s*([\s\S]*))?)?$/.exec(
+    values['s2s response'] ?? '',
+  );
+  if (s2s) {
+    actualItems.push(
+      { label: 'HTTP', value: s2s[1] ?? '' },
+      ...item('Result', s2s[2]),
+      ...item('Message', s2s[3]?.trim()),
+    );
+  } else actualItems.push(...item('S2S response', values['s2s response']));
+  actualItems.push(...item('Final status', values['purchase status after']));
   actualItems.push(
     ...item('Device', values.device),
     ...item('Device data to PGS', values['device data to PGS']),
@@ -219,11 +313,19 @@ export function classify(input: ClassifyInput): Classification {
       label: 'PSP checks',
       value: `${String(psp.checks.filter((c) => c.passed).length)}/${String(psp.checks.length)} passed${psp.pspStatus ? ` · PSP status ${psp.pspStatus}` : ''}`,
     });
+    // What the PSP answered on an unsuccessful payment (its own code / message).
+    if (!/^(PAID|SETTLED|PARTIAL_PAID|OVER_PAID)$/i.test(psp.purchaseStatus)) {
+      const pspText = [psp.gatewayCode, psp.gatewayMessage].filter(Boolean).join(' – ');
+      actualItems.push(...item('PSP message', pspText));
+      if (psp.errorMessage && psp.errorMessage !== psp.gatewayMessage) {
+        actualItems.push(...item('PGS error', psp.errorMessage));
+      }
+    }
     // Failed checks by name (masking, mapping, webhooks …) so the reader sees WHAT failed.
     for (const check of psp.checks.filter((c) => !c.passed).slice(0, 8)) {
       actualItems.push({ label: `✗ ${check.name}`, value: check.actual || '(empty)' });
     }
-    for (const note of psp.notes.slice(0, 4)) actualItems.push({ label: 'Note', value: note });
+    actualItems.push(...structuredPspNotes(psp));
   }
   actualItems.push(
     ...item('KYC', values['kyc result'] ?? values['kyc response']),
