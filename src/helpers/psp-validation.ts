@@ -104,8 +104,8 @@ export function summarizePsp(
     readonly card?:
       (Pick<CashierCard, 'number'> & Partial<Pick<CashierCard, 'cvv' | 'expiry'>>) | undefined;
     /**
-     * PSP checks only (PSP request/response cases, PSP check by ID): apply the masking
-     * rules. Cashier, S2S and session transactions do not run them.
+     * Apply the masking rules – PSP request/response cases, PSP check by ID, S2S and
+     * session payments. The other cashier runs (card, regex, edge, field, bank & MID) do not.
      */
     readonly pspChecks?: boolean | undefined;
   } = {},
