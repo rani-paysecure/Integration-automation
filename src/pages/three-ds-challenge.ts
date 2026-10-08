@@ -122,8 +122,15 @@ const STEP_TIMEOUT_MS = 30_000;
 const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = (text: string): RegExp => new RegExp(`^\\s*${escape(text)}\\s*$`, 'i');
 
-/** Candidate elements for a step in one frame – first visible one wins. */
+/** Candidate elements for a step in one frame – first visible one wins. "A|B" tries A, then B. */
 function candidates(frame: Frame, action: string, target: string): Locator[] {
+  if (target.includes('|') && !target.startsWith('css=')) {
+    return target
+      .split('|')
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .flatMap((t) => candidates(frame, action, t));
+  }
   if (target.startsWith('css=')) return [frame.locator(target.slice(4))];
   switch (action) {
     case 'fill':

@@ -824,13 +824,27 @@
       .tds-drow { display: grid; grid-template-columns: 170px 1fr 1fr auto; gap: 8px; margin: 6px 0; align-items: center; }
       .tds-drow.head { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 12px; }
       .tds-drow input { margin: 0; }
-      .tds-add-sc select { width: auto; margin: 0; }
+      .opt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); vertical-align: middle; margin-left: 4px; }
+      .ed-nav button .opt { display: inline-block; margin: 3px 0 0; }
+      .tds-bank-hint:empty { display: none; } #tdsBank { margin-top: 6px; }
+      .tds-add-sc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0 4px; }
+      .tds-add-sc label { margin: 0; font-weight: 600; } .tds-add-sc select { width: auto; flex: 1; min-width: 220px; margin: 0; }
+      .tds-auto { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding: 14px 16px; border-radius: 12px; border: 1px dashed color-mix(in srgb, #2f9e44 45%, transparent); background: color-mix(in srgb, #2f9e44 6%, var(--surface)); font-size: 13.5px; }
+      .tds-sc-no { font-size: 11.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--o); }
+      .tds-sc-fields { display: grid; grid-template-columns: 1fr 260px; gap: 10px; margin-top: 6px; }
+      .tds-sc-fields label { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+      .tds-sc-fields input, .tds-sc-fields select { margin: 0; }
+      .tds-summary { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: 10px 0 2px; padding: 8px 10px; border-radius: 9px; font-size: 13px; background: var(--surface); border: 1px solid var(--border); }
+      .tds-summary .arrow { color: var(--muted); } .tds-summary b { color: var(--o); }
+      .tds-what { display: flex; gap: 6px; align-items: center; min-width: 0; } .tds-what > input { flex: 1; min-width: 0; } .tds-what select { width: auto; }
+      .tds-pair { display: flex; gap: 6px; flex: 1; min-width: 0; } .tds-pair input { flex: 1; min-width: 0; }
+      .tds-word { font-size: 12.5px; color: var(--muted); font-weight: 600; } .tds-what input.tds-secs { flex: 0 0 90px; }
       .tds-scenario { --o: #7c7a99; border: 1px solid var(--border); border-left: 4px solid var(--o); border-radius: 12px; padding: 10px 12px; margin: 10px 0; background: color-mix(in srgb, var(--o) 4%, var(--surface)); }
-      .tds-sc-head { display: grid; grid-template-columns: 1fr 170px auto; gap: 8px; align-items: center; }
+      .tds-sc-head { display: flex; justify-content: space-between; align-items: center; }
       .tds-sc-head input, .tds-sc-head select, .tds-scenario > input { margin: 0; }
-      .tds-scenario > input { margin-top: 8px; font-size: 13px; }
+      .tds-scenario > input { margin-top: 8px; font-size: 12.5px; }
       .tds-steps { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 6px; }
-      .tds-step { display: grid; grid-template-columns: 24px 190px 1fr 1fr auto; gap: 6px; align-items: center; }
+      .tds-step { display: grid; grid-template-columns: 24px 190px 1fr auto; gap: 8px; align-items: center; }
       .tds-step select, .tds-step input { margin: 0; font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
       .tds-step input:disabled { opacity: 0.4; }
       .tds-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11.5px; font-weight: 800; color: #fff; background: var(--o); }
@@ -843,7 +857,7 @@
       .tds-file img, .tds-file video { width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; background: var(--surface-2); }
       .tds-file b { font-size: 12.5px; overflow-wrap: anywhere; } .tds-file input { margin: 4px 0; font-size: 12.5px; }
       .tds-doc { display: grid; place-items: center; height: 90px; border-radius: 8px; font-weight: 800; color: var(--brand, var(--accent)); background: var(--surface-2); text-decoration: none; }
-      @media (max-width: 760px) { .tds-step { grid-template-columns: 24px 1fr; } .tds-step > input, .tds-step > .tds-step-btns { grid-column: 2; } .tds-drow, .tds-sc-head { grid-template-columns: 1fr; } }
+      @media (max-width: 760px) { .tds-step { grid-template-columns: 24px 1fr; } .tds-step > .tds-what, .tds-step > .tds-step-btns { grid-column: 2; } .tds-drow, .tds-sc-fields { grid-template-columns: 1fr; } .tds-what { flex-wrap: wrap; } }
       /* ── Masking rules ── */
       [data-panel='masking'] { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
       [data-panel='masking'].hidden { display: none; }
@@ -2568,7 +2582,7 @@
         const card = { id, label, number: $('cNumber').value.replace(/\s/g, ''), expiry: $('cExpiry').value.trim(), cvv: $('cCvv').value.trim(), holderName: $('cHolder').value.trim(),
           expectedOutcome: $('cOutcome').value, expectedStatuses: $('cStatuses').value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean), enabled: $('cEnabled').checked,
           challenge: { action: $('cChallenge').value, otp: $('cOtp').value.trim(), submit: $('cSubmit').value.trim(), flowId: $('cChallenge').value === 'flow' ? $('cFlow').value : '', scenarioId: $('cChallenge').value === 'flow' ? $('cScenario').value : '' } };
-        if (card.challenge.action === 'flow' && (!card.challenge.flowId || !card.challenge.scenarioId)) { say('cardMsg', 'Choose the bank 3DS flow and its scenario.', false); return; }
+        if (card.challenge.action === 'flow' && (!card.challenge.flowId || !card.challenge.scenarioId)) { say('cardMsg', 'Choose the bank of the dynamic 3DS flow.', false); return; }
         const next = state.editingCard ? cards.map((c) => (c.id === id ? card : c)) : [...cards, card];
         state.editingCard = id;
         saveSettings(`cards.${state.env}`, next, 'cardMsg', 'Card saved.');
@@ -2661,19 +2675,56 @@
 
       // ── 3DS flows (per bank / PSP) ───────────────────────────────────────
       const TDS_OUTCOMES = { success: ['Success', 'success-redirect', ['PAID']], failure: ['Failure', 'failure-redirect', ['ERROR']], pending: ['Pending', 'pending-redirect', ['PENDING']], timeout: ['Time-out / expired', 'other-page', ['CREATED', 'EXPIRED']], other: ['Other', 'other-page', ['CREATED']] };
-      const TDS_ACTIONS = [['waitText', 'Wait for text on the page'], ['fill', 'Type into field'], ['click', 'Click button / link'], ['select', 'Choose in dropdown'], ['check', 'Tick checkbox'], ['wait', 'Wait (seconds)'], ['expire', 'Let it time out']];
+      const TDS_ACTIONS = [['waitText', 'Wait for text'], ['fill', 'Type'], ['click', 'Click'], ['select', 'Pick in dropdown'], ['check', 'Tick checkbox'], ['wait', 'Pause'], ['expire', 'Let the page time out']];
+      /** Expected result of a scenario, in words. */
+      const TDS_RESULT = { success: '✓ Payment succeeds – PAID', failure: '✗ Payment fails – ERROR', pending: '… Payment stays pending', timeout: '⏱ 3DS page times out – EXPIRED', other: 'Other – stays on a page' };
+      /** One step in plain words, e.g. Type OTP into "One-time password". */
+      function tdsStepText(st, details) {
+        const q = (t) => (t ? `“${t}”` : '…');
+        const val = (v) => v.replace(/\{(\w+)\}/g, (w, k) => details.find((x) => x.key === k)?.label || k) || '…';
+        switch (st.action) {
+          case 'waitText': return `Wait for ${q(st.target)}`;
+          case 'fill': return `Type ${val(st.value)} into ${q(st.target)}`;
+          case 'click': return `Click ${q(st.target)}`;
+          case 'select': return `Pick ${q(st.value)}${st.target ? ` in ${q(st.target)}` : ''}`;
+          case 'check': return `Tick ${q(st.target)}`;
+          case 'wait': return `Pause ${st.value || '…'} s`;
+          default: return 'Let it time out';
+        }
+      }
       const TDS_DETAILS = [['otp', 'OTP'], ['sortCode', 'Sort code'], ['accountNumber', 'Account number'], ['email', 'E-mail'], ['password', 'Password'], ['phone', 'Phone']];
       const TDS_TEMPLATES = {
-        blank: ['Blank scenario', 'success', []],
-        otp: ['OTP + Submit → success', 'success', [['waitText', 'Purchase Authentication', ''], ['fill', 'One-time password', '{otp}'], ['click', 'Submit', '']]],
-        button: ['Outcome button → failure', 'failure', [['click', 'Failed', '']]],
-        dropdown: ['Outcome dropdown + Submit', 'success', [['select', '', 'Authenticated'], ['click', 'Submit', '']]],
-        bank: ['Sort code + account number', 'success', [['fill', 'Sort code', '{sortCode}'], ['fill', 'Account number', '{accountNumber}'], ['click', 'Continue', '']]],
+        blank: ['Empty scenario', 'success', []],
+        otp: ['OTP, then Submit', 'success', [['waitText', 'Purchase Authentication', ''], ['fill', 'One-time password', '{otp}'], ['click', 'Submit', '']]],
+        button: ['Click the "Failed" button', 'failure', [['click', 'Failed', '']]],
+        dropdown: ['Pick the outcome in a dropdown, then Submit', 'success', [['select', '', 'Authenticated'], ['click', 'Submit', '']]],
+        bank: ['Sort code + account number, then Continue', 'success', [['fill', 'Sort code', '{sortCode}'], ['fill', 'Account number', '{accountNumber}'], ['click', 'Continue', '']]],
         twoStep: ['OTP, then e-mail check', 'success', [['fill', 'One-time password', '{otp}'], ['click', 'Next', ''], ['fill', 'E-mail', '{email}'], ['click', 'Confirm', '']]],
-        timeout: ['Let it time out', 'timeout', [['waitText', 'Purchase Authentication', ''], ['expire', '', '']]],
+        timeout: ['Leave the 3DS page to time out', 'timeout', [['waitText', 'Purchase Authentication', ''], ['expire', '', '']]],
       };
       const tdsFlows = () => eff().threeDsFlows?.flows || [];
-      const tdsName = (f) => f.label || f.bank;
+      const tdsName = (f) => f?.bank || '';
+      /** Bank of the editor: the dashboard choice, or the typed name ("Other"). */
+      const tdsBankValue = () => ($('tdsBankSel').value === '__other' || !$('tdsBankSel').value ? $('tdsBank').value.trim() : $('tdsBankSel').value);
+      function syncTdsBank() { $('tdsBank').classList.toggle('hidden', $('tdsBankSel').value !== '__other'); say('tdsEdMsg', ''); }
+      /** Bank dropdown from the dashboard (needs a tester with a dashboard login); "Other" types a name. */
+      async function loadTdsBanks(current) {
+        const sel = $('tdsBankSel'); const hint = $('tdsBankHint');
+        const fill = (banks, note) => {
+          const names = [...new Set([...(current ? [current] : []), ...banks])].sort((a, b) => a.localeCompare(b));
+          sel.replaceChildren(option('', banks.length ? '– choose a bank –' : '– no bank list –'), ...names.map((b) => option(b, b)), option('__other', 'Other – type the name…'));
+          sel.value = current || (banks.length ? '' : '__other'); hint.textContent = note; syncTdsBank();
+        };
+        const profileId = dashboardTester();
+        if (!profileId) { fill([], 'Bank list needs a tester with a dashboard login (Run tab) – or type the name.'); return; }
+        state.tdsBanks ||= {};
+        if (!state.tdsBanks[state.env]) {
+          fill([], 'Loading banks from the dashboard …');
+          try { state.tdsBanks[state.env] = (await api(`/api/dashboard/banks?env=${state.env}&profileId=${encodeURIComponent(profileId)}`)).banks; }
+          catch (error) { fill([], `Bank list not available (${error.message}) – type the name.`); return; }
+        }
+        fill(state.tdsBanks[state.env], '');
+      }
       function renderFlows() {
         const flows = tdsFlows(); const box = $('tdsList'); box.replaceChildren();
         const cards = eff().cards[state.env] || [];
@@ -2705,14 +2756,13 @@
         state.tds = { index, draft: flow ? structuredClone(flow) : { id: '', bank: '', label: '', methods: [], details: [{ key: 'otp', label: 'OTP', value: '' }], docsUrl: '', notes: '', attachments: [], scenarios: [] } };
         const d = state.tds.draft;
         $('tdsEdTitle').textContent = flow ? `Edit ${tdsName(flow)}` : 'Add dynamic 3DS flow';
-        $('tdsBank').value = d.bank; $('tdsLabel').value = d.label; $('tdsMethods').value = d.methods.join(', '); $('tdsDocs').value = d.docsUrl; $('tdsNotes').value = d.notes;
-        const banks = new Set((state.dash?.routes || []).flatMap((r) => (r.routeTo === 'route_to_bank' ? r.targets.map((t) => t.name) : [])).filter(Boolean));
-        $('tdsBankList').replaceChildren(...[...banks].sort().map((b) => option(b, b)));
+        $('tdsBank').value = d.bank; $('tdsMethods').value = d.methods.join(', '); $('tdsDocs').value = d.docsUrl; $('tdsNotes').value = d.notes;
+        loadTdsBanks(d.bank);
         const methods = new Set(['VISA', 'MASTER', 'AMEX', 'DISCOVER', 'JCB', 'MAESTRO', ...(state.dash?.routes || []).map((r) => r.paymentMethod).filter(Boolean)]);
         $('tdsMethodList').replaceChildren(...[...methods].sort().map((m) => option(m, m)));
         $('tdsTemplate').replaceChildren(...Object.entries(TDS_TEMPLATES).map(([id, [label]]) => option(id, label)));
         renderTdsDetails(); renderTdsScenarios(); renderTdsFiles();
-        say('tdsEdMsg', ''); showTdsSection('bank'); $('tdsEditor').showModal(); $('tdsBank').focus();
+        say('tdsEdMsg', ''); showTdsSection('bank'); $('tdsEditor').showModal(); $('tdsBankSel').focus();
       }
       function renderTdsDetails() {
         const d = state.tds.draft;
@@ -2728,32 +2778,61 @@
         }));
       }
       function renderTdsScenarios() {
-        const d = state.tds.draft; const keys = d.details.map((x) => `{${x.key}}`);
+        const d = state.tds.draft; const keys = d.details.filter((x) => x.key);
         $('tdsScenarios').replaceChildren(...d.scenarios.map((sc, si) => {
-          const name = el('input', { value: sc.name, placeholder: 'e.g. OTP + Submit → success', oninput: () => { sc.name = name.value; } });
-          const outcome = el('select', { onchange: () => { sc.outcome = outcome.value; card.className = `tds-scenario ${sc.outcome}`; } }, ...Object.entries(TDS_OUTCOMES).map(([v, [l]]) => option(v, l)));
+          const card = el('div', { class: `tds-scenario ${sc.outcome}` });
+          const summary = el('p', { class: 'tds-summary' });
+          const sync = () => { summary.replaceChildren(...(sc.steps.length ? sc.steps.flatMap((st, i) => [...(i ? [el('span', { class: 'arrow' }, '→')] : []), el('span', {}, tdsStepText(st, d.details))]) : [el('span', { class: 'hint' }, 'No steps yet')]), el('span', { class: 'arrow' }, '⇒'), el('b', {}, TDS_RESULT[sc.outcome])); };
+          const name = el('input', { value: sc.name, placeholder: 'e.g. Correct OTP', 'aria-label': 'Scenario name', oninput: () => { sc.name = name.value; } });
+          const outcome = el('select', { 'aria-label': 'Expected result', onchange: () => { sc.outcome = outcome.value; card.className = `tds-scenario ${sc.outcome}`; sync(); } }, ...Object.entries(TDS_RESULT).map(([v, l]) => option(v, l)));
           outcome.value = sc.outcome;
-          const desc = el('input', { value: sc.description, placeholder: 'What this scenario tests (optional)', oninput: () => { sc.description = desc.value; } });
-          const rm = el('button', { type: 'button', class: 'small danger-link' }, 'Remove scenario'); rm.addEventListener('click', () => { d.scenarios.splice(si, 1); renderTdsScenarios(); });
-          const steps = el('div', { class: 'tds-steps' }, ...sc.steps.map((st, i) => {
-            const action = el('select', { onchange: () => { st.action = action.value; renderTdsScenarios(); } }, ...TDS_ACTIONS.map(([v, l]) => option(v, l))); action.value = st.action;
-            const needsTarget = !['wait', 'expire'].includes(st.action); const needsValue = ['fill', 'select', 'wait'].includes(st.action);
-            const target = el('input', { value: st.target, disabled: !needsTarget, placeholder: { waitText: 'text on the page', fill: 'field label / placeholder', click: 'button text', select: 'dropdown label (empty = first)', check: 'checkbox label' }[st.action] || '', oninput: () => { st.target = target.value; } });
-            const value = el('input', { value: st.value, disabled: !needsValue, list: `tdsKeys${si}`, placeholder: st.action === 'wait' ? 'seconds' : st.action === 'select' ? 'option text' : needsValue ? '{otp} or a value' : '', oninput: () => { st.value = value.value; } });
+          const desc = el('input', { value: sc.description, placeholder: 'Note (optional) – e.g. "code 1234 from the PSP test doc"', oninput: () => { sc.description = desc.value; } });
+          const rm = el('button', { type: 'button', class: 'small danger-link' }, 'Remove'); rm.addEventListener('click', () => { d.scenarios.splice(si, 1); renderTdsScenarios(); });
+          const rows = sc.steps.map((st, i) => {
+            const action = el('select', { 'aria-label': 'Action', onchange: () => { st.action = action.value; renderTdsScenarios(); } }, ...TDS_ACTIONS.map(([v, l]) => option(v, l))); action.value = st.action;
+            const field = (ph, prop, extra = {}) => { const inp = el('input', { value: st[prop], placeholder: ph, ...extra, oninput: () => { st[prop] = inp.value; sync(); } }); return inp; };
+            const word = (t) => el('span', { class: 'tds-word' }, t);
+            /** Value to type: a step-2 field, or any text. */
+            const typed = () => {
+              if (!keys.length) return field('value to type', 'value');
+              const isKey = /^\{\w+\}$/.test(st.value) || st.value === '';
+              const pick = el('select', { 'aria-label': 'Value', onchange: () => { st.value = pick.value === '__text' ? ' ' : pick.value; renderTdsScenarios(); } },
+                ...keys.map((k) => option(`{${k.key}}`, `${k.label || k.key} (test value)`)), option('__text', 'Other text…'));
+              if (isKey && !st.value) st.value = `{${keys[0].key}}`;
+              pick.value = isKey ? st.value : '__text';
+              if (isKey) return pick;
+              const txt = field('text to type', 'value'); if (st.value === ' ') { st.value = ''; txt.value = ''; }
+              return el('span', { class: 'tds-pair' }, pick, txt);
+            };
+            const parts = {
+              waitText: [field('text that shows the 3DS page is open, e.g. Purchase Authentication', 'target')],
+              fill: [typed(), word('into'), field('field name / placeholder, e.g. One-time password', 'target')],
+              click: [field('button or link text, e.g. Submit', 'target')],
+              select: [field('option text, e.g. Authenticated', 'value'), word('in'), field('dropdown name (empty = the only one)', 'target')],
+              check: [field('checkbox text', 'target')],
+              wait: [field('seconds', 'value', { type: 'number', min: '0', max: '120', class: 'tds-secs' }), word('seconds')],
+              expire: [el('span', { class: 'hint' }, 'the test stops here and expects the time-out result')],
+            }[st.action] || [];
             const move = (delta) => { const j = i + delta; if (j < 0 || j >= sc.steps.length) return; [sc.steps[i], sc.steps[j]] = [sc.steps[j], sc.steps[i]]; renderTdsScenarios(); };
-            const up = el('button', { type: 'button', class: 'small', title: 'Up' }, '↑'); up.addEventListener('click', () => move(-1));
-            const down = el('button', { type: 'button', class: 'small', title: 'Down' }, '↓'); down.addEventListener('click', () => move(1));
+            const up = el('button', { type: 'button', class: 'small', title: 'Move up', disabled: i === 0 }, '↑'); up.addEventListener('click', () => move(-1));
+            const down = el('button', { type: 'button', class: 'small', title: 'Move down', disabled: i === sc.steps.length - 1 }, '↓'); down.addEventListener('click', () => move(1));
             const x = el('button', { type: 'button', class: 'small', title: 'Remove step' }, '✕'); x.addEventListener('click', () => { sc.steps.splice(i, 1); renderTdsScenarios(); });
-            return el('div', { class: 'tds-step' }, el('span', { class: 'tds-n' }, String(i + 1)), action, target, value, el('span', { class: 'tds-step-btns' }, up, down, x));
-          }), el('datalist', { id: `tdsKeys${si}` }, ...keys.map((k) => option(k, k))));
-          const add = el('button', { type: 'button', class: 'small' }, '+ Step'); add.addEventListener('click', () => { sc.steps.push({ action: 'click', target: '', value: '' }); renderTdsScenarios(); });
-          const card = el('div', { class: `tds-scenario ${sc.outcome}` }, el('div', { class: 'tds-sc-head' }, name, outcome, rm), desc, steps, el('div', { class: 'row tight' }, add, el('span', { class: 'hint' }, keys.length ? `Values: ${keys.join(' ')}` : 'Add the page details on step 2 to use them as {key}.')));
+            return el('div', { class: 'tds-step' }, el('span', { class: 'tds-n' }, String(i + 1)), action, el('div', { class: 'tds-what' }, ...parts), el('span', { class: 'tds-step-btns' }, up, down, x));
+          });
+          const add = el('button', { type: 'button', class: 'small' }, '+ Add step'); add.addEventListener('click', () => { sc.steps.push({ action: sc.steps.length ? 'click' : 'waitText', target: '', value: '' }); renderTdsScenarios(); });
+          sync();
+          card.append(
+            el('div', { class: 'tds-sc-head' }, el('span', { class: 'tds-sc-no' }, `Scenario ${si + 1}`), rm),
+            el('div', { class: 'tds-sc-fields' }, el('label', {}, el('span', {}, 'Name'), name), el('label', {}, el('span', {}, 'Expected result'), outcome)),
+            summary,
+            el('div', { class: 'tds-steps' }, ...rows, ...(rows.length ? [] : [el('p', { class: 'hint' }, 'Add the steps the tester does on the 3DS page, in order.')])),
+            el('div', { class: 'row tight' }, add), desc);
           return card;
-        }), ...(d.scenarios.length ? [] : [el('p', { class: 'hint' }, 'No scenarios yet – pick a template above and click "+ Add scenario".')]));
+        }), ...(d.scenarios.length ? [] : [el('div', { class: 'tds-auto' }, el('b', {}, 'Automatic (no scenarios)'), el('span', {}, d.details.length ? `Types ${d.details.map((x) => x.label || x.key).join(', ')} into the matching fields, then presses Submit / Continue · expects success.` : 'Presses Submit / Continue on the 3DS page · expects success. Add the page fields on step 2 to type them first.'))]));
       }
       async function renderTdsFiles() {
         const d = state.tds.draft; const box = $('tdsFiles');
-        if (!d.id) { box.replaceChildren(el('p', { class: 'hint' }, 'Files are kept per bank – enter the bank name on step 1 first.')); return; }
+        if (!d.id) { box.replaceChildren(el('p', { class: 'hint' }, 'Files are kept per bank – choose the bank on step 1 first.')); return; }
         let files = [];
         try { files = (await api(`/api/three-ds/${d.id}/files`)).files; } catch (error) { box.replaceChildren(el('p', { class: 'msg error' }, error.message)); return; }
         d.attachments = files.map((f) => ({ file: f.file, caption: d.attachments.find((a) => a.file === f.file)?.caption || '' }));
@@ -2772,7 +2851,7 @@
       function tdsEnsureId() {
         const d = state.tds.draft;
         if (d.id) return true;
-        const bank = $('tdsBank').value.trim(); if (!bank) { say('tdsEdMsg', 'Enter the bank name first (step 1).', false); return false; }
+        const bank = tdsBankValue(); if (!bank) { say('tdsEdMsg', 'Choose the bank first (step 1) – files are kept per bank.', false); return false; }
         const ids = new Set(tdsFlows().map((f) => f.id)); const base = slug(bank); let id = base; let n = 2; while (ids.has(id)) id = `${base}-${n++}`; d.id = id; return true;
       }
       async function uploadTdsFiles(files) {
@@ -2790,13 +2869,13 @@
       }
       async function saveFlow() {
         const d = state.tds.draft; const list = (v) => [...new Set(v.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))];
-        d.bank = $('tdsBank').value.trim(); d.label = $('tdsLabel').value.trim(); d.methods = list($('tdsMethods').value); d.docsUrl = $('tdsDocs').value.trim(); d.notes = $('tdsNotes').value;
-        if (!d.bank) { showTdsSection('bank'); say('tdsEdMsg', 'Enter the bank name (as on the dashboard).', false); return; }
+        d.bank = tdsBankValue(); d.label = ''; d.methods = list($('tdsMethods').value); d.docsUrl = $('tdsDocs').value.trim(); d.notes = $('tdsNotes').value;
+        if (!d.bank) { showTdsSection('bank'); say('tdsEdMsg', 'Choose the bank (step 1).', false); return; }
         if (!tdsEnsureId()) return;
         d.details = d.details.filter((x) => x.key);
         const ids = new Set();
         for (const sc of d.scenarios) {
-          if (!sc.name.trim()) { showTdsSection('scenarios'); say('tdsEdMsg', 'Every scenario needs a name.', false); return; }
+          if (!sc.name.trim()) sc.name = sc.steps.length ? sc.steps.map((st) => tdsStepText(st, d.details)).join(', ').slice(0, 80) : `Scenario ${d.scenarios.indexOf(sc) + 1}`;
           if (!sc.id) { const base = slug(sc.name); let id = base; let n = 2; while (ids.has(id) || d.scenarios.some((o) => o !== sc && o.id === id)) id = `${base}-${n++}`; sc.id = id; }
           ids.add(sc.id);
           sc.steps = sc.steps.filter((st) => st.target || st.value || ['wait', 'expire'].includes(st.action));
@@ -2814,8 +2893,8 @@
         $('cFlow').replaceChildren(option('', flows.length ? '– choose a bank –' : 'No flows yet – add one on Dynamic 3DS flows'), ...flows.map((f) => option(f.id, `${tdsName(f)}${f.methods.length ? ` · ${f.methods.join('/')}` : ''}`)));
         $('cFlow').value = flowId || '';
         const flow = flows.find((f) => f.id === $('cFlow').value);
-        $('cScenario').replaceChildren(option('', flow ? '– choose a scenario –' : '—'), ...(flow?.scenarios || []).map((sc) => option(sc.id, `${sc.name} (${TDS_OUTCOMES[sc.outcome][0]})`)));
-        $('cScenario').value = scenarioId || '';
+        $('cScenario').replaceChildren(...(flow ? [option('auto', 'Automatic – type the 3DS details, then Submit (success)'), ...flow.scenarios.map((sc) => option(sc.id, `${sc.name} – ${TDS_RESULT[sc.outcome]}`))] : [option('', '—')]));
+        $('cScenario').value = flow ? (flow.scenarios.some((sc) => sc.id === scenarioId) ? scenarioId : 'auto') : '';
       }
 
       // ── masking rules ─────────────────────────────────────────────────────
@@ -3684,10 +3763,11 @@
         $('deleteCard').addEventListener('click', deleteCard);
         $('tdsAdd').addEventListener('click', () => openFlowEditor());
         $('tdsSave').addEventListener('click', saveFlow);
-        for (const b of $('tdsEdNav').children) b.addEventListener('click', () => { if (b.dataset.s === 'files') tdsEnsureId() && renderTdsFiles(); showTdsSection(b.dataset.s); });
+        for (const b of $('tdsEdNav').children) b.addEventListener('click', () => { say('tdsEdMsg', ''); showTdsSection(b.dataset.s); if (b.dataset.s === 'files') renderTdsFiles(); });
+        $('tdsBankSel').addEventListener('change', () => { syncTdsBank(); if ($('tdsBankSel').value === '__other') $('tdsBank').focus(); });
         $('tdsAddScenario').addEventListener('click', () => {
           const [name, outcome, steps] = TDS_TEMPLATES[$('tdsTemplate').value] || TDS_TEMPLATES.blank;
-          state.tds.draft.scenarios.push({ id: '', name: name === 'Blank scenario' ? '' : name, outcome, description: '', steps: steps.map(([action, target, value]) => ({ action, target, value })) });
+          state.tds.draft.scenarios.push({ id: '', name: $('tdsTemplate').value === 'blank' ? '' : name, outcome, description: '', steps: steps.map(([action, target, value]) => ({ action, target, value })) });
           renderTdsScenarios();
         });
         $('tdsFile').addEventListener('change', () => { uploadTdsFiles([...$('tdsFile').files]); $('tdsFile').value = ''; });
@@ -3695,9 +3775,9 @@
         $('tdsDrop').addEventListener('dragleave', () => $('tdsDrop').classList.remove('over'));
         $('tdsDrop').addEventListener('drop', (e) => { e.preventDefault(); $('tdsDrop').classList.remove('over'); uploadTdsFiles([...e.dataTransfer.files]); });
         $('tdsEditor').addEventListener('click', (e) => { if (e.target === $('tdsEditor') || e.target.closest('[data-close]')) $('tdsEditor').close(); });
-        $('cFlow').addEventListener('change', () => fillCardFlow($('cFlow').value, ''));
+        $('cFlow').addEventListener('change', () => { fillCardFlow($('cFlow').value, ''); $('cScenario').dispatchEvent(new Event('change')); });
         $('cScenario').addEventListener('change', () => {
-          const sc = tdsFlows().find((f) => f.id === $('cFlow').value)?.scenarios.find((x) => x.id === $('cScenario').value);
+          const sc = $('cScenario').value === 'auto' ? { name: 'Automatic', outcome: 'success' } : tdsFlows().find((f) => f.id === $('cFlow').value)?.scenarios.find((x) => x.id === $('cScenario').value);
           if (!sc) return;
           const [, outcome, statuses] = TDS_OUTCOMES[sc.outcome]; $('cOutcome').value = outcome; $('cStatuses').value = statuses.join(', ');
           if (!$('cLabel').value.trim()) $('cLabel').value = `${tdsName(tdsFlows().find((f) => f.id === $('cFlow').value))} – ${sc.name}`;
@@ -3806,28 +3886,27 @@
     <dialog class="health editor tds-editor" id="tdsEditor" aria-labelledby="tdsEdTitle">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M9 16.5h6"/></svg></span><div><h3 id="tdsEdTitle">Dynamic 3DS flow</h3><p>What this bank's 3DS page asks for, and the steps of each test scenario.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
       <div class="ed-body">
-        <nav class="ed-nav" id="tdsEdNav"><button type="button" data-s="bank">1 · Bank &amp; methods</button><button type="button" data-s="details">2 · 3DS details</button><button type="button" data-s="scenarios">3 · Scenarios</button><button type="button" data-s="files">4 · Screenshots, video, docs</button></nav>
+        <nav class="ed-nav" id="tdsEdNav"><button type="button" data-s="bank">1 · Bank &amp; methods</button><button type="button" data-s="details">2 · 3DS page fields <small class="opt">optional</small></button><button type="button" data-s="scenarios">3 · Scenarios <small class="opt">optional</small></button><button type="button" data-s="files">4 · Screenshots, video, docs <small class="opt">optional</small></button></nav>
         <div class="ed-main">
           <div class="ed-sec" data-s="bank">
             <h4>Bank / PSP</h4>
             <div class="cols-2">
-              <div><label for="tdsBank">Bank name <span class="hint">(as on the dashboard → Banks)</span></label><input id="tdsBank" list="tdsBankList" maxlength="80" autocomplete="off" placeholder="trustpayments-card-json" /><datalist id="tdsBankList"></datalist></div>
-              <div><label for="tdsLabel">Display name <span class="hint">(optional)</span></label><input id="tdsLabel" maxlength="80" placeholder="Trust Payments – cards" /></div>
+              <div><label for="tdsBankSel">Bank <span class="hint">(dashboard → Banks)</span></label><select id="tdsBankSel"></select><input id="tdsBank" class="hidden" maxlength="80" autocomplete="off" placeholder="Type the bank name exactly as on the dashboard" /><p class="hint tds-bank-hint" id="tdsBankHint"></p></div>
+              <div><label for="tdsMethods">Supported payment methods <span class="hint">(comma-separated)</span></label><input id="tdsMethods" list="tdsMethodList" autocomplete="off" placeholder="VISA, MASTER, AMEX" /><datalist id="tdsMethodList"></datalist></div>
             </div>
-            <label for="tdsMethods">Supported payment methods <span class="hint">(comma-separated)</span></label><input id="tdsMethods" list="tdsMethodList" autocomplete="off" placeholder="VISA, MASTER, AMEX" /><datalist id="tdsMethodList"></datalist>
             <label for="tdsDocs">PSP documentation link <span class="hint">(optional)</span></label><input id="tdsDocs" maxlength="500" placeholder="https://…/3ds-testing" />
             <label for="tdsNotes">Notes <span class="hint">(how the flow works, special cases)</span></label><textarea id="tdsNotes" rows="4" maxlength="4000" placeholder="e.g. After the OTP a second page asks for the account holder's e-mail. Code 1234 = success, 0000 = failure."></textarea>
           </div>
           <div class="ed-sec" data-s="details">
-            <h4>What the 3DS page asks for</h4>
-            <p class="hint">Values the steps type into the page. Use them in a step as <code>{key}</code>, e.g. <code>{otp}</code>. Test values only.</p>
+            <h4>What the 3DS page asks for <small class="opt">optional</small></h4>
+            <p class="hint">The fields on the bank's 3DS page and the test value to type. Without scenarios the test types each value into the field with this name and presses Submit / Continue. Test values only.</p>
             <div class="token-chips" id="tdsDetailChips"></div>
             <div id="tdsDetails"></div>
           </div>
           <div class="ed-sec" data-s="scenarios">
-            <h4>Test scenarios</h4>
-            <p class="hint">One scenario per outcome the bank's test page offers. Steps run top to bottom; the first step that points at the page tells that it is there.</p>
-            <div class="row tds-add-sc"><select id="tdsTemplate"></select><button type="button" id="tdsAddScenario">+ Add scenario</button></div>
+            <h4>Test scenarios <small class="opt">optional</small></h4>
+            <p class="hint">Only needed when the page is more than "type the details and Submit" – e.g. an outcome button, a dropdown, two pages, or a time-out. Without scenarios, cards use <b>Automatic</b>: type the step-2 values, then Submit / Continue.</p>
+            <div class="tds-add-sc"><label for="tdsTemplate">Start from</label><select id="tdsTemplate"></select><button type="button" id="tdsAddScenario" class="primary">+ Add scenario</button></div>
             <div id="tdsScenarios"></div>
           </div>
           <div class="ed-sec" data-s="files">

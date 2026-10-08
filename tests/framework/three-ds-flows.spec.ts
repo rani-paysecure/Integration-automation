@@ -52,6 +52,10 @@ const ACS = `<!doctype html><body><h3>Verify your payment</h3>
   <button onclick="document.body.dataset.result=[otp.value,sc.value,acc.value,out.value].join('|')">Submit</button>
 </div></body>`;
 
+const SIMPLE_ACS = `<!doctype html><body><h3>Purchase Authentication</h3>
+<label>Enter OTP <input placeholder="OTP" id="otp"></label>
+<button onclick="document.body.dataset.result=otp.value">Continue</button></body>`;
+
 test.describe('3DS flows (per bank)', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('http://cashier.test/**', (r) =>
@@ -61,7 +65,10 @@ test.describe('3DS flows (per bank)', () => {
       }),
     );
     await page.route('http://acs.test/**', (r) =>
-      r.fulfill({ contentType: 'text/html', body: ACS }),
+      r.fulfill({
+        contentType: 'text/html',
+        body: r.request().url().endsWith('/simple') ? SIMPLE_ACS : ACS,
+      }),
     );
   });
 
@@ -91,7 +98,7 @@ test.describe('3DS flows (per bank)', () => {
     );
     expect(result?.answered).toBe(true);
     expect(result?.host).toBe('acs.test');
-    expect(result?.detail).toContain('Demo Bank › 3DS + OTP + bank check → success');
+    expect(result?.detail).toContain('demo-bank-json › 3DS + OTP + bank check → success');
     expect(result?.detail).not.toContain('87654321'); // values never in the report
     const acs = page.frames().find((f) => f.url().startsWith('http://acs.test'));
     await expect
@@ -125,5 +132,37 @@ test.describe('3DS flows (per bank)', () => {
       },
     );
     expect(gone?.detail).toContain('3DS flow "x" / scenario "y" not found');
+  });
+
+  test('Automatic (no scenario): types the 3DS fields, then Submit / Continue', async ({
+    page,
+  }) => {
+    await page.route('http://cashier.test/auto', (r) =>
+      r.fulfill({
+        contentType: 'text/html',
+        body: '<iframe src="http://acs.test/simple" width=600 height=400></iframe>',
+      }),
+    );
+    const [demo] = flows;
+    if (demo === undefined) throw new Error('demo flow missing');
+    const noScenarios = [{ ...demo, details: demo.details.slice(0, 1), scenarios: [] }];
+    const flow = resolveThreeDsFlow('demo-bank', 'auto', noScenarios);
+    expect(flow?.outcome).toBe('success');
+    expect(flow?.steps.map((s) => s.action)).toEqual(['fill', 'click']);
+    await page.goto('http://cashier.test/auto');
+    const result = await watchForChallenge(
+      page,
+      { action: 'flow', otp: '', submit: '', flow },
+      {
+        cashierHost: 'cashier.test',
+        headed: false,
+        isFinished: () => false,
+        deadline: Date.now() + 20_000,
+      },
+    );
+    expect(result?.answered).toBe(true);
+    expect(result?.detail).toContain('demo-bank-json › Automatic');
+    const acs = page.frames().find((f) => f.url().startsWith('http://acs.test'));
+    await expect.poll(() => acs?.locator('body').getAttribute('data-result')).toBe('1234');
   });
 });
