@@ -1,3 +1,1411 @@
 {
-  "cases": []
+  "nextNumber": 88,
+  "cases": [
+    {
+      "id": "RX-001",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Baseline two-word name [TC-FULLNAME-001]",
+      "value": "Charles Mtonga",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          1
+        ],
+        "importedAt": "2026-10-09T12:43:54.152Z"
+      }
+    },
+    {
+      "id": "RX-002",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Single word [TC-FULLNAME-002]",
+      "value": "Charles",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          2
+        ],
+        "importedAt": "2026-10-09T12:43:54.152Z"
+      }
+    },
+    {
+      "id": "RX-003",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Hyphen in a later part [TC-FULLNAME-003]",
+      "value": "Mary Jane-Smith",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-09T12:43:54.152Z"
+      }
+    },
+    {
+      "id": "RX-004",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Hyphen in the first part [TC-FULLNAME-004]",
+      "value": "Jean-Luc Picard",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-005",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Single letter (minimum length) [TC-FULLNAME-005]",
+      "value": "Q",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-006",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder NA replaced from DB [TC-FULLNAME-006]",
+      "value": "NA",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-007",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder Na (title case) [TC-FULLNAME-007]",
+      "value": "Na",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          7
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-008",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder na (lowercase) [TC-FULLNAME-008]",
+      "value": "na",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          8
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-009",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder nA (mixed case) [TC-FULLNAME-009]",
+      "value": "nA",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          9
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-010",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder n/a [TC-FULLNAME-010]",
+      "value": "n/a",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          10
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-011",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Placeholder N/A [TC-FULLNAME-011]",
+      "value": "N/A",
+      "expectation": "invalid",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          11
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-012",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Letters and digits [TC-FULLNAME-013]",
+      "value": "Charles123",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          12
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-013",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Apostrophe [TC-FULLNAME-014]",
+      "value": "Sean O'Connor",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          13
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-014",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Accented letters [TC-FULLNAME-015]",
+      "value": "José Álvarez",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          14
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-015",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Leading space is trimmed [TC-FULLNAME-016]",
+      "value": " Charles Mtonga",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          15
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-016",
+      "field": "full_name",
+      "path": "client.full_name",
+      "title": "Trailing space [TC-FULLNAME-017]",
+      "value": "Charles Mtonga ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          16
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-017",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Baseline address [TC-STREET-001]",
+      "value": "Baker Street",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          17
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-018",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Exactly 3 characters (minimum) [TC-STREET-002]",
+      "value": "A 1",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          18
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-019",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "2 characters (below minimum) [TC-STREET-003]",
+      "value": "No",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          19
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-020",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "2 characters padded with spaces [TC-STREET-004]",
+      "value": " No ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          20
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-021",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Number, comma and apartment [TC-STREET-005]",
+      "value": "Flat 4B, 221B Baker Street",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          21
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-022",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Long address (500 characters) [TC-STREET-006]",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          22
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-023",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Placeholder NA replaced from DB [TC-STREET-007]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          23
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-024",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Placeholder na [TC-STREET-008]",
+      "value": "na",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          24
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-025",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Placeholder N/A (3 characters – matches regex) [TC-STREET-009]",
+      "value": "N/A",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          25
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-026",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Placeholder n/a [TC-STREET-010]",
+      "value": "n/a",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          26
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-027",
+      "field": "street_address",
+      "path": "client.street_address",
+      "title": "Leading/trailing spaces are trimmed [TC-STREET-011]",
+      "value": "  Baker Street  ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          27
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-028",
+      "field": "city",
+      "path": "client.city",
+      "title": "Baseline city [TC-CITY-001]",
+      "value": "London",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          28
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-029",
+      "field": "city",
+      "path": "client.city",
+      "title": "City with space [TC-CITY-002]",
+      "value": "New York",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          29
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-030",
+      "field": "city",
+      "path": "client.city",
+      "title": "City with hyphen [TC-CITY-003]",
+      "value": "Stratford-upon-Avon",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          30
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-031",
+      "field": "city",
+      "path": "client.city",
+      "title": "Two letters (minimum) [TC-CITY-004]",
+      "value": "Ab",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          31
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-032",
+      "field": "city",
+      "path": "client.city",
+      "title": "One letter (below minimum) [TC-CITY-005]",
+      "value": "A",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          32
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-033",
+      "field": "city",
+      "path": "client.city",
+      "title": "Placeholder NA replaced from DB [TC-CITY-006]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          33
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-034",
+      "field": "city",
+      "path": "client.city",
+      "title": "Placeholder Na [TC-CITY-007]",
+      "value": "Na",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          34
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-035",
+      "field": "city",
+      "path": "client.city",
+      "title": "Placeholder N/A [TC-CITY-008]",
+      "value": "N/A",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          35
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-036",
+      "field": "city",
+      "path": "client.city",
+      "title": "Digits only [TC-CITY-009]",
+      "value": "12345",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          36
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-037",
+      "field": "city",
+      "path": "client.city",
+      "title": "Trailing space [TC-CITY-010]",
+      "value": "London ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          37
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-038",
+      "field": "city",
+      "path": "client.city",
+      "title": "Geographically wrong but regex-valid [TC-CITY-011]",
+      "value": "Atlantis",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          38
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-039",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Baseline 5 digits [TC-ZIP-001]",
+      "value": "10110",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          39
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-040",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "UK alphanumeric with space [TC-ZIP-002]",
+      "value": "SW1A 1AA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          40
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-041",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "2 characters (minimum) [TC-ZIP-003]",
+      "value": "12",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          41
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-042",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "1 character (below minimum) [TC-ZIP-004]",
+      "value": "1",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          42
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-043",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "11 characters (maximum) [TC-ZIP-005]",
+      "value": "12345678901",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          43
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-044",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "12 characters (above maximum) [TC-ZIP-006]",
+      "value": "123456789012",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          44
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-045",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder NA replaced from DB [TC-ZIP-007]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          45
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-046",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder nA [TC-ZIP-008]",
+      "value": "nA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          46
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-047",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder n/a [TC-ZIP-009]",
+      "value": "n/a",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          47
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-048",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Special character [TC-ZIP-010]",
+      "value": "10110#",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          48
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-049",
+      "field": "zip_code",
+      "path": "client.zip_code",
+      "title": "Trailing space [TC-ZIP-011]",
+      "value": "10110 ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          49
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-050",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "Baseline NA replaced from DB [TC-STATE-001]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          50
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-051",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "Placeholder na [TC-STATE-002]",
+      "value": "na",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          51
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-052",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "Placeholder N/A [TC-STATE-003]",
+      "value": "N/A",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          52
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-053",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "US state code [TC-STATE-004]",
+      "value": "WI",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          53
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-054",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "Single character (minimum) [TC-STATE-005]",
+      "value": "W",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          54
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-055",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "21 characters (maximum) [TC-STATE-006]",
+      "value": "AAAAAAAAAAAAAAAAAAAAA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          55
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-056",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "22 characters (above maximum) [TC-STATE-007]",
+      "value": "AAAAAAAAAAAAAAAAAAAAAA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          56
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-057",
+      "field": "stateCode",
+      "path": "client.stateCode",
+      "title": "Special character [TC-STATE-008]",
+      "value": "W@",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          57
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-058",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Baseline date [TC-DOB-001]",
+      "value": "1979-05-10",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          58
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-059",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Earliest year allowed (1900-01-01) [TC-DOB-002]",
+      "value": "1900-01-01",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          59
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-060",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Year 1899 (below range) [TC-DOB-003]",
+      "value": "1899-12-31",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          60
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-061",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Future date (business rule check) [TC-DOB-004]",
+      "value": "2030-01-01",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          61
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-062",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Leap day in a leap year [TC-DOB-005]",
+      "value": "2000-02-29",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          62
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-063",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "29 February in a non-leap year [TC-DOB-006]",
+      "value": "2001-02-29",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          63
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-064",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "30 February [TC-DOB-007]",
+      "value": "1990-02-30",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          64
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-065",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Month 13 [TC-DOB-008]",
+      "value": "1990-13-01",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          65
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-066",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "DD-MM-YYYY [TC-DOB-009]",
+      "value": "10-05-1979",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          66
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-067",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "MM/DD/YYYY [TC-DOB-010]",
+      "value": "05/10/1979",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          67
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-068",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Placeholder NA replaced from DB [TC-DOB-011]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          68
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-069",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Placeholder n/a replaced from DB [TC-DOB-012]",
+      "value": "n/a",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          69
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-070",
+      "field": "date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Leading/trailing spaces are trimmed [TC-DOB-013]",
+      "value": " 1979-05-10 ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          70
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-071",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Baseline 10 digits without code [TC-PHONE-001]",
+      "value": "7599331125",
+      "country": "US",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          71
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-072",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "9 digits [TC-PHONE-002]",
+      "value": "759933112",
+      "country": "US",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          72
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-073",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Leading/trailing spaces [TC-PHONE-003]",
+      "value": " 7599331125 ",
+      "country": "US",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          73
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-074",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "10 digits without +91 [TC-PHONE-004]",
+      "value": "9876543210",
+      "country": "IN",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          74
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-075",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Wrong country code +92 [TC-PHONE-005]",
+      "value": "+929876543210",
+      "country": "IN",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          75
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-076",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "10 digits [TC-PHONE-006]",
+      "value": "2079460958",
+      "country": "GB",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          76
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-077",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "9 digits (mobile) [TC-PHONE-007]",
+      "value": "501234567",
+      "country": "AE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          77
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-078",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "8 digits [TC-PHONE-008]",
+      "value": "81234567",
+      "country": "SG",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          78
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-079",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "10 digits [TC-PHONE-009]",
+      "value": "7012345678",
+      "country": "KZ",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          79
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-080",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Default rule – formatted number [TC-PHONE-010]",
+      "value": "+49 (30) 123-4567",
+      "country": "DE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          80
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-081",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Default rule – 7 characters (minimum) [TC-PHONE-011]",
+      "value": "1234567",
+      "country": "DE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          81
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-082",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Default rule – 6 characters [TC-PHONE-012]",
+      "value": "123456",
+      "country": "DE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          82
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-083",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Default rule – 21 characters [TC-PHONE-013]",
+      "value": "123456789012345678901",
+      "country": "DE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          83
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-084",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Default rule – letters [TC-PHONE-014]",
+      "value": "12345abcde",
+      "country": "DE",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          84
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-085",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Placeholder NA replaced from DB [TC-PHONE-015]",
+      "value": "NA",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          85
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-086",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Placeholder N/A [TC-PHONE-016]",
+      "value": "N/A",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          86
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    },
+    {
+      "id": "RX-087",
+      "field": "phone",
+      "path": "client.phone",
+      "title": "Placeholder na [TC-PHONE-017]",
+      "value": "na",
+      "expectation": "auto",
+      "origin": "upload",
+      "source": {
+        "file": "moved from field validation – client-fields v3",
+        "rows": [
+          87
+        ],
+        "importedAt": "2026-10-09T12:43:54.153Z"
+      }
+    }
+  ]
 }

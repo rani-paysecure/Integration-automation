@@ -78,7 +78,14 @@ PaymentBankJsonData → Field Regex).
 - If the pool has no row for the customer's country, invalid values go to the PSP **unchanged**
   (only a log warning).
 - Unknown field names in a rule are ignored.
-- Implemented for tests in `config/pgs/pgs-rules.js`.
+- **Product rule (confirmed 2026-10-09), tested as the requirement:** values are trimmed first;
+  `NA`, `Na`, `na`, `nA`, `n/a`, `N/A` and empty / spaces-only values are invalid and replaced
+  (the Java code checks only `"NA"` today – the other spellings are an expected gap). Independent of
+  any bank regex: `full_name` empty / null / missing / placeholder, and every other customer field
+  empty / null / missing, must never reach the PSP – PGS rejects the purchase or sends a DB value.
+  The DB pool is not country-specific.
+- Implemented for tests in `config/pgs/pgs-rules.js` (regex) and `src/helpers/pgs-rules.ts`
+  (`standardRule`, `customerFieldLeaves` – only the field's own keys of the PSP request are read).
 
 ## 3. Cashier → PGS device data – `POST /npv/<purchaseId>/`
 

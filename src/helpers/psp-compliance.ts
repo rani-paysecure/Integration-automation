@@ -34,7 +34,7 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-interface Leaf {
+export interface Leaf {
   /** e.g. `paymentInfo.card.cardExpiry.month` */
   readonly path: string;
   readonly key: string;
@@ -694,6 +694,11 @@ export function requestParts(bank: BankTransaction): ('paymentInfo' | 'allOtherR
   return (['paymentInfo', 'allOtherRequest'] as const).filter(
     (part) => pspLeaves(bank, [part]).length > 0,
   );
+}
+
+/** Customer-side leaves of the PSP request (paymentInfo / allOtherRequest), merchant data left out. */
+export function customerRequestLeaves(bank: BankTransaction): Leaf[] {
+  return pspLeaves(bank, requestParts(bank)).filter((l) => !isMerchantLeaf(l));
 }
 
 export function paymentInfoChecks(

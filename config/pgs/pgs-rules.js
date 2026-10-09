@@ -11,7 +11,9 @@
  *                                         (config/pgs/country-validation-regex.json),
  *                                         "default" = catalog fallback for other countries
  *     {"enable":["IN"],"default":"^…$"}   per-country regex, bank's own fallback
- *   a value is INVALID (→ replaced before the PSP call) when it is null, "NA",
+ *   a value is INVALID (→ replaced before the PSP call) when it is null, empty / only spaces,
+ *   a placeholder (NA, Na, na, nA, n/a, N/A – product rule confirmed 2026-10-09; the Java code
+ *   checks only "NA" today, so the other spellings expose that gap),
  *   does not fully match (Java String.matches), the rule gives no usable regex,
  *   or the regex is malformed. Catalog phone rules first repair the number to
  *   +<cc><digits>; a number that cannot be repaired is invalid.
@@ -24,6 +26,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CATALOG_FILE = path.join(__dirname, 'country-validation-regex.json');
+
+/** "NA", "Na", "na", "nA", "n/a", "N/A" (spaces around ignored) – never a real customer value. */
+const PLACEHOLDER = /^n\/?a$/i;
+/** @param {unknown} value */
+function isPlaceholder(value) {
+  return typeof value === 'string' && PLACEHOLDER.test(value.trim());
+}
 
 /** @type {Record<string, Record<string, string>> | undefined} */
 let catalogCache;
@@ -146,13 +155,14 @@ function evaluate(field, value, spec, country) {
       sentValue: null,
       note: `no usable regex (${resolved.source}) – PGS replaces the value`,
     };
-  let current = value === null || value === undefined ? null : String(value);
+  // PGS trims leading / trailing spaces before validating (confirmed 2026-10-09).
+  let current = value === null || value === undefined ? null : String(value).trim();
   let note = '';
   if (
     resolved.canonical &&
     field.toLowerCase() === 'phone' &&
     current !== null &&
-    current !== 'NA'
+    !isPlaceholder(current)
   ) {
     const normalized = normalizePhone(current, country);
     if (normalized === null)
@@ -165,8 +175,13 @@ function evaluate(field, value, spec, country) {
     if (normalized !== current) note = `PGS rewrites it to ${normalized}`;
     current = normalized;
   }
-  if (current === null || current === 'NA')
-    return { ...base, verdict: 'invalid', sentValue: null, note: '"NA" / empty counts as invalid' };
+  if (current === null || current.trim() === '' || isPlaceholder(current))
+    return {
+      ...base,
+      verdict: 'invalid',
+      sentValue: null,
+      note: 'placeholder (NA / n/a …) or empty counts as invalid',
+    };
   let matches;
   try {
     matches = toJsRegExp(resolved.regex).test(current);
@@ -199,6 +214,8 @@ function describe(spec, country, field) {
 
 module.exports = {
   CATALOG_FILE,
+  PLACEHOLDER,
+  isPlaceholder,
   catalog,
   resolveSpec,
   toJsRegExp,

@@ -50,27 +50,35 @@ const fieldCase = z.object({
   source,
 });
 
-const regexCase = z.object({
-  id: z.string().regex(/^RX-\d{3,}$/),
-  /** Bank whose regex applies; empty = the bank the payment is routed to. */
-  bank: z.string().optional(),
-  /** Field name as in the dashboard Field Regex list (full_name, city …). */
-  field: z.string().min(1),
-  path: fieldPath,
-  title: z.string().min(1),
-  value: z.string().min(1),
-  /** Customer country for this case (client.country); empty = standard request. */
-  country: z
-    .string()
-    .regex(/^[A-Z]{2}$/)
-    .optional(),
-  /** auto = decided by the bank's regex at run time. */
-  expectation: z.enum(['valid', 'invalid', 'observe', 'auto']),
-  /** Pattern when the case was created (for reference – the live rule is used at run time). */
-  regex: z.string().optional(),
-  origin: z.enum(['dashboard', 'upload', 'ai']),
-  source,
-});
+const regexCase = z
+  .object({
+    id: z.string().regex(/^RX-\d{3,}$/),
+    /** Bank whose regex applies; empty = the bank the payment is routed to. */
+    bank: z.string().optional(),
+    /** Field name as in the dashboard Field Regex list (full_name, city …). */
+    field: z.string().min(1),
+    path: fieldPath,
+    title: z.string().min(1),
+    /** Text sent; empty when `send` is empty / null / missing. */
+    value: z.string(),
+    /** How the value is sent: text (default), empty string, JSON null or the field left out. */
+    send: z.enum(['value', 'empty', 'null', 'missing']).optional(),
+    /** Customer country for this case (client.country); empty = standard request. */
+    country: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
+    /** auto = decided by the bank's regex at run time. */
+    expectation: z.enum(['valid', 'invalid', 'observe', 'auto']),
+    /** Pattern when the case was created (for reference – the live rule is used at run time). */
+    regex: z.string().optional(),
+    origin: z.enum(['dashboard', 'upload', 'ai']),
+    source,
+  })
+  .refine((c) => (c.send ?? 'value') !== 'value' || c.value !== '', {
+    message: 'value is empty – use send "empty" for an empty string',
+    path: ['value'],
+  });
 
 export const PSP_CHECKS = [
   'equals',

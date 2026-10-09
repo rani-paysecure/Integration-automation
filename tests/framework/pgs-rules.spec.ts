@@ -47,6 +47,26 @@ test.describe('PGS field-regex rules (port of ClientDetailsValidator)', () => {
     expect(evaluatePgsRule('phone', '1234', rule, 'AT').verdict).toBe('invalid');
   });
 
+  test('every NA spelling and blank values are invalid, even when the regex would match', () => {
+    const letters = '^[A-Za-z]+(\\s[A-Za-z-]+)*$';
+    for (const value of ['NA', 'Na', 'na', 'nA', 'n/a', 'N/A', ' NA ', '', '   ', null]) {
+      expect(evaluatePgsRule('full_name', value, letters, 'US').verdict, String(value)).toBe(
+        'invalid',
+      );
+      expect(evaluatePgsRule('city', value, '.*', 'US').verdict, String(value)).toBe('invalid');
+    }
+    expect(evaluatePgsRule('phone', 'n/a', countryList, 'US').verdict).toBe('invalid');
+  });
+
+  test('values are trimmed before the regex (PGS trims)', () => {
+    expect(
+      evaluatePgsRule('full_name', ' Maria Lopez ', '^[A-Za-z]+(\\s[A-Za-z-]+)*$', 'US'),
+    ).toMatchObject({
+      verdict: 'valid',
+      sentValue: 'Maria Lopez',
+    });
+  });
+
   test('malformed rules force a replacement', () => {
     expect(evaluatePgsRule('city', 'Vienna', '([', 'AT').verdict).toBe('invalid');
     expect(evaluatePgsRule('phone', '1', '[not json', 'AT').verdict).toBe('invalid');

@@ -83,7 +83,10 @@ Refine (only what changes – the launcher keeps everything else as it is):
 - **regex** – for each field with a regex: values just inside and just outside the pattern (length
   boundaries, allowed vs forbidden characters, leading / trailing spaces, unicode letters, look-alikes,
   words the pattern blocks). Expected Result = Valid / Invalid by the regex (Java, whole value must
-  match); the launcher re-checks against the live regex.
+  match); the launcher re-checks against the live regex. Always cover the standard rule, which holds
+  with or without a regex: Test Data `""`, `null` and `Field not sent` for every customer field, and
+  NA / Na / na / nA / n/a / N/A for full_name → Invalid (never reach the PSP). Values are trimmed
+  before the regex.
 - **psp** – 2–5 checks per test case on one transaction: amount (major vs minor units), currency, order
   reference = purchase ID, customer / billing data, 3DS fields, status and IDs in the response. Use the
   placeholders from CONTEXT; field names only from the PSP field lists.

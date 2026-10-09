@@ -425,7 +425,7 @@ const CATEGORIES = {
     prefix: 'RX',
     file: 'regex-validation.json',
     description:
-      "Uses the bank's field regex (dashboard → PaymentBankJsonData): a matching value must reach the PSP unchanged, a non-matching one must not.",
+      'Pays and reads the PSP request. Bank field regex (dashboard → PaymentBankJsonData): a matching value must reach the PSP unchanged, a non-matching one must not. Standard rule, with or without a regex: empty / null / not sent values – and NA, n/a … in full_name – never reach the PSP (rejected at create or replaced by a DB value).',
     columns: [
       {
         key: 'bank',
@@ -462,7 +462,8 @@ const CATEGORIES = {
         required: true,
         width: 26,
         aliases: ['value', 'example'],
-        guide: 'Value to send on the purchase',
+        guide:
+          'Value to send on the purchase. "" = empty string, null = JSON null ("null" in quotes = the text null), Field not sent = left out, "…" keeps leading / trailing spaces',
         example: 'John123',
       },
       {
@@ -483,7 +484,7 @@ const CATEGORIES = {
         aliases: ['expected'],
         options: ['Valid', 'Invalid'],
         guide:
-          "Valid = must reach the PSP unchanged · Invalid = must not reach the PSP. Empty = decided by the bank's regex at run time",
+          "Valid = must reach the PSP unchanged · Invalid = must not reach the PSP. Empty = decided at run time: the standard rule (blank values, NA / n/a in full_name) first, then the bank's regex",
         example: 'Invalid',
       },
     ],
@@ -957,6 +958,28 @@ function parseFieldRows(rows, get) {
   return cases;
 }
 
+const REGEX_SEND_LABELS = {
+  empty: '"" (empty)',
+  null: 'null',
+  missing: '(field not sent)',
+};
+
+/**
+ * Regex "Test Data" → value + how it is sent. Blank inputs are what the standard rule is
+ * about (they must never reach the PSP), so they can be written explicitly:
+ * "" = empty string, null = JSON null, Field not sent = left out; "…" keeps spaces.
+ * @param {string} data
+ * @returns {{ value: string, send?: 'empty' | 'null' | 'missing' }}
+ */
+function regexValue(data) {
+  if (/^(field )?not sent$|^missing$|^omit(ted)?$|^remove$/i.test(data))
+    return { value: '', send: 'missing' };
+  if (/^null$/i.test(data)) return { value: '', send: 'null' };
+  if (data === '""' || data === "''") return { value: '', send: 'empty' };
+  // "…" keeps leading / trailing spaces that a spreadsheet cell would lose.
+  return { value: /^".*"$/s.test(data) ? data.slice(1, -1) : data };
+}
+
 function parseRegexRows(rows, get) {
   const cases = [];
   for (const { row, cells } of rows) {
@@ -973,7 +996,7 @@ function parseRegexRows(rows, get) {
       ];
     if (!path)
       issues.push(`Unknown field "${v.parameter}" – use a dashboard field name, e.g. full_name`);
-    if (v.data === '') issues.push('Test Data is empty');
+    if (v.data === '') issues.push('Test Data is empty – write "" for an empty string');
     const result = norm(v.result);
     if (result && !['valid', 'invalid'].includes(result))
       issues.push('Expected Result must be Valid, Invalid or empty');
@@ -992,8 +1015,7 @@ function parseRegexRows(rows, get) {
       field: canonical,
       path: path || '',
       title: v.title || `${canonical} – ${v.data}`,
-      // "…" keeps leading / trailing spaces that a spreadsheet cell would lose.
-      value: /^".*"$/s.test(v.data) ? v.data.slice(1, -1) : v.data,
+      ...regexValue(v.data),
       ...(country ? { country } : {}),
       expectation,
       origin: 'upload',
@@ -1004,7 +1026,7 @@ function parseRegexRows(rows, get) {
       display: [
         v.bank || 'Routed bank',
         canonical + (country ? ` (${country})` : ''),
-        `"${data.value}"`,
+        data.send === undefined ? `"${data.value}"` : REGEX_SEND_LABELS[data.send],
         expectation === 'auto' ? "Bank's regex decides" : expectationLabel(expectation),
       ],
       issues,
@@ -1240,11 +1262,14 @@ function signature(categoryId, c) {
         c.expectation,
       ]);
     case 'regex':
-      // Same bank + field + value is the same test, whatever the expectation says.
+      // Same bank + field + value (+ how it is sent, country) is the same test,
+      // whatever the expectation says.
       return JSON.stringify([
         String(c.bank || '').toLowerCase(),
         String(c.field).toLowerCase(),
         c.value,
+        c.send || 'value',
+        c.country || '',
       ]);
     case 'psp':
       return JSON.stringify([c.card || '', [...c.checks].map((x) => JSON.stringify(x)).sort()]);
@@ -1495,14 +1520,22 @@ function validateCase(categoryId, d) {
       };
     case 'regex':
       need(PATH_RE.test(d.path), 'invalid request field');
-      need(typeof d.value === 'string' && d.value !== '', 'test data is empty');
+      need(
+        d.send === undefined || ['empty', 'null', 'missing'].includes(d.send),
+        'invalid send – use empty, null or missing',
+      );
+      need(
+        typeof d.value === 'string' && (d.value !== '' || d.send !== undefined),
+        'test data is empty',
+      );
       need(['valid', 'invalid', 'observe', 'auto'].includes(d.expectation), 'invalid expectation');
       return {
         ...(d.bank ? { bank: str(d.bank, 80) } : {}),
         field: str(d.field, 60),
         path: d.path,
         title: str(d.title, 200) || d.field,
-        value: str(d.value, 500),
+        value: d.send === undefined ? str(d.value, 500) : '',
+        ...(d.send === undefined ? {} : { send: d.send }),
         ...(typeof d.country === 'string' && /^[A-Z]{2}$/.test(d.country)
           ? { country: d.country }
           : {}),
@@ -1630,9 +1663,11 @@ function summarize(categoryId, c) {
     case 'regex':
       return [
         `${c.bank || 'Routed bank'} · ${c.field}`,
-        c.value.length > 40
-          ? `"${c.value.slice(0, 14)}…" (${c.value.length} chars)`
-          : `"${c.value}"`,
+        c.send !== undefined
+          ? REGEX_SEND_LABELS[c.send]
+          : c.value.length > 40
+            ? `"${c.value.slice(0, 14)}…" (${c.value.length} chars)`
+            : `"${c.value}"`,
         `${c.expectation === 'auto' ? "Bank's regex decides" : expectationLabel(c.expectation)}${c.origin === 'dashboard' ? ' · from dashboard' : ''}`,
       ];
     case 'psp':

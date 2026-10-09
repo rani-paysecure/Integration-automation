@@ -44,6 +44,10 @@ export interface FieldTestCase {
 /** Annotation types read by `src/reporters/field-test-reporter.ts`. */
 export const FIELD_CASE_ANNOTATION = 'field-case';
 export const FIELD_RESULT_ANNOTATION = 'field-result';
+/** PSP answer of a paid field case ("PSP answered … → payment PASSED / FAILED") – the case's remarks. */
+export const FIELD_PSP_RESPONSE_ANNOTATION = 'psp response';
+/** Rule of a "customer data at the PSP" case (Field validation sub-category). */
+export const FIELD_PSP_RULE_ANNOTATION = 'psp rule';
 
 export interface FieldCaseMeta {
   readonly id: string;

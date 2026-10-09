@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import {
   FIELD_CASE_ANNOTATION,
+  FIELD_PSP_RESPONSE_ANNOTATION,
   FIELD_RESULT_ANNOTATION,
   type FieldCaseMeta,
   type FieldResultMeta,
@@ -22,6 +23,8 @@ interface Row {
   readonly result: FieldResultMeta | undefined;
   readonly verdict: 'PASS' | 'FAIL' | 'OBSERVED' | 'SKIPPED';
   readonly failure: string;
+  /** PSP answer when the case was paid ("… → payment PASSED / FAILED"). */
+  readonly pspResponse: string;
 }
 
 const COLUMNS = [
@@ -43,6 +46,7 @@ const COLUMNS = [
   'Verdict',
   'Failure Reason',
   'Notes',
+  'PSP Response (Remarks)',
 ] as const;
 
 function parse(description: string | undefined): unknown {
@@ -85,7 +89,12 @@ export default class FieldTestReporter implements Reporter {
     let verdict: Row['verdict'];
     if (result.status === 'skipped') verdict = 'SKIPPED';
     else if (result.status !== 'passed') verdict = 'FAIL';
-    else verdict = meta.expectation === 'observe' ? 'OBSERVED' : 'PASS';
+    else
+      verdict =
+        meta.expectation === 'observe' ||
+        annotations.some((a) => a.type === 'verdict' && a.description === 'observe')
+          ? 'OBSERVED'
+          : 'PASS';
 
     const failure = stripAnsi(result.errors[0]?.message ?? '')
       .split('\n')
@@ -109,6 +118,7 @@ export default class FieldTestReporter implements Reporter {
       result: outcome,
       verdict,
       failure: maskString(failure),
+      pspResponse: maskString(valueOf(FIELD_PSP_RESPONSE_ANNOTATION)),
     });
   }
 
@@ -142,6 +152,7 @@ export default class FieldTestReporter implements Reporter {
           row.verdict,
           row.failure,
           row.case.note,
+          row.pspResponse,
         ]
           .map(csvCell)
           .join(','),

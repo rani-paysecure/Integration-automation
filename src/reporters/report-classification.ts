@@ -1,4 +1,8 @@
-import type { FieldCaseMeta, FieldResultMeta } from '../helpers/field-testing';
+import {
+  FIELD_PSP_RULE_ANNOTATION,
+  type FieldCaseMeta,
+  type FieldResultMeta,
+} from '../helpers/field-testing';
 import type { PspFieldCheckResult } from '../helpers/psp-field-checks';
 import type { PspSummary } from '../helpers/psp-validation';
 
@@ -25,6 +29,9 @@ export interface ReportItem {
   readonly label: string;
   readonly value: string;
 }
+
+/** Field validation sub-category: customer data judged on the PSP request. */
+export const CUSTOMER_DATA_LABEL = 'Field validation › Customer data at PSP';
 
 export const CATEGORY_LABELS: Readonly<Record<CategoryId, string>> = {
   field: 'Field validation',
@@ -98,6 +105,12 @@ function polarityOf(category: CategoryId, input: ClassifyInput): Polarity {
   const expected = input.values.expected ?? '';
   switch (category) {
     case 'field':
+      // Customer data at the PSP: polarity follows the PSP rule, not the create answer.
+      if (input.values[FIELD_PSP_RULE_ANNOTATION] !== undefined) {
+        const rule = input.values[FIELD_PSP_RULE_ANNOTATION];
+        if (rule.toLowerCase().includes('must not')) return 'negative';
+        return rule.includes('unchanged') ? 'positive' : 'neutral';
+      }
       if (input.fieldCase?.expectation === 'accepted') return 'positive';
       if (input.fieldCase?.expectation === 'observe') return 'neutral';
       return 'negative';
@@ -244,7 +257,7 @@ export function classify(input: ClassifyInput): Classification {
     expectedItems.push(
       ...item('Test data', fieldCase.testData),
       ...item('Sheet says', fieldCase.expectedResult),
-      ...item('Rule', FIELD_RULES[fieldCase.expectation]),
+      ...item('Rule', values[FIELD_PSP_RULE_ANNOTATION] ?? FIELD_RULES[fieldCase.expectation]),
     );
   } else if (category === 'regex') {
     const [field = '', ...rest] = (values['test value'] ?? '').split(' = ');
@@ -339,7 +352,10 @@ export function classify(input: ClassifyInput): Classification {
 
   return {
     category,
-    categoryLabel: CATEGORY_LABELS[category],
+    categoryLabel:
+      category === 'field' && values[FIELD_PSP_RULE_ANNOTATION] !== undefined
+        ? CUSTOMER_DATA_LABEL
+        : CATEGORY_LABELS[category],
     polarity: polarityOf(category, input),
     expectedItems,
     actualItems,

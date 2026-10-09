@@ -1,387 +1,2047 @@
 {
-  "nextNumber": 19,
+  "nextNumber": 193,
   "cases": [
     {
-      "id": "FV-001",
-      "parameter": "extraParam",
-      "path": "extraParam",
-      "title": "extraParam with all bank-transfer parameters",
+      "id": "FV-019",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Baseline email [TC-EMAIL-001]",
       "mutation": {
         "type": "set",
-        "value": {
-          "iban": "AE701722586121849073530",
-          "accountNumber": "123456789",
-          "sortCode": "1234567",
-          "name": "computer ABC"
-        }
+        "value": "madika0@outlook.com"
       },
       "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 extraParam stored as sent",
+      "expectedResult": "Accepted – sent to PSP as madika0@outlook.com",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          1
-        ],
-        "importedAt": "2026-10-01T09:59:36.551Z"
-      }
-    },
-    {
-      "id": "FV-002",
-      "parameter": "extraParam.iban",
-      "path": "extraParam.iban",
-      "title": "iban missing, other parameters sent",
-      "mutation": {
-        "type": "remove"
-      },
-      "context": {
-        "extraParam.accountNumber": "123456789",
-        "extraParam.sortCode": "1234567",
-        "extraParam.name": "computer ABC"
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 the cashier asks for missing parameters",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
           2
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.582Z"
       }
     },
     {
-      "id": "FV-003",
-      "parameter": "extraParam.iban",
-      "path": "extraParam.iban",
-      "title": "iban empty",
+      "id": "FV-020",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Email with sub-domain and 2-part TLD [TC-EMAIL-002]",
+      "mutation": {
+        "type": "set",
+        "value": "qa.user@mail.example.co.uk"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as qa.user@mail.example.co.uk",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          3
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-021",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Email with plus, underscore and hyphen [TC-EMAIL-003]",
+      "mutation": {
+        "type": "set",
+        "value": "qa_user-01+tag@example.com"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as qa_user-01+tag@example.com",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          4
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-022",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Literal NA rejected [TC-EMAIL-004]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          5
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-023",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Placeholder n/a rejected [TC-EMAIL-005]",
+      "mutation": {
+        "type": "set",
+        "value": "n/a"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          6
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-024",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Missing @ [TC-EMAIL-006]",
+      "mutation": {
+        "type": "set",
+        "value": "qa.userexample.com"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          7
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-025",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Missing domain [TC-EMAIL-007]",
+      "mutation": {
+        "type": "set",
+        "value": "qa.user@"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          8
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-026",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "One-letter TLD [TC-EMAIL-008]",
+      "mutation": {
+        "type": "set",
+        "value": "qa.user@example.c"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          9
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-027",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Leading/trailing spaces are trimmed [TC-EMAIL-009]",
+      "mutation": {
+        "type": "set",
+        "value": " qa.user@example.com "
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as qa.user@example.com",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          10
+        ],
+        "importedAt": "2026-10-09T09:36:56.582Z"
+      }
+    },
+    {
+      "id": "FV-028",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Empty string [TC-EMAIL-010]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – email is mandatory",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          11
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-029",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Null [TC-EMAIL-011]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – email is mandatory",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          12
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-030",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Field not sent [TC-EMAIL-012]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – email is mandatory",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          13
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-031",
+      "parameter": "client.email",
+      "path": "client.email",
+      "title": "Number instead of text [TC-EMAIL-013]",
+      "mutation": {
+        "type": "set",
+        "value": 12345
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – invalid email format; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          14
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-032",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Baseline US [TC-COUNTRY-001]",
+      "mutation": {
+        "type": "set",
+        "value": "US"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as US",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          15
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-033",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Another supported country GB [TC-COUNTRY-002]",
+      "mutation": {
+        "type": "set",
+        "value": "GB"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as GB",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          16
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-034",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "NA is allowed for country [TC-COUNTRY-003]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – kept as NA",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          17
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-035",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Placeholder N/A rejected [TC-COUNTRY-004]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          18
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-036",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Lowercase code [TC-COUNTRY-005]",
+      "mutation": {
+        "type": "set",
+        "value": "us"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          19
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-037",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Leading/trailing spaces are trimmed [TC-COUNTRY-007]",
+      "mutation": {
+        "type": "set",
+        "value": " US "
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as US",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          21
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-038",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Empty string [TC-COUNTRY-008]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          22
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-039",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Null [TC-COUNTRY-009]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          23
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-040",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Field not sent [TC-COUNTRY-010]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          24
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-041",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "Number instead of text [TC-COUNTRY-011]",
+      "mutation": {
+        "type": "set",
+        "value": 840
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – ; no DB fallback",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          25
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-047",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Placeholder Na (title case) [TC-FULLNAME-007]",
+      "mutation": {
+        "type": "set",
+        "value": "Na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          32
+        ],
+        "importedAt": "2026-10-09T09:36:56.583Z"
+      }
+    },
+    {
+      "id": "FV-048",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Placeholder na (lowercase) [TC-FULLNAME-008]",
+      "mutation": {
+        "type": "set",
+        "value": "na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          33
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-049",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Placeholder nA (mixed case) [TC-FULLNAME-009]",
+      "mutation": {
+        "type": "set",
+        "value": "nA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          34
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-050",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Placeholder n/a [TC-FULLNAME-010]",
+      "mutation": {
+        "type": "set",
+        "value": "n/a"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          35
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-051",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Placeholder N/A [TC-FULLNAME-011]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          36
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-057",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Empty string [TC-FULLNAME-018]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          42
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-058",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Null [TC-FULLNAME-019]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          43
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-059",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Field not sent [TC-FULLNAME-020]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation – optional/mandatory rule for this field not documented for card payments",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          44
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-060",
+      "parameter": "client.full_name",
+      "path": "client.full_name",
+      "title": "Number instead of text [TC-FULLNAME-021]",
+      "mutation": {
+        "type": "set",
+        "value": 12345
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          45
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-067",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Placeholder NA replaced from DB [TC-STREET-007]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          52
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-068",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Placeholder na [TC-STREET-008]",
+      "mutation": {
+        "type": "set",
+        "value": "na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          53
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-069",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Placeholder N/A (3 characters – matches regex) [TC-STREET-009]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          54
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-070",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Placeholder n/a [TC-STREET-010]",
+      "mutation": {
+        "type": "set",
+        "value": "n/a"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          55
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-072",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Only spaces [TC-STREET-012]",
+      "mutation": {
+        "type": "set",
+        "value": "   "
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          57
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-073",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Empty string [TC-STREET-013]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          58
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-074",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Null [TC-STREET-014]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          59
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-075",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Field not sent [TC-STREET-015]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          60
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-076",
+      "parameter": "client.street_address",
+      "path": "client.street_address",
+      "title": "Number instead of text [TC-STREET-016]",
+      "mutation": {
+        "type": "set",
+        "value": 221
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 221",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          61
+        ],
+        "importedAt": "2026-10-09T09:36:56.584Z"
+      }
+    },
+    {
+      "id": "FV-082",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Placeholder NA replaced from DB [TC-CITY-006]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          67
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-083",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Placeholder Na [TC-CITY-007]",
+      "mutation": {
+        "type": "set",
+        "value": "Na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          68
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-084",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Placeholder N/A [TC-CITY-008]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          69
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-088",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Only spaces [TC-CITY-012]",
+      "mutation": {
+        "type": "set",
+        "value": "   "
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          73
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-089",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Empty string [TC-CITY-013]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          74
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-090",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Null [TC-CITY-014]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          75
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-091",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Field not sent [TC-CITY-015]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          76
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-092",
+      "parameter": "client.city",
+      "path": "client.city",
+      "title": "Number instead of text [TC-CITY-016]",
+      "mutation": {
+        "type": "set",
+        "value": 10110
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          77
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-099",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder NA replaced from DB [TC-ZIP-007]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          84
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-100",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder nA [TC-ZIP-008]",
+      "mutation": {
+        "type": "set",
+        "value": "nA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          85
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-101",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Placeholder n/a [TC-ZIP-009]",
+      "mutation": {
+        "type": "set",
+        "value": "n/a"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          86
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-104",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Only spaces [TC-ZIP-012]",
+      "mutation": {
+        "type": "set",
+        "value": "   "
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          89
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-105",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Empty string [TC-ZIP-013]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – blank value (\"Please pass valid …\")",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          90
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-106",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Null [TC-ZIP-014]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          91
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-107",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Field not sent [TC-ZIP-015]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – Expected rejected at create (blank check)",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          92
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-108",
+      "parameter": "client.zip_code",
+      "path": "client.zip_code",
+      "title": "Number instead of text [TC-ZIP-016]",
+      "mutation": {
+        "type": "set",
+        "value": 10110
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 10110",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          93
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-109",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Baseline NA replaced from DB [TC-STATE-001]",
+      "mutation": {
+        "type": "set",
+        "value": "NA"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          94
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-110",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Placeholder na [TC-STATE-002]",
+      "mutation": {
+        "type": "set",
+        "value": "na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          95
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-111",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Placeholder N/A [TC-STATE-003]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          96
+        ],
+        "importedAt": "2026-10-09T09:36:56.585Z"
+      }
+    },
+    {
+      "id": "FV-117",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Empty string (EUR – auto NA) [TC-STATE-009]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – kept as NA",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          102
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-118",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Empty string with USD [TC-STATE-010]",
       "mutation": {
         "type": "set",
         "value": ""
       },
       "context": {
-        "extraParam.accountNumber": "123456789",
-        "extraParam.sortCode": "1234567",
-        "extraParam.name": "computer ABC"
+        "purchase.currency": "USD",
+        "client.country": "US"
       },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as sent",
+      "expectation": "rejected",
+      "expectedResult": "Validation error – (no auto NA outside EUR/GBP)",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          3
+          103
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.586Z"
       }
     },
     {
-      "id": "FV-004",
-      "parameter": "extraParam.iban",
-      "path": "extraParam.iban",
-      "title": "iban in a wrong format (too short, lowercase)",
+      "id": "FV-119",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Null [TC-STATE-011]",
       "mutation": {
         "type": "set",
-        "value": "ae70"
-      },
-      "context": {
-        "extraParam.accountNumber": "123456789",
-        "extraParam.sortCode": "1234567",
-        "extraParam.name": "computer ABC"
+        "value": null
       },
       "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 PGS stores it, the PSP checks the format",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          4
+          104
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.586Z"
       }
     },
     {
-      "id": "FV-005",
-      "parameter": "extraParam.accountNumber",
-      "path": "extraParam.accountNumber",
-      "title": "accountNumber as a number",
+      "id": "FV-120",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Field not sent (EUR) [TC-STATE-012]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation – optional/mandatory rule for this field not documented for card payments",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          105
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-121",
+      "parameter": "client.stateCode",
+      "path": "client.stateCode",
+      "title": "Number instead of text [TC-STATE-013]",
       "mutation": {
         "type": "set",
-        "value": 123456789
-      },
-      "context": {
-        "extraParam.iban": "AE701722586121849073530",
-        "extraParam.sortCode": "1234567",
-        "extraParam.name": "computer ABC"
+        "value": 12
       },
       "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as a number",
+      "expectedResult": "Accepted – sent to PSP as 12",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          5
+          106
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.586Z"
       }
     },
     {
-      "id": "FV-006",
-      "parameter": "extraParam.sortCode",
-      "path": "extraParam.sortCode",
-      "title": "sortCode with letters and symbols",
+      "id": "FV-132",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Placeholder NA replaced from DB [TC-DOB-011]",
       "mutation": {
         "type": "set",
-        "value": "12-ab!@"
-      },
-      "context": {
-        "extraParam.iban": "AE701722586121849073530",
-        "extraParam.accountNumber": "123456789",
-        "extraParam.name": "computer ABC"
+        "value": "NA"
       },
       "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 PGS does not validate the format",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          6
+          117
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.586Z"
       }
     },
     {
-      "id": "FV-007",
-      "parameter": "extraParam.name",
-      "path": "extraParam.name",
-      "title": "name null",
+      "id": "FV-133",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Placeholder n/a replaced from DB [TC-DOB-012]",
+      "mutation": {
+        "type": "set",
+        "value": "n/a"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          118
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-135",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Empty string [TC-DOB-014]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          120
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-136",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Null [TC-DOB-015]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          121
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-137",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Field not sent [TC-DOB-016]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Record result – Needs Confirmation – optional/mandatory rule for this field not documented for card payments",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          122
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-138",
+      "parameter": "client.date_of_birth",
+      "path": "client.date_of_birth",
+      "title": "Number instead of text [TC-DOB-017]",
+      "mutation": {
+        "type": "set",
+        "value": 19790510
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          123
+        ],
+        "importedAt": "2026-10-09T09:36:56.586Z"
+      }
+    },
+    {
+      "id": "FV-152",
+      "parameter": "client.phone",
+      "path": "client.phone",
+      "title": "Placeholder N/A [TC-PHONE-016]",
+      "mutation": {
+        "type": "set",
+        "value": "N/A"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          138
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-153",
+      "parameter": "client.phone",
+      "path": "client.phone",
+      "title": "Placeholder na [TC-PHONE-017]",
+      "mutation": {
+        "type": "set",
+        "value": "na"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          139
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-154",
+      "parameter": "client.phone",
+      "path": "client.phone",
+      "title": "Empty string [TC-PHONE-018]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          140
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-155",
+      "parameter": "client.phone",
+      "path": "client.phone",
+      "title": "Null [TC-PHONE-019]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – invalid/placeholder value replaced from DB at payment",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          141
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-156",
+      "parameter": "client.phone",
+      "path": "client.phone",
+      "title": "Number instead of text [TC-PHONE-021]",
+      "mutation": {
+        "type": "set",
+        "value": 7599331125
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as +17599331125",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          143
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-157",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Allowed value 5 (baseline, string) [TC-EXPIRE-001]",
+      "mutation": {
+        "type": "set",
+        "value": "5"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 5",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          144
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-158",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Allowed value 15 [TC-EXPIRE-002]",
+      "mutation": {
+        "type": "set",
+        "value": "15"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 15",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          145
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-159",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Allowed value 20 [TC-EXPIRE-003]",
+      "mutation": {
+        "type": "set",
+        "value": "20"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 20",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          146
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-160",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Empty – no expiry [TC-EXPIRE-004]",
+      "mutation": {
+        "type": "set",
+        "value": ""
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – no expiry applied",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          147
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-161",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Field not sent – no expiry [TC-EXPIRE-005]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – no expiry applied",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          148
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-162",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Allowed value as JSON number 15 (not the string form) [TC-EXPIRE-006]",
+      "mutation": {
+        "type": "set",
+        "value": 15
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation – the documented form is the string \"15\"",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          149
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-163",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Value between allowed ones (10) [TC-EXPIRE-007]",
+      "mutation": {
+        "type": "set",
+        "value": "10"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          150
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-164",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Just below an allowed value (4) [TC-EXPIRE-008]",
+      "mutation": {
+        "type": "set",
+        "value": "4"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          151
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-165",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Just above an allowed value (21) [TC-EXPIRE-009]",
+      "mutation": {
+        "type": "set",
+        "value": "21"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          152
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-166",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Zero [TC-EXPIRE-010]",
+      "mutation": {
+        "type": "set",
+        "value": "0"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          153
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-167",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Negative [TC-EXPIRE-011]",
+      "mutation": {
+        "type": "set",
+        "value": "-5"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          154
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-168",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Decimal form of an allowed value (5.0) [TC-EXPIRE-012]",
+      "mutation": {
+        "type": "set",
+        "value": "5.0"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only the form \"5\" / \"15\" / \"20\" is allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          155
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-169",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Decimal (15.5) [TC-EXPIRE-013]",
+      "mutation": {
+        "type": "set",
+        "value": "15.5"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          156
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-170",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Alphabetic [TC-EXPIRE-014]",
+      "mutation": {
+        "type": "set",
+        "value": "abc"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – only 5, 15 or 20 are allowed",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          157
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-171",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Allowed value with spaces [TC-EXPIRE-015]",
+      "mutation": {
+        "type": "set",
+        "value": " 15 "
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 15",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          158
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-172",
+      "parameter": "purchase.expireInMin",
+      "path": "purchase.expireInMin",
+      "title": "Null [TC-EXPIRE-016]",
+      "mutation": {
+        "type": "set",
+        "value": null
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation – treated like empty?",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          159
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-173",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Baseline 1.43 [TC-PRICE-001]",
+      "mutation": {
+        "type": "set",
+        "value": 1.43
+      },
+      "context": {
+        "purchase.total": 1.43
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 1.43",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          160
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-174",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Three decimals rounded down [TC-PRICE-003]",
+      "mutation": {
+        "type": "set",
+        "value": 10.222
+      },
+      "context": {
+        "purchase.total": 10.222
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 10.22",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          162
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-175",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Three decimals rounded up [TC-PRICE-004]",
+      "mutation": {
+        "type": "set",
+        "value": 10.226
+      },
+      "context": {
+        "purchase.total": 10.226
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 10.23",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          163
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-176",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Six decimals [TC-PRICE-005]",
+      "mutation": {
+        "type": "set",
+        "value": 10.343452
+      },
+      "context": {
+        "purchase.total": 10.343452
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 10.34",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          164
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-177",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Exact half (third decimal 5) [TC-PRICE-006]",
+      "mutation": {
+        "type": "set",
+        "value": 10.225
+      },
+      "context": {
+        "purchase.total": 10.225
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 10.23",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          165
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-178",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Rounds up to the next whole unit [TC-PRICE-007]",
+      "mutation": {
+        "type": "set",
+        "value": 1.999
+      },
+      "context": {
+        "purchase.total": 1.999
+      },
+      "expectation": "accepted",
+      "expectedResult": "Accepted – sent to PSP as 2.00",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          166
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-179",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Smallest unit 0.01 [TC-PRICE-008]",
+      "mutation": {
+        "type": "set",
+        "value": 0.01
+      },
+      "context": {
+        "purchase.total": 0.01
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Accepted if above merchant minimum",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          167
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-180",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Negative [TC-PRICE-010]",
+      "mutation": {
+        "type": "set",
+        "value": -1.43
+      },
+      "context": {
+        "purchase.total": -1.43
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error –",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          169
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-181",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Very large [TC-PRICE-011]",
+      "mutation": {
+        "type": "set",
+        "value": 99999999.99
+      },
+      "context": {
+        "purchase.total": 99999999.99
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – above merchant maximum",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          170
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-182",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Numeric string [TC-PRICE-012]",
+      "mutation": {
+        "type": "set",
+        "value": "1.43"
+      },
+      "context": {
+        "purchase.total": "1.43"
+      },
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation – converted or rejected",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          171
+        ],
+        "importedAt": "2026-10-09T09:36:56.587Z"
+      }
+    },
+    {
+      "id": "FV-183",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Null [TC-PRICE-013]",
       "mutation": {
         "type": "set",
         "value": null
       },
       "context": {
-        "extraParam.iban": "AE701722586121849073530",
-        "extraParam.accountNumber": "123456789",
-        "extraParam.sortCode": "1234567"
+        "purchase.total": null
       },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as null (confirmed on test4)",
+      "expectation": "rejected",
+      "expectedResult": "Validation error – price missing",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          7
+          172
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.587Z"
       }
     },
     {
-      "id": "FV-008",
-      "parameter": "extraParam.name",
-      "path": "extraParam.name",
-      "title": "name 256 characters",
+      "id": "FV-184",
+      "parameter": "purchase.products.price",
+      "path": "purchase.products.0.price",
+      "title": "Field not sent [TC-PRICE-014]",
+      "mutation": {
+        "type": "remove"
+      },
+      "expectation": "rejected",
+      "expectedResult": "Validation error – price missing",
+      "source": {
+        "file": "field-validation-client-fields.xlsx",
+        "rows": [
+          173
+        ],
+        "importedAt": "2026-10-09T09:36:56.588Z"
+      }
+    },
+    {
+      "id": "FV-187",
+      "parameter": "client.country",
+      "path": "client.country",
+      "title": "NA in country, others valid [TC-CROSS-005]",
       "mutation": {
         "type": "set",
-        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "value": "NA"
       },
       "context": {
-        "extraParam.iban": "AE701722586121849073530",
-        "extraParam.accountNumber": "123456789",
-        "extraParam.sortCode": "1234567"
+        "client.full_name": "NA"
       },
       "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 no length limit at create (confirmed on test4)",
+      "expectedResult": "Accepted – sent to PSP as country=NA",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          8
+          176
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.588Z"
       }
     },
     {
-      "id": "FV-009",
-      "parameter": "extraParam.qaNotRequired",
-      "path": "extraParam.qaNotRequired",
-      "title": "parameter the payment method does not need",
+      "id": "FV-192",
+      "parameter": "client",
+      "path": "client",
+      "title": "Client object not sent [TC-CROSS-011]",
       "mutation": {
-        "type": "set",
-        "value": "QA-extra"
+        "type": "remove"
       },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 unknown keys are stored and ignored",
+      "expectation": "observe",
+      "expectedResult": "Record result – Needs Confirmation",
       "source": {
-        "file": "starter set \u2013 payment-method fields",
+        "file": "field-validation-client-fields.xlsx",
         "rows": [
-          9
+          181
         ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-010",
-      "parameter": "extraParam",
-      "path": "extraParam",
-      "title": "empty extraParam object",
-      "mutation": {
-        "type": "set",
-        "value": {}
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          10
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-011",
-      "parameter": "extraParam",
-      "path": "extraParam",
-      "title": "extraParam as text instead of an object",
-      "mutation": {
-        "type": "set",
-        "value": "iban=AE701722586121849073530"
-      },
-      "expectation": "rejected",
-      "expectedResult": "Validation error \u2013 400 invalid_json \"Request Body Not Found/MalFormed\"",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          11
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-012",
-      "parameter": "extraParam",
-      "path": "extraParam",
-      "title": "extraParam as a list",
-      "mutation": {
-        "type": "set",
-        "value": [
-          "AE701722586121849073530"
-        ]
-      },
-      "expectation": "rejected",
-      "expectedResult": "Validation error \u2013 400 invalid_json \"Request Body Not Found/MalFormed\"",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          12
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-013",
-      "parameter": "upiId",
-      "path": "upiId",
-      "title": "upiId sent (UPI handle)",
-      "mutation": {
-        "type": "set",
-        "value": "pending@testbank"
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as sent",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          13
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-014",
-      "parameter": "upiId",
-      "path": "upiId",
-      "title": "upiId empty",
-      "mutation": {
-        "type": "set",
-        "value": ""
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as sent (confirmed on test4)",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          14
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-015",
-      "parameter": "upiId",
-      "path": "upiId",
-      "title": "upiId without @ (wrong format)",
-      "mutation": {
-        "type": "set",
-        "value": "pendingtestbank"
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 PGS does not validate the format",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          15
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-016",
-      "parameter": "invoiceNo",
-      "path": "invoiceNo",
-      "title": "invoiceNo sent",
-      "mutation": {
-        "type": "set",
-        "value": "657890b89hnm"
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as sent",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          16
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-017",
-      "parameter": "invoiceNo",
-      "path": "invoiceNo",
-      "title": "invoiceNo 256 characters",
-      "mutation": {
-        "type": "set",
-        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 no length limit at create (confirmed on test4)",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          17
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
-      }
-    },
-    {
-      "id": "FV-018",
-      "parameter": "invoiceNo",
-      "path": "invoiceNo",
-      "title": "invoiceNo as a number",
-      "mutation": {
-        "type": "set",
-        "value": 657890
-      },
-      "expectation": "accepted",
-      "expectedResult": "Accepted \u2013 stored as sent (confirmed on test4)",
-      "source": {
-        "file": "starter set \u2013 payment-method fields",
-        "rows": [
-          18
-        ],
-        "importedAt": "2026-10-01T09:59:36.552Z"
+        "importedAt": "2026-10-09T09:36:56.588Z"
       }
     }
   ]

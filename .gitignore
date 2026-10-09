@@ -44,3 +44,7 @@ psp-flows/**/*.mp4
 psp-flows/**/*.mov
 psp-flows/**/*.webm
 psp-flows/**/*.part
+
+# Files the Claude desktop app saves from chats (case sheets, drafts) – the runnable
+# cases live in tests/test-data/uploaded-cases/*.json
+Claude outputs/

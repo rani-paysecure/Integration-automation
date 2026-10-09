@@ -1,5 +1,9 @@
 import { executeTransaction } from '@helpers/transaction-flow';
-import { expectRegexOutcome, regexCaseRequest } from '@helpers/uploaded-case-checks';
+import {
+  expectRegexOutcome,
+  regexCaseRequest,
+  rejectedBeforePsp,
+} from '@helpers/uploaded-case-checks';
 import { HttpStatus } from '@constants/http';
 import { expect, test } from '@fixtures/api.fixture';
 import { requireCaseCard } from '@test-data/cashier-purchase/cashier-cards';
@@ -13,6 +17,9 @@ import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.facto
  * request (dashboard log) shows whether the value reached the PSP:
  *   matches the live regex        → must arrive unchanged
  *   does not match the live regex → must not arrive (it is replaced)
+ * Product standard, with or without a bank regex: empty / null / missing values, and
+ * placeholders (NA, n/a …) in full_name, must never reach the PSP – PGS rejects the
+ * purchase or sends a DB value instead. Only the field's own keys are looked at.
  */
 test.describe(
   'Cashier purchase › 2. Regex validation',
@@ -37,6 +44,8 @@ test.describe(
             regexCase,
           );
           const created = await purchaseApi.createPurchase(request);
+          // A blank value refused at create can never reach the PSP – that satisfies the rule.
+          if (rejectedBeforePsp(regexCase, created, testInfo)) return;
           expect(created, 'The purchase must be created').toHaveStatus([
             HttpStatus.OK,
             HttpStatus.CREATED,
