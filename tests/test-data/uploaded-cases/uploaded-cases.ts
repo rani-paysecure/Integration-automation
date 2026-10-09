@@ -257,6 +257,20 @@ function load<T>(file: string, schema: z.ZodType<T>): T[] {
 const sourceNote = (s: z.infer<typeof source>): string =>
   s ? `Uploaded from ${s.file}${s.rows.length ? ` (row ${s.rows.join(', ')})` : ''}` : '';
 
+/**
+ * Built-in cases (in code, e.g. FT-001a) removed in the launcher (Test cases → Remove).
+ * Listed in removed-builtin-cases.json next to the uploaded cases; the specs skip them.
+ */
+export function removedBuiltinCaseIds(file = 'removed-builtin-cases.json'): Set<string> {
+  const full = path.isAbsolute(file) ? file : path.join(uploadedCasesDir(), file);
+  if (!fs.existsSync(full)) return new Set();
+  const parsed = z
+    .object({ removed: z.array(z.looseObject({ id: z.string() })) })
+    .safeParse(JSON.parse(fs.readFileSync(full, 'utf8')));
+  if (!parsed.success) throw new Error(`${path.basename(full)} is invalid`);
+  return new Set(parsed.data.removed.map((r) => r.id));
+}
+
 /** FV-xxx cases in the shape of the built-in field cases. */
 export function loadUploadedFieldCases(file = 'field-validation.json'): FieldTestCase[] {
   return load(file, fieldCase).map((c) => {

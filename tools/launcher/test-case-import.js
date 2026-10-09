@@ -1294,9 +1294,43 @@ function builtinFieldCases() {
   }
 }
 
+/** Cases written in code per category (only field validation has them: FT-xxx). */
+function builtinCases(categoryId) {
+  return categoryId === 'field' ? builtinFieldCases() : [];
+}
+
+/**
+ * Built-in cases removed in the launcher. The code is not edited: the ids are listed in
+ * removed-builtin-cases.json (committed with the uploaded cases) and the specs skip them.
+ */
+const REMOVED_FILE = () => path.join(DATA_DIR, 'removed-builtin-cases.json');
+function removedBuiltin() {
+  try {
+    const data = JSON.parse(fs.readFileSync(REMOVED_FILE(), 'utf8'));
+    return Array.isArray(data.removed)
+      ? data.removed.filter((r) => r && typeof r.id === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+function saveRemovedBuiltin(list) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const tmp = `${REMOVED_FILE()}.tmp`;
+  fs.writeFileSync(
+    tmp,
+    `${JSON.stringify({ $comment: 'Built-in test cases (in code) removed in the launcher – the specs skip these ids. Restore them on the Test cases tab.', removed: list }, null, 2)}\n`,
+  );
+  fs.renameSync(tmp, REMOVED_FILE());
+}
+const isBuiltinId = (caseId) =>
+  Object.keys(CATEGORIES).some((id) => builtinCases(id).some((c) => c.id === caseId));
+
 function knownSignatures(categoryId) {
   const stored = loadCases(categoryId);
-  const builtin = categoryId === 'field' ? builtinFieldCases() : [];
+  // A removed built-in case may be uploaded again.
+  const removed = new Set(removedBuiltin().map((r) => r.id));
+  const builtin = builtinCases(categoryId).filter((c) => !removed.has(c.id));
   return new Set([...stored, ...builtin].map((c) => signature(categoryId, c)));
 }
 
@@ -1558,12 +1592,26 @@ function validateCase(categoryId, d) {
 }
 
 function deleteCase(caseId) {
+  if (isBuiltinId(caseId)) {
+    const removed = removedBuiltin();
+    if (!removed.some((r) => r.id === caseId)) {
+      saveRemovedBuiltin([...removed, { id: caseId, at: new Date().toISOString() }]);
+    }
+    return;
+  }
   const categoryId = categoryForCaseId(caseId);
   if (!categoryId) throw new Error('Test case not found');
   const stored = readFile(categoryId);
   const remaining = stored.cases.filter((c) => c.id !== caseId);
   if (remaining.length === stored.cases.length) throw new Error('Test case not found');
   saveCases(categoryId, remaining, stored.nextNumber);
+}
+
+/** Puts a removed built-in case back into the runs. */
+function restoreCase(caseId) {
+  const removed = removedBuiltin();
+  if (!removed.some((r) => r.id === caseId)) throw new Error('Test case not found');
+  saveRemovedBuiltin(removed.filter((r) => r.id !== caseId));
 }
 
 /** Short one-line description of a stored case for the launcher list. */
@@ -1627,6 +1675,18 @@ function listCategories() {
     description: c.description,
     file: path.relative(ROOT, fileOf(id)),
     columns: c.columns.map((col) => ({ header: col.header, required: col.required })),
+    // Cases written in code (FT-xxx): listed with the uploaded ones so they can be removed / restored.
+    builtin: (() => {
+      const removed = new Map(removedBuiltin().map((r) => [r.id, r.at]));
+      return builtinCases(id).map((x) => ({
+        id: x.id,
+        title: x.title,
+        summary: summarize(id, x),
+        source: 'Built-in (in code)',
+        builtin: true,
+        ...(removed.has(x.id) ? { removedAt: removed.get(x.id) } : {}),
+      }));
+    })(),
     cases: loadCases(id).map((x) => ({
       id: x.id,
       title: x.title,
@@ -1748,6 +1808,8 @@ async function templateBuffer(categoryId, cardIds = []) {
 }
 
 module.exports = {
+  restoreCase,
+  removedBuiltin,
   CATEGORIES,
   markDuplicates,
   previewObjects,
