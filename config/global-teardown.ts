@@ -4,6 +4,10 @@ import fs from 'node:fs';
 export default function globalTeardown(): void {
   const dir = process.env.BACKOFFICE_SESSION_DIR;
   if (dir?.includes('backoffice')) {
-    fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // Best effort – stale session folders are removed by the next run.
+    }
   }
 }

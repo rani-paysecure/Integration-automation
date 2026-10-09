@@ -6,6 +6,7 @@ import type { FieldCaseMeta, FieldResultMeta } from '../helpers/field-testing';
 import { PSP_RESULT_ANNOTATION, type PspSummary } from '../helpers/psp-validation';
 import { PSP_FIELD_CHECKS_ANNOTATION, type PspFieldCheckResult } from '../helpers/psp-field-checks';
 import type { HttpExchange } from '../types/api.types';
+import type { ThreeDsPageCapture } from '../types/cashier.types';
 import { collapsePolls, type ReportExchange } from '../utils/exchanges';
 import { maskSensitiveData, maskString } from '../utils/masking';
 import { classify, type CategoryId, type Polarity, type ReportItem } from './report-classification';
@@ -47,6 +48,8 @@ export interface UiTestRow {
   readonly psp: PspSummary | undefined;
   /** Checks of an uploaded PSP case (PR-xxx). */
   readonly pspFieldChecks: readonly PspFieldCheckResult[];
+  /** 3DS page read by the test (screenshot as data URL) – "Create 3DS flow from this page". */
+  readonly threeDsPage?: Omit<ThreeDsPageCapture, 'screenshot'> & { readonly screenshot?: string };
   readonly pspRequest: unknown;
   readonly pspResponse: unknown;
   /** HTTP calls of the test – repeated identical status polls collapsed (see `repeats`). */
@@ -75,6 +78,35 @@ function parseJson(text: string | undefined): unknown {
   } catch {
     return undefined;
   }
+}
+
+function attachmentBytes(result: TestResult, name: string): Buffer | undefined {
+  const attachment = result.attachments.find((a) => a.name === name);
+  if (attachment === undefined) return undefined;
+  if (attachment.body !== undefined) return attachment.body;
+  if (attachment.path !== undefined && fs.existsSync(attachment.path)) {
+    return fs.readFileSync(attachment.path);
+  }
+  return undefined;
+}
+
+/** The 3DS page attachment (see recordBrowserResult) with its screenshot inlined. */
+function threeDsPage(result: TestResult): UiTestRow['threeDsPage'] {
+  const structure = parseJson(attachmentText(result, 'three-ds-page.json')) as
+    Omit<ThreeDsPageCapture, 'screenshot'> | undefined;
+  if (structure === undefined || typeof structure !== 'object') return undefined;
+  const shot = attachmentBytes(result, 'three-ds-page.jpg');
+  return {
+    ...structure,
+    ...(shot ? { screenshot: `data:image/jpeg;base64,${shot.toString('base64')}` } : {}),
+  };
+}
+
+function threeDsPageField(result: TestResult): {
+  threeDsPage?: NonNullable<UiTestRow['threeDsPage']>;
+} {
+  const page = threeDsPage(result);
+  return page === undefined ? {} : { threeDsPage: page };
 }
 
 function attachmentText(result: TestResult, name: string): string | undefined {
@@ -209,6 +241,7 @@ export default class UiReportReporter implements Reporter {
       pspFieldChecks,
       pspRequest: maskSensitiveData(parseJson(attachmentText(result, 'psp-request.json'))),
       pspResponse: maskSensitiveData(parseJson(attachmentText(result, 'psp-response.json'))),
+      ...threeDsPageField(result),
       exchanges,
       errors,
       annotations: { ...rest, ...(fieldCase ? { 'test data': fieldCase.testData } : {}) },

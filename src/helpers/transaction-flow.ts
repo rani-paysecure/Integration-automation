@@ -196,6 +196,10 @@ export async function executeTransaction(
   return { cashier, ...settled };
 }
 
+/** Attachments with the 3DS page read by the test (structure + screenshot). */
+export const THREE_DS_PAGE_ATTACHMENT = 'three-ds-page.json';
+export const THREE_DS_SHOT_ATTACHMENT = 'three-ds-page.jpg';
+
 /** Annotations / attachments for what happened in the browser (device data, 3DS, outcome). */
 export async function recordBrowserResult(
   cashier: CashierPaymentResult,
@@ -249,6 +253,21 @@ export async function recordBrowserResult(
       type: '3ds challenge',
       description: `${cashier.challenge.host}: ${cashier.challenge.detail}`,
     });
+    // The 3DS page as the test saw it – the report offers "Create 3DS flow from this page".
+    const seen = cashier.challenge.page;
+    if (seen !== undefined) {
+      const { screenshot, ...structure } = seen;
+      await testInfo.attach(THREE_DS_PAGE_ATTACHMENT, {
+        body: JSON.stringify(structure, null, 2),
+        contentType: 'application/json',
+      });
+      if (screenshot) {
+        await testInfo.attach(THREE_DS_SHOT_ATTACHMENT, {
+          body: screenshot,
+          contentType: 'image/jpeg',
+        });
+      }
+    }
   }
   testInfo.annotations.push({
     type: 'cashier outcome',
