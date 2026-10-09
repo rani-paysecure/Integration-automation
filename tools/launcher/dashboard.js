@@ -195,14 +195,82 @@ class DashboardClient {
     });
   }
 
-  /** Active banks – only id and name leave this module (the raw rows hold keys and test cards). */
+  /**
+   * Active banks – only id, name and supported payment methods (allowed_card) leave this module
+   * (the raw rows hold keys and test cards).
+   */
   banks() {
     return this.cached('banks', async () => {
       const rows = await this.getJson('/admin/getAllActivePaymentBanks');
       return (Array.isArray(rows) ? rows : [])
-        .map((b) => ({ id: Number(b.id), name: String(b.name || '').trim() }))
+        .map((b) => ({
+          id: Number(b.id),
+          name: String(b.name || '').trim(),
+          methods: [
+            ...new Set(
+              String(b.allowed_card || '')
+                .split(',')
+                .map((m) => m.trim().toUpperCase())
+                .filter((m) => m && m !== 'ALL'),
+            ),
+          ].sort(),
+        }))
         .filter((b) => b.name)
         .sort((a, b) => a.name.localeCompare(b.name));
+    });
+  }
+
+  /**
+   * Payment methods a bank really accepts: the union of its MIDs' allowed cards / methods.
+   * A bank or MID set to "ALL" stores every method of the system, so "ALL" defers to the level
+   * above (MID ALL → the bank's list; bank ALL → only what its MIDs name).
+   * Returns { methods: [{ name, mids: [...] }], source } – only names leave this module.
+   */
+  bankMethods(bankName) {
+    return this.cached(`bankMethods:${bankName}`, async () => {
+      const rows = await this.cached('banksRaw', () =>
+        this.getJson('/admin/getAllActivePaymentBanks'),
+      );
+      const bank = (Array.isArray(rows) ? rows : []).find((b) => b && b.name === bankName);
+      if (!bank) return { methods: [], source: 'unknown bank' };
+      const split = (v) =>
+        String(v || '')
+          .split(',')
+          .map((m) => m.trim().toUpperCase())
+          .filter(Boolean);
+      const bankList = split(bank.allowed_card);
+      const bankAll = bankList.includes('ALL');
+      const bankOwn = bankAll ? [] : bankList.filter((m) => m !== 'ALL');
+      const mids = await this.getJson(
+        `/admin/v2/getAllPaymentBankMIDList?pp_id=${encodeURIComponent(bank.id)}`,
+        false,
+      ).then(
+        (list) => (Array.isArray(list) ? list : []),
+        () => [],
+      );
+      const byMethod = new Map();
+      const add = (method, mid) => {
+        if (!byMethod.has(method)) byMethod.set(method, new Set());
+        if (mid) byMethod.get(method).add(mid);
+      };
+      for (const mid of mids) {
+        const name = String(mid.mid || mid.mid_desc || '').trim();
+        const own = split(mid.allowed_card);
+        // MID "ALL" = whatever the bank allows (its own list when the bank is not ALL).
+        const methods = [
+          ...own.filter((m) => m !== 'ALL'),
+          ...(own.includes('ALL') ? bankOwn : []),
+        ];
+        for (const m of methods) add(m, name);
+      }
+      if (byMethod.size === 0) for (const m of bankOwn) add(m, '');
+      return {
+        methods: [...byMethod.entries()]
+          .map(([name, set]) => ({ name, mids: [...set].sort() }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        source: mids.length ? `${String(mids.length)} MID(s)` : 'bank settings',
+        bankAll,
+      };
     });
   }
 

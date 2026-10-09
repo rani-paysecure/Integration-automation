@@ -667,6 +667,33 @@
       .imp-sum { flex-wrap: wrap; align-items: center; } .imp-select { display: inline-flex; gap: 12px; margin-left: auto; }
       #importDupHint:empty { display: none; } #importDupHint { margin: 2px 0 6px; color: var(--warn, #b7791f); }
       th.imp-all label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: inherit; cursor: pointer; white-space: nowrap; }
+      dialog.editor.bp-editor { width: min(1100px, calc(100vw - 32px)); }
+      .jira-how { margin: 10px 0 4px; padding-left: 18px; } .jira-how li { margin: 3px 0; } .jira-how a { color: var(--brand, var(--accent)); font-weight: 600; }
+      .bp-methods { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-height: 168px; overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+      .bp-method { padding: 4px 10px; border-radius: 999px; font: 600 12px/1.4 ui-monospace, Menlo, monospace; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); box-shadow: none; cursor: pointer; }
+      .bp-method.on { color: #fff; background: var(--brand, #6d5dfc); border-color: var(--brand, #6d5dfc); }
+      .bp-method.all { font-family: inherit; } .bp-method.extra { border-style: dashed; }
+      .bp-method-hint { flex-basis: 100%; font-size: 12px; }
+      .bp-jira input { flex: 1; margin: 0; min-width: 0; } .bp-jira { flex-wrap: nowrap; } .bp-jira button { white-space: nowrap; }
+      .bp-editor .cols-2 { align-items: start; } .bp-editor .cols-2 label { margin-top: 0; }
+      .bp-editor #bpBank { margin-top: 6px; } .bp-editor .tds-bank-hint { margin: 4px 0 0; }
+      .bp-methods.empty { border: 0; padding: 0 0 6px; background: none; }
+      .bp-stats { display: flex; gap: 14px; font-size: 13px; color: var(--muted); } .bp-stats b { color: var(--text); }
+      .bp-chip { font: 600 12px/1.4 ui-monospace, Menlo, monospace; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); }
+      .bp-chip.req { border-color: color-mix(in srgb, var(--brand, #6d5dfc) 45%, transparent); background: color-mix(in srgb, var(--brand, #6d5dfc) 8%, var(--surface)); }
+      table.bp-map { table-layout: fixed; width: 100%; } table.bp-map td { vertical-align: middle; }
+      table.bp-map th:nth-child(1) { width: 22%; } table.bp-map th:nth-child(2) { width: 22px; } table.bp-map th:nth-child(3) { width: auto; }
+      table.bp-map th:nth-child(4) { width: 150px; } table.bp-map th:nth-child(5) { width: 84px; } table.bp-map th:nth-child(6) { width: 44px; }
+      table.bp-map td:nth-child(3) input { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; } table.bp-map input, table.bp-map select { margin: 0; font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
+      table.bp-map td.arrow, .bp-draft td.arrow { color: var(--muted); width: 16px; text-align: center; } table.bp-map td.c { text-align: center; }
+      .bp-doc { display: grid; grid-template-columns: 1fr 1.6fr auto auto; gap: 8px; align-items: center; margin: 6px 0; } .bp-doc input { margin: 0; }
+      .bp-draft { margin: 8px 0 12px; padding: 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, #1c7ed6 30%, transparent); background: color-mix(in srgb, #1c7ed6 6%, var(--surface)); }
+      .bp-draft label { display: flex; flex-direction: column; gap: 4px; margin: 0 0 6px; } .bp-draft select { margin: 0; }
+      .bp-draft tr.dim td { color: var(--muted); }
+      .rcard-map { color: #b35c00; background: color-mix(in srgb, #e8890c 10%, var(--surface)); border-left-color: #e8890c; }
+      .ids a.video-dl, .ids a.video-dl:visited, .ids a.video-dl:hover { color: #fff; text-decoration: none; }
+      .video-dl { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; text-decoration: none; color: #fff; background: #1c7ed6; }
+      .video-dl.done { color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); }
       .rcard-3ds { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, #1c7ed6 7%, var(--surface)); border: 1px solid color-mix(in srgb, #1c7ed6 28%, transparent); border-left: 4px solid #1c7ed6; overflow-wrap: anywhere; }
       .rcard-3ds > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .rcard-3ds .row { margin-top: 4px; align-items: center; flex-wrap: wrap; }
       .tds-cap-shot img { width: 120px; height: 84px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
@@ -1051,6 +1078,7 @@
           <button data-tab="session"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.7-3.3 3-5 6-5s5.3 1.7 6 5M16 6h5M18.5 3.5 21 6l-2.5 2.5"/></svg><span>Session data</span></button>
           <button data-tab="cards"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span>Test cards</span></button>
           <button data-tab="flows"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h.01M12 8h.01M16 8h.01M8 12h.01M12 12h.01M16 12h.01M9 16.5h6"/></svg><span>Dynamic 3DS flows</span></button>
+          <button data-tab="banks"><svg viewBox="0 0 24 24"><path d="M3 10 12 4l9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg><span>Bank profiles</span></button>
           <button data-tab="masking"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3z"/><path d="M9 12h6M9.5 9.5h5M10 14.5h4"/></svg><span>Masking rules</span></button>
           <button data-tab="cases"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 3.5v2h6v-2M9 11l2 2 4-4M9 16.5h6"/></svg><span>Test cases</span></button>
           <button data-tab="advanced"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Advanced</span></button>
@@ -1161,6 +1189,7 @@
               <p class="hint" id="cardWarning"></p>
               <p class="hidden" id="bankConfigWarning"></p>
               <label class="check"><input id="headed" type="checkbox" /> Show browser while paying</label>
+              <label class="check" title="Records the cashier → 3DS → redirect of every payment. Each report card gets a one-time download; the video is deleted after the download and is never stored."><input id="recordVideo" type="checkbox" /> Record payment video – one download per test</label>
               <div class="cols-2">
                 <div><label for="workers" title="Parallel browsers – leave empty for the default">Workers</label><input id="workers" type="number" min="1" max="16" placeholder="Default" /></div>
                 <div><label for="retries">Retries</label><input id="retries" type="number" min="0" max="3" value="0" /></div>
@@ -1597,6 +1626,24 @@
         </section>
       </div>
 
+      <!-- BANK PROFILES -->
+      <div data-panel="banks" class="hidden">
+        <section>
+          <div class="sec-head"><h2>Bank profiles</h2><button type="button" class="primary" id="bpAdd">+ Add bank profile</button></div>
+          <p class="hint">One profile per bank / PSP (and its payment methods): the Jira ticket, the PSP's API docs, and the <b>field mapping</b> – which fields of our purchase request must reach the PSP and how. The PSP request/response checks (and S2S / session) compare every mapped field with the request PGS sent (paymentInfo / allOtherRequest) and report a <b>mismatch</b> or a <b>missing mandatory field</b>. Saved in <code id="bpFile">config/bank-profiles.json</code> – commit it for the team. Never put credentials here.</p>
+          <div class="mk-grid tds-grid" id="bpList"></div>
+          <div class="msg" id="bpMsg"></div>
+        </section>
+        <section class="mk-how">
+          <h2>How the mapping is checked</h2>
+          <ol class="mk-steps">
+            <li><b>Draft it from a run.</b> <span>Run one PSP request/response check for the bank, then "Draft from a run": every PSP request field is matched to our request by value (amount × 100, purchase ID, e-mail …).</span></li>
+            <li><b>Mark what is mandatory.</b> <span>Same value, amount × 100, purchase ID, must be sent (values from the MID, e.g. paymentFacilitator.subMerchant), or must be masked.</span></li>
+            <li><b>Every run checks it.</b> <span>Each mapped field is one PSP check: match, MISMATCH (we sent X, the PSP got Y – e-mail / phone shown masked) or MISSING mandatory field.</span></li>
+          </ol>
+        </section>
+      </div>
+
       <!-- MASKING RULES -->
       <div data-panel="masking" class="hidden">
         <section>
@@ -1637,6 +1684,11 @@
               <span class="adv-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg></span>
               <div class="adv-body"><div class="adv-title"><b>AI &amp; skills</b><span class="state-pill" id="aiPill"></span></div><p>Paysecure AI gateway used by "Generate with AI" and the paysecure-qa skill pack.</p>
               <button type="button" class="small adv-open" data-dialog="aiInfoDialog">View status →</button></div>
+            </div>
+            <div class="adv-card ">
+              <span class="adv-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 11l4 4 4-4 4 4 4-4-8-8z"/><path d="m8 15 4 4 4-4"/></svg></span>
+              <div class="adv-body"><div class="adv-title"><b>Jira</b><span class="state-pill" id="jiraPill"></span></div><p>Your Jira site, e-mail and personal API token – used to read bank tickets (Bank profiles). Saved in this computer's .env only.</p>
+              <button type="button" class="small adv-open" data-dialog="jiraDialog">Set up →</button></div>
             </div>
             <div class="adv-card ">
               <span class="adv-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span>
@@ -2002,7 +2054,7 @@
         const value = $('runProfile').value;
         const payload = {
           env: state.env, testKeys: [...state.selected], ...runChoice(), payCard: $('payCard').value, payFieldCases: $('payFieldCases').checked, device: $('device').value,
-          purchaseIds: $('purchaseIds').value, refundPurchaseId: $('refundPurchaseId').value, headed: $('headed').checked, workers: $('workers').value, retries: $('retries').value,
+          purchaseIds: $('purchaseIds').value, refundPurchaseId: $('refundPurchaseId').value, headed: $('headed').checked, recordVideo: $('recordVideo').checked, workers: $('workers').value, retries: $('retries').value,
         };
         if (value === CUSTOM) Object.assign(payload, { brandId: $('ooBrand').value, apiKey: $('ooKey').value, dashboardUsername: $('ooDashUser').value, dashboardPassword: $('ooDashPass').value });
         else payload.profileId = value;
@@ -2185,6 +2237,13 @@
         // Session flow: the session the cashier was opened with.
         const sessionId = t.annotations?.['session id'];
         if (sessionId) ids.append(el('span', {}, el('b', {}, 'SESSION'), el('span', { class: 'mono' }, sessionId)));
+        // Payment video: one download, then the launcher deletes the file.
+        (t.videos || []).forEach((file, i) => {
+          const name = `payment-${t.purchaseId || slug(t.title)}${t.videos.length > 1 ? `-${i + 1}` : ''}`;
+          const a = el('a', { class: 'video-dl', href: `/api/report/video?token=${encodeURIComponent(TOKEN)}&file=${encodeURIComponent(file)}&name=${encodeURIComponent(name)}`, title: 'Download once – the file is deleted after the download (not stored)' }, `⬇ Payment video${t.videos.length > 1 ? ` ${i + 1}` : ''}`);
+          a.addEventListener('click', () => setTimeout(() => { a.replaceWith(el('span', { class: 'video-dl done', title: 'Downloaded – the launcher deleted its copy' }, '✓ Video downloaded')); }, 400));
+          ids.append(a);
+        });
         let detail;
         const toggle = el('button', { type: 'button', class: 'link-btn details-btn' }, 'Details');
         card.isOpen = () => Boolean(detail && !detail.classList.contains('hidden'));
@@ -2202,6 +2261,11 @@
             const [, rule, field] = c.name.split(' · ');
             const where = String(c.actual || '').replace(/^NOT MASKED – .*? is readable at /, '');
             return el('div', { class: 'rcard-unmasked' }, el('b', {}, `${field} is not masked`), el('span', {}, ` – readable at ${where}`), el('em', {}, `rule: ${rule}`));
+          }),
+          // Bank profile mapping: one line per mismatch / missing mandatory field.
+          ...(t.psp?.checks || []).filter((c) => !c.passed && /^Mapping · /.test(c.name)).map((c) => {
+            const field = c.name.replace(/^Mapping · /, ''); const [kind, ...rest] = String(c.actual || '').split(' – ');
+            return el('div', { class: 'rcard-unmasked rcard-map' }, el('b', {}, `${field}: ${/^MISSING/.test(kind) ? 'missing mandatory field' : /^MISMATCH/.test(kind) ? 'mismatch' : kind}`), el('span', {}, rest.length ? ` – ${rest.join(' – ')}` : ''), el('em', {}, 'bank profile'));
           }),
           ...(t.psp?.notes || []).filter((n) => /^warning:/i.test(n)).map((n) => el('div', { class: 'rcard-warn' }, `⚠ ${n.replace(/^warning:\s*/i, '')}`)),
           ...(t.threeDsPage ? [threeDsPageBox(t)] : []),
@@ -2801,14 +2865,15 @@
         const sel = $('tdsBankSel'); const hint = $('tdsBankHint');
         const fill = (banks, note) => {
           const names = [...new Set([...(current ? [current] : []), ...banks])].sort((a, b) => a.localeCompare(b));
-          sel.replaceChildren(option('', banks.length ? '– choose a bank –' : '– no bank list –'), ...names.map((b) => option(b, b)), option('__other', 'Other – type the name…'));
+          sel.disabled = false; sel.replaceChildren(option('', banks.length ? '– choose a bank –' : '– no bank list –'), ...names.map((b) => option(b, b)), option('__other', 'Other – type the name…'));
           sel.value = current || (banks.length ? '' : '__other'); hint.textContent = note; syncTdsBank();
         };
+        const loading = () => { sel.disabled = true; sel.replaceChildren(option(current || '', current || 'Loading banks from the dashboard …')); $('tdsBank').classList.add('hidden'); hint.textContent = current ? 'Loading the bank list …' : ''; };
         const profileId = dashboardTester();
         if (!profileId) { fill([], 'Bank list needs a tester with a dashboard login (Run tab) – or type the name.'); return; }
         state.tdsBanks ||= {};
         if (!state.tdsBanks[state.env]) {
-          fill([], 'Loading banks from the dashboard …');
+          loading();
           try { state.tdsBanks[state.env] = (await api(`/api/dashboard/banks?env=${state.env}&profileId=${encodeURIComponent(profileId)}`)).banks; }
           catch (error) { fill([], `Bank list not available (${error.message}) – type the name.`); return; }
         }
@@ -2994,6 +3059,266 @@
         const flow = flows.find((f) => f.id === $('cFlow').value);
         $('cScenario').replaceChildren(...(flow ? [option('auto', 'Automatic – type the 3DS details, then Submit (success)'), ...flow.scenarios.map((sc) => option(sc.id, `${sc.name} – ${TDS_RESULT[sc.outcome]}`))] : [option('', '—')]));
         $('cScenario').value = flow ? (flow.scenarios.some((sc) => sc.id === scenarioId) ? scenarioId : 'auto') : '';
+      }
+
+      // ── Jira connection (Advanced → Jira) ─────────────────────────────────
+      function renderJira() {
+        const j = state.jira || {};
+        $('jiraPill').className = `state-pill ${j.configured ? 'ok' : 'warn'}`; $('jiraPill').textContent = j.configured ? 'Connected' : 'Not set up';
+        $('jiraSite').value = j.baseUrl || 'https://paysecure-team.atlassian.net'; $('jiraEmail').value = j.email || '';
+        $('jiraToken').value = ''; $('jiraToken').placeholder = j.tokenSet ? '•••••••• saved – leave empty to keep it' : 'Paste your API token';
+        $('jiraRemove').classList.toggle('hidden', !j.tokenSet);
+      }
+      async function loadJira() { try { state.jira = await api('/api/jira/status'); } catch { state.jira = {}; } renderJira(); }
+      async function saveJira() {
+        $('jiraSave').disabled = true; say('jiraMsg', 'Saving and testing …');
+        try {
+          const r = await api('/api/jira/setup', { method: 'POST', body: JSON.stringify({ baseUrl: $('jiraSite').value, email: $('jiraEmail').value, token: $('jiraToken').value }) });
+          state.jira = r; renderJira(); say('jiraMsg', r.check.message, r.check.ok);
+        } catch (error) { say('jiraMsg', error.message, false); }
+        finally { $('jiraSave').disabled = false; }
+      }
+
+      // ── bank profiles (config/bank-profiles.json – shared with the team) ───────
+      const BP_CHECKS = { equals: 'Same value', 'minor-units': 'Amount × 100', 'purchase-id': 'Purchase ID', present: 'Must be sent', masked: 'Must be masked' };
+      state.bp = { profiles: [], file: 'config/bank-profiles.json' };
+      async function loadBankProfiles() {
+        try { const r = await api('/api/bank-profiles'); state.bp.profiles = r.profiles; state.bp.file = r.file; } catch (error) { say('bpMsg', error.message, false); }
+        renderBankProfiles();
+      }
+      async function saveBankProfiles(next, okText) {
+        const r = await api('/api/bank-profiles', { method: 'PUT', body: JSON.stringify({ profiles: next }) });
+        state.bp.profiles = r.profiles; renderBankProfiles(); if (okText) say('bpMsg', okText);
+      }
+      function renderBankProfiles() {
+        const box = $('bpList'); if (!box) return; box.replaceChildren();
+        $('bpFile').textContent = state.bp.file;
+        state.bp.profiles.forEach((p, index) => {
+          const icon = el('span', { class: 'mk-icon' }); icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg>';
+          const mandatory = p.mapping.filter((m) => m.mandatory).length;
+          const edit = el('button', { type: 'button', class: 'small' }, 'Edit'); edit.addEventListener('click', () => openBankProfile(index));
+          const del = el('button', { type: 'button', class: 'small danger-link' }, 'Delete');
+          del.addEventListener('click', async () => {
+            if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Click again to delete'; setTimeout(() => { delete del.dataset.armed; del.textContent = 'Delete'; }, 3000); return; }
+            try { await saveBankProfiles(state.bp.profiles.filter((_, i) => i !== index), `Deleted "${p.bank}".`); } catch (error) { say('bpMsg', error.message, false); }
+          });
+          box.append(el('div', { class: 'mk-card bp-card' },
+            el('div', { class: 'mk-top' }, icon, el('div', { class: 'mk-title' }, el('span', { class: 'mk-kind' }, p.methods.join(' · ') || 'all methods'), el('b', {}, p.bank))),
+            el('div', { class: 'bp-stats' }, el('span', {}, el('b', {}, String(p.mapping.length)), ' mapped fields'), el('span', {}, el('b', {}, String(mandatory)), ' mandatory'), el('span', {}, el('b', {}, String(p.docs.length)), ' docs')),
+            el('div', { class: 'mk-chips' }, ...p.mapping.slice(0, 6).map((m) => el('span', { class: `bp-chip${m.mandatory ? ' req' : ''}`, title: `${m.ours || '—'} → ${m.psp} · ${BP_CHECKS[m.check]}` }, m.psp)), ...(p.mapping.length > 6 ? [el('span', { class: 'hint' }, `+${p.mapping.length - 6} more`)] : []), ...(p.mapping.length ? [] : [el('span', { class: 'hint' }, 'No field mapping yet')])),
+            el('div', { class: 'tds-meta hint' }, ...(p.jiraUrl ? [el('a', { href: p.jiraUrl, target: '_blank', rel: 'noopener' }, `Jira ${p.jiraUrl.split('/').pop()} ↗`)] : [el('span', {}, 'No Jira link')])),
+            el('div', { class: 'mk-actions' }, edit, del)));
+        });
+        if (!state.bp.profiles.length) box.append(el('div', { class: 'tds-empty' }, el('b', {}, 'No bank profiles yet'), el('span', { class: 'hint' }, 'Add a bank: its payment methods, Jira ticket and API docs, and which fields of our purchase request must reach the PSP – drafted from a run in one click.')));
+      }
+      function showBpSection(sec) {
+        for (const b of $('bpEdNav').children) b.setAttribute('aria-selected', String(b.dataset.s === sec));
+        for (const d of $('bpEditor').querySelectorAll('.ed-sec')) d.classList.toggle('on', d.dataset.s === sec);
+      }
+      /** Bank dropdown (dashboard Banks) with "Other – type the name". */
+      async function loadBankSelect(sel, input, hint, current) {
+        const sync = () => input.classList.toggle('hidden', sel.value !== '__other');
+        sel.onchange = () => { sync(); if (sel.value === '__other') input.focus(); };
+        const fill = (banks, note) => {
+          const names = [...new Set([...(current ? [current] : []), ...banks])].sort((a, b) => a.localeCompare(b));
+          sel.disabled = false; sel.replaceChildren(option('', banks.length ? '– choose a bank –' : '– no bank list –'), ...names.map((b) => option(b, b)), option('__other', 'Other – type the name…'));
+          sel.value = current || (banks.length ? '' : '__other'); hint.textContent = note; sync();
+        };
+        const loading = () => { sel.disabled = true; sel.replaceChildren(option(current || '', current || 'Loading banks from the dashboard …')); input.classList.add('hidden'); hint.textContent = current ? 'Loading the bank list …' : ''; };
+        const profileId = dashboardTester();
+        if (!profileId) { fill([], 'Bank list needs a tester with a dashboard login (Run tab) – or type the name.'); return; }
+        state.tdsBanks ||= {};
+        if (!state.tdsBanks[state.env] || !state.bankMethods?.[state.env]) {
+          loading();
+          try { const r = await api(`/api/dashboard/banks?env=${state.env}&profileId=${encodeURIComponent(profileId)}`); state.tdsBanks[state.env] = r.banks; state.bankMethods = { ...(state.bankMethods || {}), [state.env]: r.methods || {} }; }
+          catch (error) { fill([], `Bank list not available (${error.message}) – type the name.`); return; }
+        }
+        fill(state.tdsBanks[state.env], '');
+      }
+      /** Supported payment methods of a bank (dashboard), or undefined when unknown. */
+      const methodsOfBank = (bank) => state.bankMids?.[`${state.env}|${bank}`]?.methods?.map((m) => m.name);
+      /** Loads the methods a bank's MIDs accept (dashboard), once per bank. */
+      async function loadBankMethods(bank) {
+        const key = `${state.env}|${bank}`; state.bankMids ||= {};
+        if (!bank || state.bankMids[key] || state.bankMidsLoading === key) return;
+        const profileId = dashboardTester(); if (!profileId) return;
+        state.bankMidsLoading = key; renderBpMethods();
+        try { state.bankMids[key] = await api(`/api/dashboard/bank-methods?env=${state.env}&profileId=${encodeURIComponent(profileId)}&bank=${encodeURIComponent(bank)}`); }
+        catch (error) { state.bankMids[key] = { methods: [], error: error.message }; }
+        finally { state.bankMidsLoading = ''; }
+        if (state.bpEdit && bpBankValue() === bank) renderBpMethods();
+      }
+      /** Payment methods of the profile: chips of the bank's supported methods, else free text. */
+      function renderBpMethods() {
+        const d = state.bpEdit.draft; const bank = bpBankValue(); const known = methodsOfBank(bank);
+        const info = state.bankMids?.[`${state.env}|${bank}`];
+        if (bank && !info && $('bpBankSel').value !== '__other' && !$('bpBankSel').disabled) { loadBankMethods(bank); }
+        if (bank && state.bankMidsLoading === `${state.env}|${bank}`) { $('bpMethods').classList.add('hidden'); $('bpMethodPick').classList.add('empty'); $('bpMethodPick').replaceChildren(el('span', { class: 'hint' }, `Reading the MIDs of ${bank} …`)); return; }
+        const box = $('bpMethodPick'); const input = $('bpMethods');
+        const selected = new Set(d.methods);
+        input.classList.toggle('hidden', Boolean(known?.length)); box.classList.toggle('empty', !known?.length);
+        if (!known?.length) {
+          input.classList.toggle('hidden', !bank);
+          box.replaceChildren(el('span', { class: 'hint' }, $('bpBankSel').disabled ? 'Loading the bank\'s methods …' : bank ? `This bank's methods are not known${info?.error ? ` (${info.error})` : ' (no dashboard list)'} – type them, comma-separated.` : 'Choose the bank first – its supported methods appear here.'));
+          input.value = d.methods.join(', '); return;
+        }
+        const all = [...new Set([...known, ...d.methods])];
+        const chips = all.map((m) => {
+          const mids = info?.methods?.find((x) => x.name === m)?.mids || [];
+          const b = el('button', { type: 'button', class: `bp-method${selected.has(m) ? ' on' : ''}${known.includes(m) ? '' : ' extra'}`, title: known.includes(m) ? (mids.length ? `Allowed on MID ${mids.join(', ')}` : 'Allowed by the bank') : 'Not allowed on this bank\'s MIDs on the dashboard' }, m);
+          b.addEventListener('click', () => { d.methods = selected.has(m) ? d.methods.filter((x) => x !== m) : [...d.methods, m]; renderBpMethods(); });
+          return b;
+        });
+        const allBtn = el('button', { type: 'button', class: `bp-method all${d.methods.length ? '' : ' on'}`, title: 'The profile applies to every payment method of the bank' }, 'All methods');
+        allBtn.addEventListener('click', () => { d.methods = []; renderBpMethods(); });
+        box.replaceChildren(allBtn, ...chips, el('span', { class: 'hint bp-method-hint' }, `${known.length} allowed on this bank's ${info?.source || 'MIDs'} (dashboard) · ${d.methods.length ? `${d.methods.length} selected` : 'profile applies to all'}`));
+      }
+      const bpBankValue = () => ($('bpBankSel').value === '__other' || !$('bpBankSel').value ? $('bpBank').value.trim() : $('bpBankSel').value);
+      /** Dot paths of our purchase request (for the "Our field" suggestions). */
+      function purchasePaths() {
+        const out = []; const walk = (v, p) => { if (Array.isArray(v)) v.slice(0, 1).forEach((x, i) => walk(x, `${p}[${i}]`)); else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, p ? `${p}.${k}` : k); else if (p) out.push(p); };
+        walk(eff().purchase?.[state.env] || {}, ''); return out;
+      }
+      function openBankProfile(index) {
+        const p = index === undefined ? null : state.bp.profiles[index];
+        state.bpEdit = { index, draft: p ? structuredClone(p) : { id: '', bank: '', methods: [], jiraUrl: '', docs: [], notes: '', mapping: [], updatedAt: '' } };
+        const d = state.bpEdit.draft;
+        $('bpEdTitle').textContent = p ? `Edit ${p.bank}` : 'Add bank profile';
+        $('bpBank').value = d.bank; $('bpMethods').value = d.methods.join(', '); $('bpJira').value = d.jiraUrl; $('bpNotes').value = d.notes;
+        loadBankSelect($('bpBankSel'), $('bpBank'), $('bpBankHint'), d.bank).then(() => {
+          const sel = $('bpBankSel'); const prev = sel.onchange;
+          sel.onchange = () => { prev?.(); renderBpMethods(); };
+          renderBpMethods();
+        });
+        renderBpMethods();
+        $('bpOurPaths').replaceChildren(...purchasePaths().map((x) => option(x, x)));
+        $('bpDraftBox').replaceChildren(); renderBpMapping(); renderBpDocs(); syncBpJira();
+        say('bpEdMsg', ''); showBpSection('bank'); $('bpEditor').showModal(); $('bpBankSel').focus();
+      }
+      /** Reads the Jira ticket and merges notes, doc links and mapping rows into the draft (not saved). */
+      async function bpPrefillFromJira() {
+        const link = $('bpJira').value.trim();
+        if (!link) { say('bpEdMsg', 'Paste the Jira ticket link first.', false); return; }
+        if (!state.jira?.configured) { say('bpEdMsg', 'Set up Jira first: Advanced → Jira (your e-mail + API token).', false); return; }
+        const b = $('bpJiraFill'); b.disabled = true; say('bpEdMsg', 'Reading the Jira ticket …');
+        try {
+          const r = await api('/api/jira/prefill', { method: 'POST', body: JSON.stringify({ url: link }) });
+          const d = state.bpEdit.draft;
+          d.jiraUrl = r.url; $('bpJira').value = r.url; syncBpJira();
+          const notes = $('bpNotes').value.trim();
+          if (!notes.includes(r.key)) $('bpNotes').value = notes ? `${notes}\n\n${r.notes}` : r.notes;
+          const urls = new Set(d.docs.map((x) => x.url)); const newDocs = r.docs.filter((x) => !urls.has(x.url)); d.docs.push(...newDocs);
+          const paths = new Set(d.mapping.map((m) => m.psp.toLowerCase())); const newRows = r.mapping.filter((m) => !paths.has(m.psp.toLowerCase())); d.mapping.push(...newRows);
+          renderBpDocs(); renderBpMapping();
+          say('bpEdMsg', `From ${r.key}: notes filled, ${newDocs.length} API doc link(s), ${newRows.length} mapping field(s) from request samples${r.skippedCredentialLines ? ` · ${r.skippedCredentialLines} credential line(s) skipped (not imported)` : ''}. Review steps 2 and 3, then Save profile.`);
+        } catch (error) { say('bpEdMsg', error.message, false); }
+        finally { b.disabled = false; }
+      }
+      function syncBpJira() { const raw = $('bpJira').value.trim(); const u = raw && !/^https?:\/\//.test(raw) && /\.atlassian\.net\//.test(raw) ? `https://${raw}` : raw; $('bpJiraOpen').classList.toggle('hidden', !/^https?:\/\//.test(u)); $('bpJiraOpen').href = u; }
+      function renderBpMapping() {
+        const d = state.bpEdit.draft;
+        $('bpMapCount').textContent = d.mapping.length ? `${d.mapping.length} field(s) · ${d.mapping.filter((m) => m.mandatory).length} mandatory` : '';
+        $('bpMapRows').replaceChildren(...d.mapping.map((m, i) => {
+          const ours = el('input', { value: m.ours, list: 'bpOurPaths', placeholder: m.check === 'present' || m.check === 'purchase-id' ? '—' : 'client.email', oninput: () => { m.ours = ours.value.trim(); } });
+          const psp = el('input', { value: m.psp, placeholder: 'profile.email', oninput: () => { m.psp = psp.value.trim(); } });
+          const check = el('select', { onchange: () => { m.check = check.value; renderBpMapping(); } }, ...Object.entries(BP_CHECKS).map(([v, l]) => option(v, l))); check.value = m.check;
+          const req = el('input', { type: 'checkbox', checked: m.mandatory, title: 'Mandatory – missing fails the PSP check', onchange: () => { m.mandatory = req.checked; renderBpMapping(); } });
+          const x = el('button', { type: 'button', class: 'small', title: 'Remove' }, '✕'); x.addEventListener('click', () => { d.mapping.splice(i, 1); renderBpMapping(); });
+          return el('tr', {}, el('td', {}, ours), el('td', { class: 'arrow' }, '→'), el('td', {}, psp), el('td', {}, check), el('td', { class: 'c' }, req), el('td', {}, x));
+        }), ...(d.mapping.length ? [] : [el('tr', {}, el('td', { colSpan: 6, class: 'hint' }, 'No fields yet – "Draft from a run" fills them from a real transaction, or add them one by one.'))]));
+      }
+      function renderBpDocs() {
+        const d = state.bpEdit.draft;
+        $('bpDocRows').replaceChildren(...d.docs.map((doc, i) => {
+          const title = el('input', { value: doc.title, placeholder: 'e.g. Payments API – process payment', oninput: () => { doc.title = title.value; } });
+          const url = el('input', { value: doc.url, placeholder: 'https://… (doc, PDF / DOCX link, Confluence, Drive)', oninput: () => { doc.url = url.value.trim(); open.href = doc.url; } });
+          const open = el('a', { href: doc.url, target: '_blank', rel: 'noopener', class: 'small-link' }, 'Open ↗');
+          const x = el('button', { type: 'button', class: 'small', title: 'Remove' }, '✕'); x.addEventListener('click', () => { d.docs.splice(i, 1); renderBpDocs(); });
+          return el('div', { class: 'bp-doc' }, title, url, open, x);
+        }), ...(d.docs.length ? [] : [el('p', { class: 'hint' }, 'No docs yet.')]));
+      }
+      /** Leaves of an object as [path, value] – arrays keep their index. */
+      function leavesOf(v, p = '', out = []) {
+        if (Array.isArray(v)) v.forEach((x, i) => leavesOf(x, `${p}[${i}]`, out));
+        else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) leavesOf(x, p ? `${p}.${k}` : k, out);
+        else if (v !== null && v !== undefined && p) out.push([p, String(v)]);
+        return out;
+      }
+      /** Tests of the latest runs that reached this bank and stored its PSP request. */
+      async function bpRunsFor(bank) {
+        const runs = ['latest', ...((await api('/api/reports').catch(() => ({ runs: [] }))).runs || []).slice(0, 8)];
+        const found = []; const seen = new Set();
+        for (const run of runs) {
+          let report; try { report = await api(`/api/report?run=${encodeURIComponent(run)}`); } catch { continue; }
+          for (const t of report.tests || []) {
+            if (!t.pspRequest || !t.purchaseId || seen.has(t.purchaseId)) continue;
+            if (bank && (t.psp?.bankName || '').toLowerCase() !== bank.toLowerCase()) continue;
+            const req = (t.exchanges || []).find((x) => x.request?.method === 'POST' && /\/(purchases|sessions?|s2s)\b/i.test(x.request.url || '') && x.request.body && typeof x.request.body === 'object');
+            if (!req) continue;
+            seen.add(t.purchaseId); found.push({ t, request: req.request.body, at: report.finishedAt });
+          }
+          if (found.length >= 10) break;
+        }
+        return found;
+      }
+      /** Mapping suggestions: PSP request fields matched to our request by value. */
+      function bpSuggest(request, pspRequest, purchaseId, existing) {
+        const ours = leavesOf(request); const inner = (p) => p.replace(/^(paymentInfo|allOtherRequest3ds|allOtherRequest)(\[\d+\])?\.?/, '').replace(/\[\d+\]/g, '');
+        const masked = (v) => v.includes('*') || /x{4,}/i.test(v);
+        const last = (p) => p.split('.').pop().replace(/\[\d+\]/g, '').toLowerCase();
+        const have = new Set(existing.map((m) => m.psp.toLowerCase())); const out = []; const done = new Set();
+        for (const [path, value] of leavesOf(pspRequest)) {
+          const psp = inner(path); if (!psp || done.has(psp.toLowerCase()) || have.has(psp.toLowerCase())) continue; done.add(psp.toLowerCase());
+          const v = value.trim(); if (v === '') continue;
+          const byKey = ours.find(([p]) => last(p) === last(psp));
+          let row;
+          if (v === purchaseId) row = { ours: '', check: 'purchase-id' };
+          else if (masked(v)) row = { ours: byKey?.[0] || '', check: 'masked' };
+          else {
+            const same = ours.filter(([, o]) => o.trim() !== '' && (o.trim().toLowerCase() === v.toLowerCase() || (Number.isFinite(Number(o)) && Number.isFinite(Number(v)) && Number(o) === Number(v))));
+            const minor = ours.filter(([, o]) => /^\d+(\.\d+)?$/.test(o.trim()) && Number(v) === Math.round(Number(o) * 100) && Number(o) !== 0);
+            const pick = (list) => list.find(([p]) => last(p) === last(psp)) || list.find(([p]) => last(psp).includes(last(p)) || last(p).includes(last(psp))) || list[0];
+            if (same.length && !/^(true|false)$/i.test(v)) row = { ours: pick(same)[0], check: 'equals' };
+            else if (minor.length) row = { ours: pick(minor)[0], check: 'minor-units' };
+            else row = { ours: '', check: 'present', unmatched: true };
+          }
+          out.push({ ...row, psp, mandatory: !row.unmatched, note: '', add: !row.unmatched || /merchant|facilitator/i.test(psp) });
+        }
+        return out;
+      }
+      async function bpDraftFromRun() {
+        const bank = bpBankValue(); const box = $('bpDraftBox');
+        box.replaceChildren(el('p', { class: 'hint' }, `Looking for ${bank || 'any bank'} in the latest runs …`));
+        const runs = await bpRunsFor(bank);
+        if (!runs.length) { box.replaceChildren(el('p', { class: 'msg error' }, `No run with a stored PSP request${bank ? ` for ${bank}` : ''} – run a PSP request/response check (or S2S / session) for this bank first.`)); return; }
+        const pick = el('select', {}, ...runs.map((r, i) => option(String(i), `${r.t.purchaseId} · ${r.t.psp?.bankName || ''} · ${r.t.title.slice(0, 60)} · ${new Date(r.at).toLocaleString()}`)));
+        const table = el('tbody'); let rows = [];
+        const draw = () => {
+          const r = runs[Number(pick.value)]; rows = bpSuggest(r.request, r.t.pspRequest, r.t.purchaseId, state.bpEdit.draft.mapping);
+          table.replaceChildren(...rows.map((s) => { const cb = el('input', { type: 'checkbox', checked: s.add, onchange: () => { s.add = cb.checked; } });
+            return el('tr', { class: s.unmatched ? 'dim' : '' }, el('td', {}, cb), el('td', { class: 'mono' }, s.ours || '—'), el('td', { class: 'arrow' }, '→'), el('td', { class: 'mono' }, s.psp), el('td', {}, s.unmatched ? 'Must be sent (no match in our request)' : BP_CHECKS[s.check])); }),
+            ...(rows.length ? [] : [el('tr', {}, el('td', { colSpan: 5, class: 'hint' }, 'Every PSP field of this run is already mapped.'))]));
+        };
+        pick.addEventListener('change', draw);
+        const add = el('button', { type: 'button', class: 'primary small' }, 'Add selected fields');
+        add.addEventListener('click', () => { const chosen = rows.filter((s) => s.add).map(({ ours, psp, check, mandatory, note }) => ({ ours, psp, check, mandatory, note })); state.bpEdit.draft.mapping.push(...chosen); box.replaceChildren(); renderBpMapping(); say('bpEdMsg', `${chosen.length} field(s) added – check them, then Save profile.`); });
+        const cancel = el('button', { type: 'button', class: 'small' }, 'Cancel'); cancel.addEventListener('click', () => box.replaceChildren());
+        box.replaceChildren(el('div', { class: 'bp-draft' }, el('label', {}, 'Transaction', pick),
+          el('p', { class: 'hint' }, 'Matched by value: each PSP request field whose value is one of our request values (amount × 100, purchase ID, masked e-mail / phone …). Fields with no match are offered as "must be sent" (ticked for merchant / sub-merchant blocks).'),
+          el('div', { class: 'import-wrap' }, el('table', { class: 'import' }, el('thead', {}, el('tr', {}, ...['Add', 'Our field', '', 'PSP field', 'Check'].map((h) => el('th', {}, h)))), table)),
+          el('div', { class: 'row tight' }, add, cancel)));
+        draw();
+      }
+      async function saveBankProfile() {
+        const d = state.bpEdit.draft;
+        d.bank = bpBankValue(); d.jiraUrl = $('bpJira').value.trim().replace(/^(?!https?:\/\/)(?=[\w-]+\.atlassian\.net\/)/, 'https://'); d.notes = $('bpNotes').value;
+        if (!d.bank) { showBpSection('bank'); say('bpEdMsg', 'Choose the bank.', false); return; }
+        d.mapping = d.mapping.filter((m) => m.psp); d.docs = d.docs.filter((x) => x.url);
+        if (!d.id) { const ids = new Set(state.bp.profiles.map((p) => p.id)); const base = slug(`${d.bank}${d.methods.length === 1 ? `-${d.methods[0]}` : ''}`); let id = base; let n = 2; while (ids.has(id)) id = `${base}-${n++}`; d.id = id; }
+        d.updatedAt = new Date().toISOString();
+        const list = state.bp.profiles; const next = state.bpEdit.index === undefined ? [...list, d] : list.map((p, i) => (i === state.bpEdit.index ? d : p));
+        try { await saveBankProfiles(next, `Saved "${d.bank}" – commit ${state.bp.file} to share it with the team.`); $('bpEditor').close(); }
+        catch (error) { say('bpEdMsg', error.message, false); }
       }
 
       // ── masking rules ─────────────────────────────────────────────────────
@@ -3919,6 +4244,21 @@
           const [, outcome, statuses] = TDS_OUTCOMES[sc.outcome]; $('cOutcome').value = outcome; $('cStatuses').value = statuses.join(', ');
           if (!$('cLabel').value.trim()) $('cLabel').value = `${tdsName(tdsFlows().find((f) => f.id === $('cFlow').value))} – ${sc.name}`;
         });
+        $('jiraSave').addEventListener('click', saveJira);
+        $('jiraRemove').addEventListener('click', async () => { try { state.jira = await api('/api/jira/remove-token', { method: 'POST' }); renderJira(); say('jiraMsg', 'Token removed from this computer.'); } catch (error) { say('jiraMsg', error.message, false); } });
+        loadJira();
+        $('bpAdd').addEventListener('click', () => openBankProfile());
+        $('bpSave').addEventListener('click', saveBankProfile);
+        $('bpDraft').addEventListener('click', () => bpDraftFromRun().catch((error) => say('bpEdMsg', error.message, false)));
+        $('bpAddRow').addEventListener('click', () => { state.bpEdit.draft.mapping.push({ ours: '', psp: '', check: 'equals', mandatory: true, note: '' }); renderBpMapping(); });
+        $('bpAddDoc').addEventListener('click', () => { state.bpEdit.draft.docs.push({ title: '', url: '' }); renderBpDocs(); });
+        $('bpJira').addEventListener('input', syncBpJira);
+        $('bpJiraFill').addEventListener('click', bpPrefillFromJira);
+        $('bpBank').addEventListener('input', () => renderBpMethods());
+        $('bpMethods').addEventListener('input', () => { state.bpEdit.draft.methods = [...new Set($('bpMethods').value.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))]; });
+        for (const b of $('bpEdNav').children) b.addEventListener('click', () => { say('bpEdMsg', ''); showBpSection(b.dataset.s); });
+        $('bpEditor').addEventListener('click', (e) => { if (e.target === $('bpEditor') || e.target.closest('[data-close]')) $('bpEditor').close(); });
+        loadBankProfiles();
         $('mkAdd').addEventListener('click', () => openMaskingRule());
         $('mkReset').addEventListener('click', () => resetSettings('masking', 'mkMsg'));
         $('mkSave').addEventListener('click', saveMaskingRule);
@@ -4058,6 +4398,38 @@
       </div>
       <div class="hc-foot"><button type="button" data-close>Cancel</button><button type="button" class="primary" id="tdsSave">Save flow</button></div>
     </dialog>
+    <dialog class="health editor bp-editor" id="bpEditor" aria-labelledby="bpEdTitle">
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg></span><div><h3 id="bpEdTitle">Bank profile</h3><p>The bank's Jira ticket and docs, and the fields of our request that must reach the PSP.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="ed-body">
+        <nav class="ed-nav" id="bpEdNav"><button type="button" data-s="bank">1 · Bank &amp; Jira</button><button type="button" data-s="mapping">2 · Field mapping</button><button type="button" data-s="docs">3 · API docs <small class="opt">optional</small></button></nav>
+        <div class="ed-main">
+          <div class="ed-sec" data-s="bank">
+            <h4>Bank / PSP</h4>
+            <div class="cols-2">
+              <div><label for="bpBankSel">Bank <span class="hint">(dashboard → Banks)</span></label><select id="bpBankSel"></select><input id="bpBank" class="hidden" maxlength="80" autocomplete="off" placeholder="Type the bank name exactly as on the dashboard" /><p class="hint tds-bank-hint" id="bpBankHint"></p></div>
+              <div><label for="bpJira">Jira ticket <span class="hint">(optional)</span></label><div class="row tight bp-jira"><input id="bpJira" maxlength="300" placeholder="https://paysecure-team.atlassian.net/browse/IDE-132" autocomplete="off" /><button type="button" class="small primary" id="bpJiraFill" title="Read the ticket: notes, API doc links, request samples → field mapping (credentials are skipped)">Prefill from Jira</button><a id="bpJiraOpen" class="small-link hidden" target="_blank" rel="noopener">Open ↗</a></div></div>
+            </div>
+            <div><label>Payment methods <span class="hint">(of this bank – none selected = all)</span></label><div class="bp-methods" id="bpMethodPick"></div><input id="bpMethods" class="hidden" list="tdsMethodList" autocomplete="off" placeholder="VISA, MASTER" /></div>
+            <label for="bpNotes">Notes <span class="hint">(model, accounts / MIDs, known issues – no credentials)</span></label><textarea id="bpNotes" rows="6" maxlength="6000" placeholder="e.g. Payfac model: one Paysecure account, a sub-account per merchant. Request also carries paymentFacilitator.subMerchant (values from the MID)."></textarea>
+          </div>
+          <div class="ed-sec" data-s="mapping">
+            <div class="sec-head"><h4>Field mapping <span class="hint" id="bpMapCount"></span></h4><span class="row tight"><button type="button" class="small" id="bpAddRow">+ Add field</button><button type="button" class="small primary" id="bpDraft">Draft from a run…</button></span></div>
+            <p class="hint">Our field → the field in the request PGS sends to the PSP (dot path inside paymentInfo / allOtherRequest, e.g. <code>profile.email</code>, <code>paymentFacilitator.subMerchant.id</code>). Mandatory fields that are missing fail the PSP check.</p>
+            <div id="bpDraftBox"></div>
+            <datalist id="bpOurPaths"></datalist>
+            <div class="import-wrap"><table class="import bp-map"><thead><tr><th>Our field</th><th></th><th>PSP field</th><th>Check</th><th>Mandatory</th><th></th></tr></thead><tbody id="bpMapRows"></tbody></table></div>
+          </div>
+          <div class="ed-sec" data-s="docs">
+            <h4>API docs</h4>
+            <p class="hint">Links to the PSP's API documentation, PDF / DOCX documents (Drive, Confluence, Jira attachment) and the QA checklist.</p>
+            <div id="bpDocRows"></div>
+            <button type="button" class="small" id="bpAddDoc">+ Add link</button>
+          </div>
+          <div class="msg" id="bpEdMsg"></div>
+        </div>
+      </div>
+      <div class="hc-foot"><button type="button" data-close>Cancel</button><button type="button" class="primary" id="bpSave">Save profile</button></div>
+    </dialog>
     <dialog class="health adv-dialog mk-dialog" id="mkDialog" aria-labelledby="mkDlgTitle">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3z"/><path d="M9 12h6M9.5 9.5h5M10 14.5h4"/></svg></span><div><h3 id="mkDlgTitle">Masking rule</h3><p>Which values must be masked, and for which payments.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
       <div class="ai-dlg-body">
@@ -4101,6 +4473,22 @@
         <p class="hint">Older runs are deleted when a run finishes, when you save, and when the launcher starts; the latest run is always kept. Traces contain unmasked request data – keep them inside the team.</p>
         <div class="msg" id="logMsg"></div></div>
       <div class="hc-foot"><button id="resetRun" type="button">Reset to default</button><button id="saveRun" class="primary" type="button">Save changes</button></div>
+    </dialog>
+    <dialog class="health adv-dialog" id="jiraDialog" aria-labelledby="jiraDlgT">
+      <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 11l4 4 4-4 4 4 4-4-8-8z"/><path d="m8 15 4 4 4-4"/></svg></span><div><h3 id="jiraDlgT">Jira connection</h3><p>Lets the launcher read Jira tickets as you (read only). Each teammate uses their own token.</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>
+      <div class="ai-dlg-body">
+        <label for="jiraSite">Jira site</label><input id="jiraSite" autocomplete="off" spellcheck="false" placeholder="https://paysecure-team.atlassian.net" />
+        <label for="jiraEmail">Your Atlassian e-mail</label><input id="jiraEmail" type="email" autocomplete="off" spellcheck="false" placeholder="you@paysecure.dev" />
+        <label for="jiraToken">API token</label><input id="jiraToken" type="password" autocomplete="new-password" spellcheck="false" />
+        <ol class="jira-how hint">
+          <li>Open <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener">id.atlassian.com → Security → API tokens ↗</a> (signed in with your Paysecure account).</li>
+          <li><b>Create API token</b>, name it e.g. "Integration launcher", choose an expiry, copy it – it is shown only once.</li>
+          <li>Paste it here and click <b>Save &amp; test</b>.</li>
+        </ol>
+        <p class="hint">Saved in this computer's <code>.env</code> (git-ignored) – never in settings, git or logs. Revoke it any time on the same Atlassian page. If "Create API token" is missing, your Atlassian admin has turned API tokens off.</p>
+        <div class="msg" id="jiraMsg"></div>
+      </div>
+      <div class="hc-foot"><button type="button" id="jiraRemove" class="danger-link">Remove token</button><button type="button" data-close>Close</button><button type="button" class="primary" id="jiraSave">Save &amp; test</button></div>
     </dialog>
     <dialog class="health adv-dialog" id="aiInfoDialog" aria-labelledby="aiInfoDialogT">
       <div class="hc-head"><span class="hc-logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9L19 15z"/></svg></span><div><h3 id="aiInfoDialogT">AI &amp; skills</h3><p>The AI gateway this computer uses for "Generate".</p></div><button type="button" class="hc-close" data-close aria-label="Close">×</button></div>

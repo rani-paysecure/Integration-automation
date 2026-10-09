@@ -48,6 +48,8 @@ export interface UiTestRow {
   readonly psp: PspSummary | undefined;
   /** Checks of an uploaded PSP case (PR-xxx). */
   readonly pspFieldChecks: readonly PspFieldCheckResult[];
+  /** Payment videos (Run tab → Record payment video): files under test-results/, downloaded once. */
+  readonly videos?: readonly string[];
   /** 3DS page read by the test (screenshot as data URL) – "Create 3DS flow from this page". */
   readonly threeDsPage?: Omit<ThreeDsPageCapture, 'screenshot'> & { readonly screenshot?: string };
   readonly pspRequest: unknown;
@@ -100,6 +102,21 @@ function threeDsPage(result: TestResult): UiTestRow['threeDsPage'] {
     ...structure,
     ...(shot ? { screenshot: `data:image/jpeg;base64,${shot.toString('base64')}` } : {}),
   };
+}
+
+/** Recorded payment videos – relative paths (the launcher serves and deletes them on download). */
+function videoField(result: TestResult): { videos?: string[] } {
+  const videos = result.attachments
+    .filter(
+      (a) => a.name.startsWith('payment-video') && a.path !== undefined && fs.existsSync(a.path),
+    )
+    .map((a) =>
+      path
+        .relative(process.cwd(), a.path ?? '')
+        .split(path.sep)
+        .join('/'),
+    );
+  return videos.length > 0 ? { videos } : {};
 }
 
 function threeDsPageField(result: TestResult): {
@@ -242,6 +259,7 @@ export default class UiReportReporter implements Reporter {
       pspRequest: maskSensitiveData(parseJson(attachmentText(result, 'psp-request.json'))),
       pspResponse: maskSensitiveData(parseJson(attachmentText(result, 'psp-response.json'))),
       ...threeDsPageField(result),
+      ...videoField(result),
       exchanges,
       errors,
       annotations: { ...rest, ...(fieldCase ? { 'test data': fieldCase.testData } : {}) },

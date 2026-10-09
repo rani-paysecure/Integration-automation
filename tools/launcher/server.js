@@ -25,6 +25,8 @@ const { spawn } = require('node:child_process');
 const settingsCore = require('../../config/settings-core');
 const { DashboardClient, DashboardError } = require('./dashboard');
 const caseImport = require('./test-case-import');
+const bankProfiles = require('../../config/bank-profiles');
+const jira = require('./jira');
 const paymentMethodCases = require('./payment-method-cases');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
@@ -858,6 +860,7 @@ function startRun(input) {
     RUN_DEVICE: device,
     RUN_PAY_FIELD_CASES: payCard && input.payFieldCases === true ? '1' : '',
     RUN_HEADED: input.headed === true ? '1' : '',
+    RUN_RECORD_VIDEO: input.recordVideo === true ? '1' : '',
     ATTACH_HTTP_ALWAYS: '1',
   };
   const secrets = [];
@@ -1265,7 +1268,15 @@ const server = http.createServer(async (req, res) => {
           .split(',')
           .filter(Boolean);
         const suggested = mids.map((m) => regexCases.bankForMid(m, names)).find(Boolean) || '';
-        return send(res, 200, { banks: names, suggested });
+        // Supported payment methods per bank (dashboard → Banks → allowed cards / methods).
+        const methods = Object.fromEntries(banks.map((b) => [b.name, b.methods || []]));
+        return send(res, 200, { banks: names, suggested, methods });
+      }
+      if (what === 'bank-methods') {
+        const { client } = dashboardFor(env, profileId);
+        const bank = String(url.searchParams.get('bank') || '').trim();
+        if (!bank) throw new HttpError(400, 'Choose a bank');
+        return send(res, 200, await fromDashboard(() => client.bankMethods(bank)));
       }
       if (what === 'payment-methods') {
         const { client } = dashboardFor(env, profileId);
@@ -1364,6 +1375,80 @@ const server = http.createServer(async (req, res) => {
             .slice(0, effectiveSettings().run.keepRuns ?? 5)
         : [];
       return send(res, 200, { runs });
+    }
+    // ── Jira (Advanced → Jira): site, e-mail, API token – this computer's .env only ──
+    if (method === 'GET' && url.pathname === '/api/jira/status') {
+      return send(res, 200, jira.jiraStatus());
+    }
+    if (method === 'POST' && url.pathname === '/api/jira/setup') {
+      const body = await readJson(req);
+      try {
+        return send(res, 200, await jira.setupJira(body));
+      } catch (error) {
+        throw new HttpError(400, error instanceof Error ? error.message : String(error));
+      }
+    }
+    if (method === 'POST' && url.pathname === '/api/jira/prefill') {
+      const body = await readJson(req);
+      try {
+        return send(res, 200, await jira.jiraPrefill(String(body.url || '')));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new HttpError(
+          400,
+          /timeout|abort/i.test(message) ? 'Jira did not answer within 20 s' : message,
+        );
+      }
+    }
+    if (method === 'POST' && url.pathname === '/api/jira/remove-token') {
+      return send(res, 200, jira.removeJiraToken());
+    }
+    // ── payment video (Run tab → Record payment video): one download, then the file is deleted ──
+    if (method === 'GET' && url.pathname === '/api/report/video') {
+      if (url.searchParams.get('token') !== TOKEN) throw new HttpError(403, 'Forbidden');
+      const rel = String(url.searchParams.get('file') || '');
+      const full = path.resolve(ROOT, rel);
+      const base = path.resolve(ROOT, 'test-results') + path.sep;
+      if (!full.startsWith(base) || !/\.webm$/i.test(full))
+        throw new HttpError(400, 'Not a payment video');
+      if (!fs.existsSync(full)) {
+        throw new HttpError(
+          410,
+          'This video is no longer available – it was downloaded already, or a newer run replaced it',
+        );
+      }
+      const name = String(url.searchParams.get('name') || 'payment-video')
+        .replace(/[^\w.-]+/g, '_')
+        .slice(0, 100);
+      res.writeHead(200, {
+        'content-type': 'video/webm',
+        'content-length': fs.statSync(full).size,
+        'content-disposition': `attachment; filename="${name}.webm"`,
+        'cache-control': 'no-store',
+      });
+      const stream = fs.createReadStream(full);
+      stream.on('close', () => fs.rm(full, { force: true }, () => undefined));
+      return stream.pipe(res);
+    }
+    // ── bank profiles (config/bank-profiles.json – committed, shared with the team) ──
+    if (method === 'GET' && url.pathname === '/api/bank-profiles') {
+      try {
+        return send(res, 200, {
+          profiles: bankProfiles.readProfiles(),
+          checks: bankProfiles.CHECKS,
+          file: path.relative(ROOT, bankProfiles.FILE()),
+        });
+      } catch (error) {
+        throw new HttpError(500, error.message);
+      }
+    }
+    if (method === 'PUT' && url.pathname === '/api/bank-profiles') {
+      const body = await readJson(req, 2 * 1024 * 1024);
+      try {
+        return send(res, 200, { profiles: bankProfiles.writeProfiles(body.profiles) });
+      } catch (error) {
+        throw new HttpError(400, error.message);
+      }
     }
     // ── uploaded test cases (Excel/CSV, by category → tests/test-data/uploaded-cases) ──
     if (method === 'GET' && url.pathname === '/api/test-cases') {

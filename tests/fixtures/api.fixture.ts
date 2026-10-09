@@ -33,17 +33,54 @@ const DEFAULT_TRANSLOG_URL: Record<string, string | undefined> = {
  * Register new clients here – tests should never build HTTP calls themselves.
  */
 export const test = baseTest.extend<ApiClientFixtures, WorkerClientFixtures>({
-  openCashierPage: async ({ playwright, testConfig }, use) => {
+  openCashierPage: async ({ playwright, testConfig }, use, testInfo) => {
     let browser: Browser | undefined;
+    // Run tab → "Record payment video": the cashier → 3DS → redirect is recorded and offered
+    // once in the report (test-results/ only – deleted after the download / next run).
+    const record = process.env.RUN_RECORD_VIDEO === '1';
+    const pages: Page[] = [];
     await use(async () => {
       browser ??= await playwright.chromium.launch({
         headless: !testConfig.transaction.headed,
         ...(process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {}),
       });
       // Device chosen on the launcher's Run tab (RUN_DEVICE) – desktop by default.
-      const context = await browser.newContext(deviceContextOptions(currentDevice()));
-      return context.newPage();
+      const device = deviceContextOptions(currentDevice());
+      const context = await browser.newContext({
+        ...device,
+        ...(record
+          ? {
+              recordVideo: {
+                dir: testInfo.outputPath('video'),
+                size: device.viewport ?? { width: 1280, height: 720 },
+              },
+            }
+          : {}),
+      });
+      const page = await context.newPage();
+      pages.push(page);
+      return page;
     });
+    if (record) {
+      for (const [i, page] of pages.entries()) {
+        const video = page.video();
+        if (video === null) continue;
+        await page
+          .context()
+          .close()
+          .catch(() => undefined); // finishes the file
+        const file = await video.path().catch(() => '');
+        if (file !== '') {
+          await testInfo.attach(
+            pages.length > 1 ? `payment-video-${String(i + 1)}.webm` : 'payment-video.webm',
+            {
+              path: file,
+              contentType: 'video/webm',
+            },
+          );
+        }
+      }
+    }
     await browser?.close();
   },
   purchaseApi: async ({ apiClientOptions }, use) => {

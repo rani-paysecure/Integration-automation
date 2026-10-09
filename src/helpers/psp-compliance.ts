@@ -14,6 +14,7 @@
  */
 import type { BankTransaction, MerchantWebhook, PspWebhook } from '../schemas/backoffice.schema';
 import * as maskingCatalog from '../../config/masking-rules';
+import * as bankProfiles from '../../config/bank-profiles';
 import type { CashierCard } from '../types/cashier.types';
 import { KNOWN_CARD_METHODS } from './card-methods';
 
@@ -913,4 +914,133 @@ export function pspWebhookChecks(
     ],
     notes,
   };
+}
+
+// ── bank profile: mandatory field mapping (launcher → Bank profiles) ─────────────
+
+export type BankProfile = ReturnType<typeof bankProfiles.readProfiles>[number];
+export type BankMappingRow = BankProfile['mapping'][number];
+
+/** Profile of the transaction's bank / payment method (config/bank-profiles.json). */
+export function bankProfileFor(bankName: string, method: string): BankProfile | undefined {
+  try {
+    return bankProfiles.profileFor(bankName, method);
+  } catch {
+    return undefined;
+  }
+}
+
+/** a.b[0].c → a.b.c, lower case – PSP paths are compared without array indexes. */
+const plainPath = (p: string): string => p.replace(/\[\d+\]/g, '').toLowerCase();
+
+/** PSP leaves of the request parts whose path (without "paymentInfo." / index) ends with `psp`. */
+function pspValues(leaves: readonly Leaf[], psp: string): Leaf[] {
+  const want = plainPath(psp).replace(/^\.+/, '');
+  return leaves.filter((l) => {
+    const inner = plainPath(l.path).replace(
+      /^(paymentinfo|allotherrequest|allotherrequest3ds)\.?/,
+      '',
+    );
+    return inner === want || inner.endsWith(`.${want}`);
+  });
+}
+
+/** Value of a dot path (a.b[0].c) in our purchase request. */
+function ourValue(request: unknown, dotted: string): string | undefined {
+  let cur: unknown = request;
+  for (const part of dotted.split('.').filter(Boolean)) {
+    const m = /^(\w+)(?:\[(\d+)\])?$/.exec(part);
+    if (m === null || !isObject(cur)) return undefined;
+    cur = cur[m[1] ?? ''];
+    if (m[2] !== undefined) cur = Array.isArray(cur) ? cur[Number(m[2])] : undefined;
+  }
+  if (typeof cur === 'string') return cur;
+  if (typeof cur === 'number' || typeof cur === 'boolean') return String(cur);
+  return undefined;
+}
+
+/** Short, masked display of a value for the report (never a full e-mail / phone / card). */
+function shown(value: string): string {
+  const v = value.trim();
+  if (v.includes('@')) return `${v.slice(0, 2)}***@${v.split('@')[1] ?? ''}`;
+  if (/^\+?[\d\s-]{7,}$/.test(v)) return `***${v.replace(/\D/g, '').slice(-3)}`;
+  return v.length > 40 ? `${v.slice(0, 37)}…` : v;
+}
+
+const sameValue = (a: string, b: string): boolean => {
+  const x = a.trim();
+  const y = b.trim();
+  if (x.toLowerCase() === y.toLowerCase()) return true;
+  const nx = Number(x);
+  const ny = Number(y);
+  return x !== '' && y !== '' && Number.isFinite(nx) && Number.isFinite(ny) && nx === ny;
+};
+
+/**
+ * Compares each mapped field of the bank profile with the request PGS sent to the PSP
+ * (paymentInfo / allOtherRequest): mismatch or missing mandatory field → failed check.
+ */
+export function profileMappingChecks(
+  bank: BankTransaction,
+  request: Json | undefined,
+  profile: BankProfile,
+  purchaseId: string,
+): ComplianceResult {
+  const leaves = pspLeaves(bank, requestParts(bank));
+  const checks: ComplianceCheck[] = [];
+  const notes: string[] = [];
+  for (const row of profile.mapping) {
+    const found = pspValues(leaves, row.psp);
+    const sent = found.find((l) => l.value.trim() !== '');
+    const label = row.ours ? `${row.ours} → ${row.psp}` : row.psp;
+    const name = `Mapping · ${label}`;
+    const expected = {
+      equals: `${row.psp} = our ${row.ours || '(field)'}`,
+      'minor-units': `${row.psp} = our ${row.ours || 'amount'} × 100`,
+      'purchase-id': `${row.psp} = purchase ID`,
+      present: `${row.psp} sent`,
+      masked: `${row.psp} sent and masked`,
+    }[row.check];
+    if (sent === undefined) {
+      checks.push({
+        name,
+        passed: !row.mandatory,
+        expected: `${expected}${row.mandatory ? ' (mandatory)' : ' (optional)'}`,
+        actual: row.mandatory
+          ? `MISSING – mandatory field ${row.psp} is not in the PSP request`
+          : 'not sent (optional)',
+      });
+      continue;
+    }
+    const where = sent.path;
+    let passed = true;
+    let actual = `match at ${where}`;
+    if (row.check === 'present') actual = `sent at ${where}`;
+    else if (row.check === 'masked') {
+      passed = looksMasked(sent.value);
+      actual = passed ? `masked at ${where}` : `NOT MASKED at ${where}`;
+    } else if (row.check === 'purchase-id') {
+      passed = sent.value.trim() === purchaseId;
+      if (!passed)
+        actual = `MISMATCH – PSP got "${shown(sent.value)}", purchase ID is ${purchaseId}`;
+    } else {
+      const ours = row.ours ? ourValue(request, row.ours) : undefined;
+      if (ours === undefined) {
+        actual = `sent at ${where} · our ${row.ours || 'field'} not in the purchase request – not compared`;
+      } else {
+        const want = row.check === 'minor-units' ? String(Math.round(Number(ours) * 100)) : ours;
+        passed = looksMasked(sent.value) ? true : sameValue(want, sent.value);
+        actual = looksMasked(sent.value)
+          ? `sent masked at ${where} – value not compared`
+          : passed
+            ? `match at ${where}`
+            : `MISMATCH – we sent "${shown(want)}", PSP got "${shown(sent.value)}" (${where})`;
+      }
+    }
+    checks.push({ name, passed, expected, actual });
+  }
+  if (profile.mapping.length === 0) {
+    notes.push(`Bank profile "${profile.bank}" has no field mapping yet – add it on Bank profiles`);
+  }
+  return { checks, notes };
 }

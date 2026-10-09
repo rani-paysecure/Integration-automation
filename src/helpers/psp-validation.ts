@@ -5,6 +5,8 @@ import type { CashierCard } from '../types/cashier.types';
 import { maskSensitiveData } from '../utils/masking';
 import {
   mappingChecks,
+  bankProfileFor,
+  profileMappingChecks,
   maskingChecks,
   parseJsonString,
   paymentInfoChecks,
@@ -256,7 +258,18 @@ export function summarizePsp(
       checks.push(...info.checks);
       notes.push(...info.notes);
       if (options.request !== undefined && requestParts(bank).length > 0) {
-        const mapping = mappingChecks(options.request as Record<string, unknown>, bank, purchaseId);
+        // The bank's profile (Bank profiles page) defines the exact mapping; without one the
+        // generic field-name checks run.
+        const profile = bankProfileFor(bank.bankName ?? '', trx.paymentMethod ?? '');
+        const mapping =
+          profile !== undefined && profile.mapping.length > 0
+            ? profileMappingChecks(
+                bank,
+                options.request as Record<string, unknown>,
+                profile,
+                purchaseId,
+              )
+            : mappingChecks(options.request as Record<string, unknown>, bank, purchaseId);
         checks.push(...mapping.checks);
         notes.push(...mapping.notes);
       }

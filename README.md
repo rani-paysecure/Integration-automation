@@ -509,6 +509,15 @@ visible text, inside the bank's frame too. Add screenshots, a screen recording a
 flow (videos stay local – git-ignored). A test card set to **Dynamic 3DS flow** runs that
 scenario; the report lists every step ✓ / ✗ – typed values only by name.
 
+**Bank profiles** (launcher → Bank profiles; `config/bank-profiles.json`, committed). One profile per bank / PSP
+(and its payment methods): Jira ticket, API doc links, notes and the **field mapping** – our purchase field → the
+field in the request PGS sends to the PSP (dot path inside paymentInfo / allOtherRequest) with a check: same value,
+amount × 100, purchase ID, must be sent, must be masked; mandatory or optional. **Draft from a run** matches the
+PSP request of a recent run to our request by value. When the transaction's bank has a profile, the PSP checks
+(request/response cases, PSP by ID, S2S, session) compare every mapped field and report `MISMATCH – we sent X, PSP
+got Y` (e-mail / phone shown masked) or `MISSING – mandatory field`; without a profile the generic field-name checks
+run. Saving refuses anything that looks like a password or API key – credentials never go in this file.
+
 **Create a flow from the 3DS page.** When a payment meets a 3DS page the card could not complete (not recognised,
 an outcome dropdown, or a flow step that is not on the page), the test reads the page – dropdown options, field
 labels, button texts and a screenshot, never typed values or the URL query – and the report card shows
