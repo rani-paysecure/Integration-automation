@@ -889,6 +889,8 @@ async function setupGateway(input) {
 }
 
 module.exports = {
+  readEnvFile,
+  writeEnvValues,
   aiStatus,
   setupGateway,
   generateCases,

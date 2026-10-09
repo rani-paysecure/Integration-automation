@@ -1,0 +1,125 @@
+{
+  "$comment": "Bank profiles (launcher → Bank profiles): field mapping our request → PSP request, Jira, docs. Committed for the team – never put credentials here.",
+  "profiles": [
+    {
+      "id": "paysafe-payfac-visa",
+      "bank": "paysafe_payfac",
+      "methods": [
+        "VISA"
+      ],
+      "jiraUrl": "https://paysecure-team.atlassian.net/browse/IDE-132",
+      "docs": [
+        {
+          "title": "How to manage authentication through the API keys",
+          "url": "https://developer.paysafe.com/en/support/reference-information/authentication/"
+        },
+        {
+          "title": "Overview",
+          "url": "https://developer.paysafe.com/en/api-docs/payments-api/overview/"
+        },
+        {
+          "title": "Paymenthandles",
+          "url": "https://developer.paysafe.com/en/payments-api/#/operations/create-payment-handle"
+        },
+        {
+          "title": "Payments",
+          "url": "https://developer.paysafe.com/en/payments-api/#/operations/process-payment"
+        },
+        {
+          "title": "Payment Faciitator Object",
+          "url": "https://developer.paysafe.com/en/payments-api/#/schemas/paymentFacilitator"
+        },
+        {
+          "title": "Recurring Payments",
+          "url": "https://developer.paysafe.com/en/api-docs/payments-api/get-started/credentials-on-file-payments-api/credentials-on-file-payments-server-to-server/"
+        },
+        {
+          "title": "ApplePay",
+          "url": "https://developer.paysafe.com/en/api-docs/payments-api/add-payment-methods/apple-pay/about-apple-pay/"
+        },
+        {
+          "title": "Termination Inquiry API",
+          "url": "https://developer.paysafe.com/en/paysafe-vendor-search-api/"
+        },
+        {
+          "title": "Payfac Submerchant API (Assigned MID Flow)",
+          "url": "https://developer.paysafe.com/en/api-docs/payfac-sub-merchant-api/overview/"
+        }
+      ],
+      "notes": "IDE-132 – Paysafe Payfac model (Ready For UAT/Production)\n\nThis is another implementation of Paysafe where we will act as a Payfac under Paysafe. Basically it means we will have to create just one account for Paysecure under Paysafe and for each individual merchants' of ours we will create a sub-account under it.\nAdditionally in the API calls we need to pass some additional parameters to paysafe regarding the merchants.\nAPI flow remains the same.\n\nAccount ID: \n1002757450 - Card EUR - Assigned MID\n1002768430 - Card EUR - Shared MID\n \n \n\n1002997100 - Paysecure GBP (GBP)\n1002997110 - Paysecure EUR (EUR)\n1002997120 - Paysecure USD (USD)\n\nLinked issues:\n• IDE-1940 – NA is showing in cardholder field.  (Done)\n• IDE-1948 – Paysafe Payfac: Partial refund is not working properly.  (Done)\n\nAttachments in Jira:\n• paysafe_payfac_qa_checklist.docx (14 KB)\n• Paysafe PayFac Solution for Platforms and Payment Facilitators.pptx (26361 KB)\n• Screen Recording 2026-09-16 121312.mp4 (127592 KB)",
+      "mapping": [
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.name",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.address.zip",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.address.country",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.address.state",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.address.city",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.address.street",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.id",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.phone",
+          "check": "masked",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.email",
+          "check": "masked",
+          "mandatory": true,
+          "note": "from IDE-132"
+        },
+        {
+          "ours": "",
+          "psp": "paymentFacilitator.subMerchant.url",
+          "check": "present",
+          "mandatory": true,
+          "note": "from IDE-132"
+        }
+      ],
+      "updatedAt": "2026-10-09T13:05:39.332Z"
+    }
+  ]
+}
