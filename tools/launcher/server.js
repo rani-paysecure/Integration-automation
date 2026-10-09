@@ -1465,7 +1465,21 @@ const server = http.createServer(async (req, res) => {
       catalogCache.clear();
       return send(res, 200, { ...result, categories: caseImport.listCategories() });
     }
-    const caseMatch = /^\/api\/test-cases\/([A-Z][A-Z0-9]-\d{3,})$/.exec(url.pathname);
+    const restoreMatch = /^\/api\/test-cases\/([A-Z][A-Z0-9]{1,3}-\d{3,}[a-z]?)\/restore$/.exec(
+      url.pathname,
+    );
+    if (method === 'POST' && restoreMatch) {
+      if (run && run.status === 'running')
+        throw new HttpError(409, 'Wait for the current run to finish');
+      try {
+        caseImport.restoreCase(restoreMatch[1]);
+      } catch (error) {
+        throw new HttpError(404, error.message);
+      }
+      catalogCache.clear();
+      return send(res, 200, { categories: caseImport.listCategories() });
+    }
+    const caseMatch = /^\/api\/test-cases\/([A-Z][A-Z0-9]{1,3}-\d{3,}[a-z]?)$/.exec(url.pathname);
     if (method === 'DELETE' && caseMatch) {
       if (run && run.status === 'running')
         throw new HttpError(409, 'Wait for the current run to finish');

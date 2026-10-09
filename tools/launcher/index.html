@@ -658,6 +658,12 @@
       .details-btn::after { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 2px 2px 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s; }
       .details-btn.open::after { transform: rotate(45deg); }
       .rcard-unmasked { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 8px; padding: 7px 10px; border-radius: 8px; font-size: 12.5px; color: var(--fail); background: var(--fail-bg); border-left: 3px solid var(--fail); overflow-wrap: anywhere; }
+      .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+      .seg button { padding: 5px 12px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+      .seg button[aria-selected='true'] { background: var(--surface); color: var(--brand, var(--accent)); box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+      .case-filter { margin: 4px 0 8px; align-items: center; flex-wrap: wrap; gap: 10px; } .case-filter input { flex: 1; min-width: 200px; max-width: 340px; margin: 0; }
+      .chip-builtin { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; font: 700 10px/16px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); vertical-align: middle; }
+      .removed-cases { margin-top: 12px; } .removed-cases summary { cursor: pointer; font-weight: 600; color: var(--muted); }
       .imp-sum { flex-wrap: wrap; align-items: center; } .imp-select { display: inline-flex; gap: 12px; margin-left: auto; }
       #importDupHint:empty { display: none; } #importDupHint { margin: 2px 0 6px; color: var(--warn, #b7791f); }
       th.imp-all label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: inherit; cursor: pointer; white-space: nowrap; }
@@ -1563,10 +1569,12 @@
         <section>
           <h2><span id="listTitle">Uploaded cases</span> <span class="badge" id="customCount">0</span></h2>
           <p class="hint" id="listHint"></p>
+          <div class="row tight case-filter"><div class="seg" id="customKind" role="tablist"></div><input id="customSearch" placeholder="Search ID, field, value…" autocomplete="off" /></div>
           <div class="import-wrap">
             <table class="import"><thead id="customHead"></thead><tbody id="customRows"></tbody></table>
           </div>
           <div class="msg" id="customMsg"></div>
+          <details class="removed-cases hidden" id="removedBox"><summary id="removedTitle"></summary><div class="import-wrap"><table class="import"><tbody id="removedRows"></tbody></table></div></details>
         </section>
       </div>
 
@@ -3161,17 +3169,17 @@
         const ordered = [...(state.categories || [])].sort((a, b) => (TILE_ORDER.indexOf(a.id) + 1 || 99) - (TILE_ORDER.indexOf(b.id) + 1 || 99));
         for (const c of ordered) {
           const info = CATEGORY_TILES[c.id] || { kind: 'api', label: '', text: c.description };
-          const count = c.cases.length;
+          const inCode = (c.builtin || []).filter((x) => !x.removedAt).length; const count = c.cases.length + inCode;
           const tile = el('button', { type: 'button', class: `cat-tile c-${c.id} kind-${info.kind}${c.id === state.category ? ' active' : ''}`, title: `${info.name || c.label} – ${info.text || c.description}`, ariaPressed: c.id === state.category ? 'true' : 'false' },
             categoryIcon(c.id),
-            el('span', { class: `cat-count${count ? '' : ' zero'}`, title: `${count} uploaded case${count === 1 ? '' : 's'}` }, String(count)),
+            el('span', { class: `cat-count${count ? '' : ' zero'}`, title: `${c.cases.length} uploaded${inCode ? ` · ${inCode} built-in` : ''}` }, String(count)),
             el('span', { class: 'cat-name' }, info.name || c.label),
             el('span', { class: 'cat-foot' }, el('span', { class: 'cat-prefix' }, `${c.prefix}-xxx`), info.label ? el('span', { class: 'cat-kind' }, info.label) : ''));
           tile.addEventListener('click', () => { if (state.category !== c.id && state.aiSession) endAiConversation(true); state.category = c.id; remember('caseCategory', c.id); state.importCases = []; renderImport(); say('importMsg', ''); renderCategories(); });
           box.append(tile);
         }
-        const total = (state.categories || []).reduce((n, c) => n + c.cases.length, 0);
-        $('catTotal').textContent = `· ${total} uploaded case${total === 1 ? '' : 's'}`;
+        const total = (state.categories || []).reduce((n, c) => n + c.cases.length + (c.builtin || []).filter((x) => !x.removedAt).length, 0);
+        $('catTotal').textContent = `· ${total} test case${total === 1 ? '' : 's'}`;
         const expanded = $('categoryTiles').closest('.cat-section').classList.contains('expanded');
         $('catViewAll').textContent = expanded ? 'Show as slider' : `View all (${ordered.length}) →`;
         requestAnimationFrame(() => {
@@ -3184,14 +3192,14 @@
         $('uploadTitle').textContent = `Upload · ${c.label}`;
         $('categoryAbout').textContent = c.description;
         $('categoryDescription').textContent = `Columns: ${c.columns.map((col) => col.header + (col.required ? '' : ' (optional)')).join(' · ')}`;
-        $('listTitle').textContent = `Uploaded · ${c.label}`;
+        $('listTitle').textContent = `Test cases · ${c.label}`;
         $('aiFocus').placeholder = AI_FOCUS[c.id] || '';
         $('regexDash').classList.toggle('hidden', c.id !== 'regex');
         $('regexOr').classList.toggle('hidden', c.id !== 'regex');
         if (c.id === 'regex') loadRegexBanks();
         $('pmDash').classList.toggle('hidden', c.id !== 'field');
         if (c.id === 'field') loadPaymentMethods();
-        $('listHint').textContent = `Saved in ${c.file} – commit it to share with the team. Select them on the Run tab${['psp', 'edge'].includes(c.id) ? ' (they make a real transaction with the card from the sheet or the Run tab)' : ''}.`;
+        $('listHint').textContent = `Uploaded cases are saved in ${c.file}${(c.builtin || []).length ? '; built-in cases are in the code – "Remove" only skips them in runs (listed in removed-builtin-cases.json, restorable)' : ''}. Commit to share with the team. Select them on the Run tab${['psp', 'edge'].includes(c.id) ? ' (they make a real transaction with the card from the sheet or the Run tab)' : ''}.`;
         renderCustom();
       }
       async function previewFile(file) {
@@ -3436,21 +3444,42 @@
       const LIST_COLUMNS = { field: ['Parameter', 'Test data', 'Expected'], regex: ['Bank · field', 'Test data', 'Expected'], psp: ['Card', 'Checks', 'Details'], edge: ['Card', 'Request changes', 'Expected'], kyc: ['Customer · auth', 'Request changes', 'Expected'], refund: ['Purchase', 'Refunds', 'Expected'], 'bank-config': ['Settings', 'Action', 'Expected'], s2s: ['Purchase · auth', 'Request changes', 'Expected'] };
       function renderCustom() {
         const c = currentCategory(); if (!c) return;
+        const builtin = c.builtin || []; const active = builtin.filter((x) => !x.removedAt); const removed = builtin.filter((x) => x.removedAt);
+        const all = [...active, ...c.cases];
+        state.caseKind = builtin.length ? state.caseKind || 'all' : 'all';
+        // All / Uploaded / Built-in – only when the category has cases in code.
+        $('customKind').replaceChildren(...(builtin.length ? [['all', `All (${all.length})`], ['uploaded', `Uploaded (${c.cases.length})`], ['builtin', `Built-in (${active.length})`]].map(([k, label]) => {
+          const b = el('button', { type: 'button', role: 'tab' }, label); b.setAttribute('aria-selected', String(state.caseKind === k));
+          b.addEventListener('click', () => { state.caseKind = k; renderCustom(); }); return b;
+        }) : []));
+        $('customKind').classList.toggle('hidden', !builtin.length);
+        const q = $('customSearch').value.trim().toLowerCase();
+        const shown = (state.caseKind === 'uploaded' ? c.cases : state.caseKind === 'builtin' ? active : all)
+          .filter((x) => !q || `${x.id} ${x.title} ${x.summary.join(' ')}`.toLowerCase().includes(q));
         const cols = ['ID', 'Test case', ...(LIST_COLUMNS[c.id] || ['Details', 'Changes', 'Expected']), 'Source', ''];
         $('customHead').replaceChildren(el('tr', {}, ...cols.map((h) => el('th', {}, h))));
         const body = $('customRows'); body.replaceChildren();
-        $('customCount').textContent = String(c.cases.length);
-        if (c.cases.length === 0) body.append(el('tr', {}, el('td', { colSpan: cols.length, class: 'hint' }, 'No cases uploaded in this category yet.')));
-        for (const x of c.cases) {
-          const del = el('button', { type: 'button', class: 'small danger' }, 'Delete');
+        $('customCount').textContent = String(all.length);
+        if (shown.length === 0) body.append(el('tr', {}, el('td', { colSpan: cols.length, class: 'hint' }, q ? 'No case matches the search.' : 'No cases in this category yet.')));
+        const done = (result, text) => { state.categories = result.categories; renderCategories(); loadCatalog(); say('customMsg', text); };
+        for (const x of shown) {
+          const del = el('button', { type: 'button', class: 'small danger', title: x.builtin ? 'Skip this built-in case in every run (the code is not changed – it can be restored)' : 'Delete this uploaded case' }, x.builtin ? 'Remove' : 'Delete');
           del.addEventListener('click', async () => {
-            if (del.dataset.confirm !== '1') { del.dataset.confirm = '1'; del.textContent = 'Confirm'; return; }
-            try { state.categories = (await api(`/api/test-cases/${x.id}`, { method: 'DELETE' })).categories; state.selected?.delete(`@${x.id}`); saveSelection(); renderCategories(); loadCatalog(); say('customMsg', `Deleted ${x.id}.`); }
+            if (del.dataset.confirm !== '1') { del.dataset.confirm = '1'; del.textContent = 'Confirm'; setTimeout(() => { delete del.dataset.confirm; del.textContent = x.builtin ? 'Remove' : 'Delete'; }, 3000); return; }
+            try { const r = await api(`/api/test-cases/${x.id}`, { method: 'DELETE' }); state.selected?.delete(`@${x.id}`); saveSelection(); done(r, x.builtin ? `Removed ${x.id} from the runs – restore it below under "Removed built-in cases".` : `Deleted ${x.id}.`); }
             catch (error) { say('customMsg', error.message, false); }
           });
-          body.append(el('tr', {}, el('td', { class: 'mono nowrap' }, x.id), el('td', {}, x.title), ...x.summary.map((v, i) => el('td', { class: i === 0 && ['psp', 'edge'].includes(c.id) ? 'nowrap' : 'multi' }, v || '—')),
+          body.append(el('tr', { class: x.builtin ? 'builtin' : '' }, el('td', { class: 'mono nowrap' }, x.id, ...(x.builtin ? [el('span', { class: 'chip-builtin' }, 'built-in')] : [])), el('td', {}, x.title), ...x.summary.map((v, i) => el('td', { class: i === 0 && ['psp', 'edge'].includes(c.id) ? 'nowrap' : 'multi' }, v || '—')),
             el('td', { class: 'hint' }, x.source), el('td', {}, del)));
         }
+        // Removed built-in cases – restore puts them back into the runs.
+        $('removedBox').classList.toggle('hidden', !removed.length);
+        $('removedTitle').textContent = `Removed built-in cases (${removed.length}) – skipped in every run`;
+        $('removedRows').replaceChildren(...removed.map((x) => {
+          const back = el('button', { type: 'button', class: 'small' }, 'Restore');
+          back.addEventListener('click', async () => { try { done(await api(`/api/test-cases/${x.id}/restore`, { method: 'POST' }), `Restored ${x.id} – it runs again.`); } catch (error) { say('customMsg', error.message, false); } });
+          return el('tr', {}, el('td', { class: 'mono nowrap' }, x.id), el('td', {}, x.title), el('td', { class: 'multi' }, x.summary.join(' · ')), el('td', { class: 'hint nowrap' }, `removed ${new Date(x.removedAt).toLocaleDateString()}`), el('td', {}, back));
+        }));
       }
 
 
@@ -3771,6 +3800,7 @@
         drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
         drop.addEventListener('dragleave', () => drop.classList.remove('over'));
         drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); previewFile(e.dataTransfer.files[0]); });
+        $('customSearch').addEventListener('input', renderCustom);
         $('appendCases').addEventListener('click', appendImport);
         $('loadRegexRules').addEventListener('click', loadRegexRules);
         $('aiGenerate').addEventListener('click', generateWithAi);

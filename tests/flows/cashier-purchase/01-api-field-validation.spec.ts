@@ -19,7 +19,10 @@ import { test } from '@fixtures/api.fixture';
 import { fieldTestCases } from '@test-data/cashier-purchase/api-field-cases';
 import { findCardScenario } from '@test-data/cashier-purchase/cashier-cards';
 import type { EnvironmentTestData } from '@test-data/environments';
-import { loadUploadedFieldCases } from '@test-data/uploaded-cases/uploaded-cases';
+import {
+  loadUploadedFieldCases,
+  removedBuiltinCaseIds,
+} from '@test-data/uploaded-cases/uploaded-cases';
 import {
   buildPurchaseRequest,
   type MerchantContext,
@@ -84,8 +87,12 @@ test.describe(
   'Cashier purchase › 1. API field validation',
   { tag: ['@cashier', '@field-validation'] },
   () => {
-    // Built-in cases (FT-xxx) + cases uploaded in the launcher (FV-xxx).
-    for (const testCase of [...fieldTestCases, ...loadUploadedFieldCases()]) {
+    // Built-in cases (FT-xxx, minus those removed in the launcher) + uploaded cases (FV-xxx).
+    const removed = removedBuiltinCaseIds();
+    for (const testCase of [
+      ...fieldTestCases.filter((c) => !removed.has(c.id)),
+      ...loadUploadedFieldCases(),
+    ]) {
       test(
         `${testCase.id} ${testCase.parameter} – ${testCase.title}`,
         {
