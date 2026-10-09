@@ -38,3 +38,9 @@ Thumbs.db
 
 # KYC sandbox sample document (uploaded to the provider by KYC-34) – local only
 tests/test-data/kyc/*.jpg
+
+# 3DS flow recordings – large, kept on the machine (screenshots and docs are committed)
+psp-flows/**/*.mp4
+psp-flows/**/*.mov
+psp-flows/**/*.webm
+psp-flows/**/*.part

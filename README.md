@@ -500,6 +500,23 @@ runs (card scenarios, regex, edge, field, bank & MID cases) or refunds. Code: `s
 
 Uploaded PSP sheets also accept the check **masked** (e.g. `card.cvv` → masked).
 
+**Dynamic 3DS flows** (launcher → Dynamic 3DS flows; settings `threeDsFlows`, files in `psp-flows/<bank>/`). Per bank /
+PSP: dashboard bank name, supported payment methods, what its 3DS test page asks for (OTP, sort code,
+account number, e-mail … – used in steps as `{otp}`, `{sortCode}` …), and one scenario per outcome
+(success / failure / pending / time-out) as steps: _wait for text_, _type into field_, _click button_,
+_choose in dropdown_, _tick checkbox_, _wait_, _let it time out_. Fields and buttons are found by their
+visible text, inside the bank's frame too. Add screenshots, a screen recording and the PSP docs to the
+flow (videos stay local – git-ignored). A test card set to **Dynamic 3DS flow** runs that
+scenario; the report lists every step ✓ / ✗ – typed values only by name.
+
+**Create a flow from the 3DS page.** When a payment meets a 3DS page the card could not complete (not recognised,
+an outcome dropdown, or a flow step that is not on the page), the test reads the page – dropdown options, field
+labels, button texts and a screenshot, never typed values or the URL query – and the report card shows
+**Create 3DS flow from this page** (or **Add these scenarios to <bank>** when the bank already has a flow). It
+opens the flow editor filled in: one scenario per dropdown option (pick it → click Submit) or per outcome button,
+page fields as step-2 details, the expected result guessed from the text (Approve → success, Decline / Cancel /
+error → failure, anything else → "Other"). Check the expected results, then **Save flow** – the screenshot is
+added to the flow's files. Nothing is saved before that.
 **Masking rules** (launcher → Masking rules; team default in `config/defaults.json` → `masking`,
 field catalog in `config/masking-rules.js`). Predefined rule sets:
 

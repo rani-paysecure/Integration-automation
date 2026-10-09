@@ -39,6 +39,8 @@ const PAYMENT_TIMEOUT_MS = 90_000;
 const MANUAL_CHALLENGE_TIMEOUT_MS = 300_000;
 /** After the OTP is submitted, how long to watch for the challenge page re-opening before waiting on the redirect as usual. */
 const POST_OTP_WATCH_MS = 20_000;
+/** After a 3DS page that could not be completed: how long to still wait for a redirect. */
+const STUCK_GRACE_MS = 10_000;
 const POST_OTP_POLL_MS = 1_000;
 /** How long the re-opened challenge is given to be answered again. */
 const OTP_RETRY_WINDOW_MS = 15_000;
@@ -240,7 +242,20 @@ export class CashierPage {
         shown = { ...first.result, detail: [first.result.detail, ...notes].join('; ') };
       } else if (first.kind === 'challenge') {
         shown = first.result;
-        await redirected;
+        if (first.result?.stuck === true) {
+          // The 3DS page could not be completed: give the bank a short while, then report the
+          // page we are on (with what was not recognised) instead of running into the test timeout.
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          await Promise.race([
+            redirected,
+            new Promise<void>((resolve) => {
+              timer = setTimeout(resolve, STUCK_GRACE_MS);
+            }),
+          ]);
+          clearTimeout(timer);
+        } else {
+          await redirected;
+        }
       } else {
         shown = await challenge;
       }

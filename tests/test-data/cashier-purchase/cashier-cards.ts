@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
 import { getSettings } from '@config/settings';
+import { resolveChallenge } from '@helpers/three-ds-flows';
 import type { TestEnvironment } from '@app-types/config.types';
 import type { CashierCard, CashierCardScenario } from '@app-types/cashier.types';
 
@@ -34,7 +35,7 @@ export function cashierCardScenarios(env: TestEnvironment): CashierCardScenario[
         expiry: card.expiry,
         cvv: card.cvv,
         holderName: card.holderName,
-        challenge: card.challenge,
+        challenge: resolveChallenge(card.challenge),
       },
       expected: { outcome: card.expectedOutcome, statuses: card.expectedStatuses },
     }));
@@ -80,7 +81,7 @@ export function findCardScenario(
       expiry: card.expiry,
       cvv: card.cvv,
       holderName: card.holderName,
-      challenge: card.challenge,
+      challenge: resolveChallenge(card.challenge),
     },
     expected: { outcome: card.expectedOutcome, statuses: card.expectedStatuses },
   };
