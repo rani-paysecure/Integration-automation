@@ -15,6 +15,8 @@ export const Endpoints = {
     /** PSP request/response + bank transaction for one purchase. */
     bankTransaction: '/trans/getBankTrans',
     fieldValidationRules: '/admin/getFieldValidationRules',
+    /** Service config value by name (approved version), e.g. COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS. */
+    serviceConfig: '/serviceConfiguration/name/',
     /** Webhooks PGS sent to the merchant for a purchase (Transaction log → Webhook out). */
     merchantWebhooks: '/admin/getWebhookResponse',
     /** Webhooks PGS received from PSPs (PSP Webhook log → Webhook in). */

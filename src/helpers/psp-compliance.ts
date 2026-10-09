@@ -1044,3 +1044,45 @@ export function profileMappingChecks(
   }
   return { checks, notes };
 }
+
+// ── service config: COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS (all PSPs, every method) ─────────
+
+/**
+ * Every field whose name is in the service config list (exact, case-sensitive – as PGS matches)
+ * must be stored masked (***) in the PSP requests / responses. One check per listed name that
+ * the record contains; none present → one passed check saying so.
+ */
+export function serviceConfigMaskingChecks(
+  bank: BankTransaction,
+  keys: readonly string[],
+  configName = 'COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS',
+): ComplianceResult {
+  const wanted = new Set(keys);
+  const byKey = new Map<string, Leaf[]>();
+  for (const leaf of pspLeaves(bank)) {
+    if (!wanted.has(leaf.key)) continue;
+    byKey.set(leaf.key, [...(byKey.get(leaf.key) ?? []), leaf]);
+  }
+  const checks: ComplianceCheck[] = [];
+  for (const [key, leaves] of [...byKey.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const clear = leaves.filter((l) => !looksMasked(l.value)).map((l) => l.path);
+    checks.push({
+      name: `Masking · Service config · ${key}`,
+      passed: clear.length === 0,
+      expected: `${key} masked (***) – listed in ${configName}`,
+      actual:
+        clear.length > 0
+          ? `NOT MASKED – ${key} is readable at ${clear.join(', ')}`
+          : `masked at ${String(leaves.length)} place(s)`,
+    });
+  }
+  if (checks.length === 0) {
+    checks.push({
+      name: 'Masking · Service config · listed keys',
+      passed: true,
+      expected: `fields named in ${configName} masked`,
+      actual: `none of the ${String(wanted.size)} listed names is in this PSP's requests / responses`,
+    });
+  }
+  return { checks, notes: [] };
+}

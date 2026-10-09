@@ -9,3 +9,5 @@ tools/launcher/index.html
 
 # Written by the launcher (JSON.stringify) – re-formatting them would fail on every save
 tests/test-data/uploaded-cases/*.json
+# written by the launcher (Bank profiles page)
+config/bank-profiles.json
