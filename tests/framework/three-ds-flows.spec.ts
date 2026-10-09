@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolveThreeDsFlow } from '@helpers/three-ds-flows';
-import { watchForChallenge } from '../../src/pages/three-ds-challenge';
+import { captureThreeDsPage, watchForChallenge } from '../../src/pages/three-ds-challenge';
 
 /** A bank whose 3DS page asks for an OTP, then sort code + account number and an outcome. */
 const flows = [
@@ -164,5 +164,84 @@ test.describe('3DS flows (per bank)', () => {
     expect(result?.detail).toContain('demo-bank-json › Automatic');
     const acs = page.frames().find((f) => f.url().startsWith('http://acs.test'));
     await expect.poll(() => acs?.locator('body').getAttribute('data-result')).toBe('1234');
+  });
+
+  test('OTP mode: outcome dropdown (oppwa 3DS simulator) – option chosen, Submit pressed', async ({
+    page,
+  }) => {
+    await page.route('http://cashier.test/sim', (r) =>
+      r.fulfill({
+        contentType: 'text/html',
+        body: `<body><p>Select authentication outcome</p><select id="o"><option>Approve</option><option>Reject</option></select>
+<button onclick="document.body.dataset.result=o.value">Submit</button></body>`,
+      }),
+    );
+    await page.goto('http://cashier.test/sim');
+    // the simulator replaces the cashier page – a different host than the cashier
+    const opts = (otp: string) =>
+      [
+        page,
+        { action: 'otp' as const, otp, submit: '' },
+        {
+          cashierHost: 'other.test',
+          headed: false,
+          isFinished: () => false,
+          deadline: Date.now() + 10_000,
+        },
+      ] as const;
+    const approved = await watchForChallenge(...opts('approve'));
+    expect(approved?.answered).toBe(true);
+    expect(approved?.detail).toBe('outcome dropdown: "Approve" chosen, "Submit" pressed');
+    await expect.poll(() => page.locator('body').getAttribute('data-result')).toBe('Approve');
+
+    const wrong = await watchForChallenge(...opts('1234'));
+    expect(wrong?.answered).toBe(false);
+    expect(wrong?.stuck).toBe(true);
+    expect(wrong?.detail).toContain('"1234" is not one of its options (Approve, Reject)');
+  });
+
+  test('the 3DS page is read for "Create 3DS flow from this page" – labels and options, never values', async ({
+    page,
+  }) => {
+    await page.route('http://oppwa.test/**', (r) =>
+      r.fulfill({
+        contentType: 'text/html',
+        body: `<body><h3>3DS Simulator</h3><p>Select authentication outcome</p>
+<select id="o"><option>Approve</option><option>Decline</option><option>Cancel</option></select>
+<label for="pin">Security answer</label><input id="pin" value="secret-123">
+<input type="hidden" name="token" value="hidden-token"><button>Submit</button></body>`,
+      }),
+    );
+    await page.goto('http://oppwa.test/connectors/demo/submit?ndcid=abc&session=xyz');
+    const cap = await captureThreeDsPage(page, page.mainFrame());
+    expect(cap?.url).toBe('http://oppwa.test/connectors/demo/submit'); // no query (session ids)
+    expect(cap?.heading).toBe('3DS Simulator');
+    expect(cap?.dropdowns).toEqual([
+      {
+        label: 'Select authentication outcome',
+        name: 'o',
+        options: ['Approve', 'Decline', 'Cancel'],
+      },
+    ]);
+    expect(cap?.inputs).toEqual([{ label: 'Security answer', name: 'pin', type: 'text' }]);
+    expect(cap?.buttons).toEqual(['Submit']);
+    expect(cap?.screenshot?.length).toBeGreaterThan(1000);
+    expect(JSON.stringify({ ...cap, screenshot: undefined })).not.toMatch(
+      /secret-123|hidden-token|xyz/,
+    );
+
+    // OTP mode on the outcome dropdown keeps the page for the report as well.
+    const result = await watchForChallenge(
+      page,
+      { action: 'otp', otp: 'Approve', submit: '' },
+      {
+        cashierHost: 'cashier.test',
+        headed: false,
+        isFinished: () => false,
+        deadline: Date.now() + 5_000,
+      },
+    );
+    expect(result?.answered).toBe(true);
+    expect(result?.page?.dropdowns[0]?.options).toEqual(['Approve', 'Decline', 'Cancel']);
   });
 });

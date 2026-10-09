@@ -40,6 +40,32 @@ export interface ResolvedThreeDsFlow {
 }
 
 /** What happened on the 3DS challenge page, when one was shown. */
+/**
+ * What a bank's 3DS page shows – read by the test so the launcher can create a Dynamic 3DS flow
+ * from it ("Create 3DS flow from this page"). Labels, option texts and button texts only:
+ * never what is typed into a field.
+ */
+export interface ThreeDsPageCapture {
+  /** Page address without query string (no session tokens). */
+  readonly url: string;
+  readonly host: string;
+  readonly heading: string;
+  readonly dropdowns: readonly {
+    readonly label: string;
+    readonly name: string;
+    readonly options: readonly string[];
+  }[];
+  readonly inputs: readonly {
+    readonly label: string;
+    readonly name: string;
+    readonly type: string;
+  }[];
+  readonly buttons: readonly string[];
+  readonly capturedAt: string;
+  /** JPEG of the page when it was read. */
+  readonly screenshot?: Buffer;
+}
+
 export interface ChallengeResult {
   readonly shown: boolean;
   readonly host: string;
@@ -48,6 +74,10 @@ export interface ChallengeResult {
   readonly detail: string;
   /** The OTP was typed and submitted (not just shown). */
   readonly answered?: boolean;
+  /** The 3DS page could not be completed – the payment stops waiting soon instead of timing out. */
+  readonly stuck?: boolean;
+  /** The 3DS page as the test saw it (for "Create 3DS flow from this page"). */
+  readonly page?: ThreeDsPageCapture;
 }
 
 /** Where the cashier sent the customer after PAY. */

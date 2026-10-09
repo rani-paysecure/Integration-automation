@@ -658,6 +658,13 @@
       .details-btn::after { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 2px 2px 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s; }
       .details-btn.open::after { transform: rotate(45deg); }
       .rcard-unmasked { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 8px; padding: 7px 10px; border-radius: 8px; font-size: 12.5px; color: var(--fail); background: var(--fail-bg); border-left: 3px solid var(--fail); overflow-wrap: anywhere; }
+      .imp-sum { flex-wrap: wrap; align-items: center; } .imp-select { display: inline-flex; gap: 12px; margin-left: auto; }
+      #importDupHint:empty { display: none; } #importDupHint { margin: 2px 0 6px; color: var(--warn, #b7791f); }
+      th.imp-all label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: inherit; cursor: pointer; white-space: nowrap; }
+      .rcard-3ds { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, #1c7ed6 7%, var(--surface)); border: 1px solid color-mix(in srgb, #1c7ed6 28%, transparent); border-left: 4px solid #1c7ed6; overflow-wrap: anywhere; }
+      .rcard-3ds > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .rcard-3ds .row { margin-top: 4px; align-items: center; flex-wrap: wrap; }
+      .tds-cap-shot img { width: 120px; height: 84px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
+      .tds-prefill { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, #1c7ed6 8%, var(--surface)); border: 1px solid color-mix(in srgb, #1c7ed6 30%, transparent); }
       .rcard-unmasked span { color: var(--text); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
       .rcard-unmasked em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--muted); }
       .challenge-box > select { margin-bottom: 4px; }
@@ -1436,7 +1443,7 @@
               <option value="flow">Dynamic 3DS flow</option>
             </select>
             <div class="cols-2 ch-mode" data-mode="otp">
-              <div><label for="cOtp">OTP</label><input id="cOtp" autocomplete="off" placeholder="1234" /><span class="hint ch-sub">Empty = read "OTP: 1234" shown on the test page</span></div>
+              <div><label for="cOtp">OTP or dropdown option</label><input id="cOtp" autocomplete="off" placeholder="1234 / Approve" /><span class="hint ch-sub">Code field: the code (empty = read "OTP: 1234" on the page). Outcome dropdown: the option text, e.g. Approve or Reject (empty = the success option)</span></div>
               <div><label for="cSubmit">Submit button text</label><input id="cSubmit" autocomplete="off" placeholder="Submit" /><span class="hint ch-sub">Empty = Submit / Continue / Verify …</span></div>
             </div>
             <div class="cols-2 ch-mode" data-mode="flow" id="cFlowBox">
@@ -1444,7 +1451,7 @@
               <div><label for="cScenario">Scenario</label><select id="cScenario"></select></div>
             </div>
             <p class="hint ch-mode" data-mode="none">The payment goes through without a 3DS page.</p>
-            <p class="hint ch-mode" data-mode="otp">A wrong OTP on purpose tests the decline path.</p>
+            <p class="hint ch-mode" data-mode="otp">A wrong OTP (or the Reject option) on purpose tests the decline path. A page that is not recognised is reported after 30 s with what it shows.</p>
             <p class="hint ch-mode" data-mode="manual">Needs <b>Show browser while paying</b> on the Run tab – you have 5 minutes to complete the bank page.</p>
             <p class="hint ch-mode" data-mode="flow">Runs the steps of the bank's scenario (Dynamic 3DS flows tab) – OTP, sort code, account number, buttons, dropdowns … The expected result is set from the scenario.</p>
           </fieldset>
@@ -1542,7 +1549,7 @@
             </div>
           </div>
           <div id="importPreview" class="hidden">
-            <div class="row tight"><span class="summary" id="importSummary"></span><span class="hint" id="importName"></span></div>
+            <div class="row tight imp-sum"><span class="summary" id="importSummary"></span><span class="hint" id="importName"></span><span class="imp-select" id="importSelect"></span></div><p class="hint" id="importDupHint"></p>
             <div class="import-wrap">
               <table class="import"><thead id="importHead"></thead><tbody id="importRows"></tbody></table>
             </div>
@@ -2080,6 +2087,79 @@
         const icon = { in: '⇣', out: '⇡', other: 'ⓘ' }[kind];
         return el('div', { class: `wh-row wh-${kind} ${state}` }, el('div', { class: 'wh-head' }, el('span', { class: 'wh-icon' }, icon), el('b', {}, title), el('span', { class: 'wh-badge' }, text)), el('div', { class: 'wh-text' }, detail));
       }
+      /** 3DS page the test read – summary, screenshot and "Create 3DS flow from this page". */
+      function threeDsPageBox(t) {
+        const cap = t.threeDsPage; const bank = t.psp?.bankName || '';
+        const existing = tdsFlows().findIndex((f) => bank && f.bank.toLowerCase() === bank.toLowerCase());
+        const parts = [
+          ...cap.dropdowns.map((d) => `dropdown${d.label ? ` “${d.label}”` : ''}: ${d.options.join(', ')}`),
+          ...(cap.inputs.length ? [`fields: ${cap.inputs.map((i) => i.label || i.name || i.type).join(', ')}`] : []),
+          ...(cap.buttons.length ? [`buttons: ${cap.buttons.join(', ')}`] : []),
+        ];
+        const create = el('button', { type: 'button', class: 'small primary' }, existing >= 0 ? `Add these scenarios to ${bank}` : 'Create 3DS flow from this page');
+        create.addEventListener('click', () => openFlowFromPage(t, existing));
+        const shot = cap.screenshot ? el('a', { href: '#', class: 'tds-cap-shot', title: 'Open the screenshot' }, el('img', { src: cap.screenshot, alt: '3DS page', loading: 'lazy' })) : null;
+        shot?.addEventListener('click', (e) => { e.preventDefault(); const w = window.open(); if (w) w.document.write(`<img src="${cap.screenshot}" style="max-width:100%">`); });
+        return el('div', { class: 'rcard-3ds' }, ...(shot ? [shot] : []),
+          el('div', {}, el('b', {}, `3DS page seen on ${cap.host}${cap.heading ? ` – “${cap.heading}”` : ''}`),
+            el('div', { class: 'hint' }, parts.join(' · ') || 'no form fields found'),
+            el('div', { class: 'row tight' }, create, el('span', { class: 'hint' }, existing >= 0 ? 'Opens the flow with the new scenarios added – nothing is saved until you click Save flow.' : 'Opens the flow editor filled in from this page – nothing is saved until you click Save flow.'))));
+      }
+      /** Expected result from an option / button text: Approve → success, Decline → failure … */
+      function tdsGuessOutcome(text) {
+        if (/approv|authenticat|success|accept|pass|^y(es)?$|frictionless|complete|confirm/i.test(text)) return 'success';
+        if (/declin|fail|reject|deny|denied|error|cancel|abort|^no?$|block|fraud|invalid/i.test(text)) return 'failure';
+        if (/pend|wait|later/i.test(text)) return 'pending';
+        if (/timeout|time-out|expire/i.test(text)) return 'timeout';
+        return 'other';
+      }
+      const TDS_SUBMIT = /^(submit|continue|confirm|verify|authenticate|authorise|authorize|ok|send|next|proceed|pay)$/i;
+      /** A Dynamic 3DS flow drafted from the page the test read: one scenario per outcome. */
+      function tdsDraftFromPage(cap, bank, method) {
+        const camel = (t) => t.toLowerCase().replace(/[^a-z0-9]+(.)?/g, (m, c) => (c ? c.toUpperCase() : '')).replace(/^[^a-z]+/, '').slice(0, 40);
+        const details = []; const used = new Set();
+        for (const i of cap.inputs) {
+          let key = camel(i.label || i.name || i.type) || 'field'; let n = 2; while (used.has(key)) key = `${key}${n++}`; used.add(key);
+          details.push({ key, label: i.label || i.name || i.type, value: '' });
+        }
+        const fills = details.map((d) => ({ action: 'fill', target: d.label, value: `{${d.key}}` }));
+        const submit = cap.buttons.find((b) => TDS_SUBMIT.test(b)) || cap.buttons[0] || 'Submit';
+        const unsure = 'Expected result guessed from the text – check it after the first run.';
+        let scenarios = [];
+        const dd = cap.dropdowns.find((d) => d.options.length > 1);
+        if (dd) {
+          const options = dd.options.filter((o) => !/^(-+|select\b|choose\b|please\b)/i.test(o));
+          scenarios = options.map((o) => ({ name: o, outcome: tdsGuessOutcome(o), description: tdsGuessOutcome(o) === 'other' ? 'Result not known from the page – run once and set the expected result.' : unsure,
+            steps: [...fills, { action: 'select', target: cap.dropdowns.length > 1 ? dd.label : '', value: o }, { action: 'click', target: submit, value: '' }] }));
+        } else if (details.length) {
+          scenarios = [{ name: `Enter ${details.map((d) => d.label).join(' + ')}, then ${submit}`, outcome: 'success', description: 'Fill in the test values on step 2.', steps: [...fills, { action: 'click', target: submit, value: '' }] }];
+        } else if (cap.buttons.length) {
+          scenarios = cap.buttons.map((b) => ({ name: `Click “${b}”`, outcome: tdsGuessOutcome(b), description: unsure, steps: [{ action: 'click', target: b, value: '' }] }));
+        }
+        return {
+          id: '', bank, label: '', methods: method ? [method] : [], details, docsUrl: '', attachments: [],
+          notes: `3DS page on ${cap.host}${cap.heading ? ` (“${cap.heading}”)` : ''} – read by the test on ${new Date(cap.capturedAt).toLocaleString()}.`,
+          scenarios: scenarios.map((sc) => ({ id: '', ...sc })),
+        };
+      }
+      function openFlowFromPage(t, existing) {
+        const cap = t.threeDsPage;
+        const draft = tdsDraftFromPage(cap, t.psp?.bankName || '', t.psp?.paymentMethod || state.reportConfig?.paymentMethod || '');
+        let added = draft.scenarios.length;
+        if (existing >= 0) {
+          const flow = structuredClone(tdsFlows()[existing]);
+          const names = new Set(flow.scenarios.map((sc) => sc.name.toLowerCase()));
+          const fresh = draft.scenarios.filter((sc) => !names.has(sc.name.toLowerCase())); added = fresh.length;
+          flow.scenarios.push(...fresh);
+          for (const d of draft.details) if (!flow.details.some((x) => x.key === d.key)) flow.details.push(d);
+          for (const m of draft.methods) if (!flow.methods.includes(m)) flow.methods.push(m);
+          openFlowEditor(existing, flow);
+        } else openFlowEditor(undefined, draft);
+        state.tds.pendingShot = cap.screenshot || '';
+        $('tdsPrefill').textContent = `Filled in from the 3DS page on ${cap.host}: ${added} scenario(s)${draft.details.length ? `, ${draft.details.length} page field(s) – add their test values on step 2` : ''}. Check each expected result, then Save flow${cap.screenshot ? ' (the page screenshot is added to step 4)' : ''}.`;
+        $('tdsPrefill').classList.remove('hidden');
+        showTdsSection(draft.bank ? 'scenarios' : 'bank');
+      }
       function reportCard(t) {
         const card = el('div', { class: `rcard ${t.verdict}` });
         const caseId = CASE_KEY.test(t.key) ? t.key.slice(1) : '';
@@ -2116,6 +2196,7 @@
             return el('div', { class: 'rcard-unmasked' }, el('b', {}, `${field} is not masked`), el('span', {}, ` – readable at ${where}`), el('em', {}, `rule: ${rule}`));
           }),
           ...(t.psp?.notes || []).filter((n) => /^warning:/i.test(n)).map((n) => el('div', { class: 'rcard-warn' }, `⚠ ${n.replace(/^warning:\s*/i, '')}`)),
+          ...(t.threeDsPage ? [threeDsPageBox(t)] : []),
           el('div', { class: 'rcard-foot' }, ids, toggle));
         return card;
       }
@@ -2125,7 +2206,7 @@
         try { report = await api(`/api/report?run=${encodeURIComponent(name)}`); }
         catch { view.replaceChildren(el('p', { class: 'hint' }, 'No report yet – select test cases and click Run test.')); return; }
         const tests = report.tests.map(normaliseRow);
-        const c = report.config || {}; const s = report.summary || {};
+        const c = report.config || {}; const s = report.summary || {}; state.reportConfig = c;
         const pct = (n) => (s.total ? Math.round(((n ?? 0) / s.total) * 100) : 0);
         const byCat = CATEGORY_ORDER.map((id) => ({ id, rows: tests.filter((t) => t.category === id) })).filter((g) => g.rows.length);
         const stat = (cls, n, label, p) => el('div', { class: `stat ${cls}` }, el('b', {}, String(n ?? 0)), el('span', {}, label),
@@ -2751,11 +2832,12 @@
         for (const b of $('tdsEdNav').children) b.setAttribute('aria-selected', String(b.dataset.s === sec));
         for (const d of $('tdsEditor').querySelectorAll('.ed-sec')) d.classList.toggle('on', d.dataset.s === sec);
       }
-      function openFlowEditor(index) {
+      function openFlowEditor(index, prefilled) {
         const flow = index === undefined ? null : tdsFlows()[index];
-        state.tds = { index, draft: flow ? structuredClone(flow) : { id: '', bank: '', label: '', methods: [], details: [{ key: 'otp', label: 'OTP', value: '' }], docsUrl: '', notes: '', attachments: [], scenarios: [] } };
+        $('tdsPrefill').classList.add('hidden');
+        state.tds = { index, draft: prefilled ? structuredClone(prefilled) : flow ? structuredClone(flow) : { id: '', bank: '', label: '', methods: [], details: [{ key: 'otp', label: 'OTP', value: '' }], docsUrl: '', notes: '', attachments: [], scenarios: [] } };
         const d = state.tds.draft;
-        $('tdsEdTitle').textContent = flow ? `Edit ${tdsName(flow)}` : 'Add dynamic 3DS flow';
+        $('tdsEdTitle').textContent = flow ? `Edit ${tdsName(flow)}` : prefilled ? 'New dynamic 3DS flow – from the 3DS page' : 'Add dynamic 3DS flow';
         $('tdsBank').value = d.bank; $('tdsMethods').value = d.methods.join(', '); $('tdsDocs').value = d.docsUrl; $('tdsNotes').value = d.notes;
         loadTdsBanks(d.bank);
         const methods = new Set(['VISA', 'MASTER', 'AMEX', 'DISCOVER', 'JCB', 'MAESTRO', ...(state.dash?.routes || []).map((r) => r.paymentMethod).filter(Boolean)]);
@@ -2879,6 +2961,15 @@
           if (!sc.id) { const base = slug(sc.name); let id = base; let n = 2; while (ids.has(id) || d.scenarios.some((o) => o !== sc && o.id === id)) id = `${base}-${n++}`; sc.id = id; }
           ids.add(sc.id);
           sc.steps = sc.steps.filter((st) => st.target || st.value || ['wait', 'expire'].includes(st.action));
+        }
+        if (state.tds.pendingShot) {
+          // Screenshot of the 3DS page from the report → the flow's files (step 4).
+          const name = `3ds-page-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}.jpg`;
+          try {
+            const blob = await (await fetch(state.tds.pendingShot)).blob();
+            const res = await fetch(`/api/three-ds/${d.id}/files/${name}`, { method: 'PUT', headers: { 'x-launcher-token': TOKEN, 'content-type': 'application/octet-stream' }, body: blob });
+            if (res.ok) { d.attachments = [...d.attachments.filter((a) => a.file !== name), { file: name, caption: '3DS page as the test saw it' }]; state.tds.pendingShot = ''; }
+          } catch { /* the flow is still saved – the screenshot can be added on step 4 */ }
         }
         const flows = tdsFlows();
         const next = state.tds.index === undefined ? [...flows, d] : flows.map((f, i) => (i === state.tds.index ? d : f));
@@ -3120,11 +3211,27 @@
         const rows = state.importCases || []; const body = $('importRows'); body.replaceChildren();
         $('importPreview').classList.toggle('hidden', rows.length === 0);
         if (rows.length === 0) return;
-        $('importHead').replaceChildren(el('tr', {}, ...['Add', 'Row', ...state.importColumns, 'Notes'].map((h) => el('th', {}, h))));
+        // Select all: header checkbox (every case that has no issue) + quick links.
+        const selectable = rows.filter((c) => !c.issues.length); const boxes = new Map();
+        const all = el('input', { type: 'checkbox', title: 'Select all / none', 'aria-label': 'Select all cases' });
+        const setAll = (pick) => { for (const c of selectable) { c.include = pick(c); boxes.get(c).checked = c.include; } update(); };
+        all.addEventListener('change', () => setAll(() => all.checked));
+        $('importHead').replaceChildren(el('tr', {}, el('th', { class: 'imp-all' }, el('label', {}, all, 'Add')), ...['Row', ...state.importColumns, 'Notes'].map((h) => el('th', {}, h))));
         const dup = rows.filter((c) => c.duplicate).length; const bad = rows.filter((c) => c.issues.length).length;
-        const update = () => { const n = rows.filter((c) => c.include).length; $('importSummary').textContent = `${rows.length} case(s) found · ${n} selected${dup ? ` · ${dup} already exist` : ''}${bad ? ` · ${bad} need fixing` : ''}`; $('appendCases').disabled = n === 0; };
+        const link = (text, title, fn) => { const b = el('button', { type: 'button', class: 'link-btn', title }, text); b.addEventListener('click', fn); return b; };
+        $('importSelect').replaceChildren(
+          link('Select all', 'Every case without issues', () => setAll(() => true)),
+          ...(dup ? [link('New only', 'Only cases that do not exist yet', () => setAll((c) => !c.duplicate))] : []),
+          link('Clear', 'Select none', () => setAll(() => false)));
+        const update = () => {
+          const n = rows.filter((c) => c.include).length; const nDup = rows.filter((c) => c.include && c.duplicate).length;
+          $('importSummary').textContent = `${rows.length} case(s) found · ${n} selected${dup ? ` · ${dup} already exist` : ''}${bad ? ` · ${bad} need fixing` : ''}`;
+          all.checked = selectable.length > 0 && selectable.every((c) => c.include); all.indeterminate = n > 0 && !all.checked;
+          $('importDupHint').textContent = nDup ? `${nDup} selected case(s) already exist – they are skipped when added.` : '';
+          $('appendCases').disabled = n === 0;
+        };
         for (const c of rows) {
-          const box = el('input', { type: 'checkbox', checked: c.include, disabled: c.issues.length > 0 });
+          const box = el('input', { type: 'checkbox', checked: c.include, disabled: c.issues.length > 0 }); boxes.set(c, box);
           box.addEventListener('change', () => { c.include = box.checked; update(); });
           const notes = el('td', {});
           if (c.duplicate) notes.append(el('span', { class: 'warn' }, 'Already exists'));
@@ -3888,6 +3995,7 @@
       <div class="ed-body">
         <nav class="ed-nav" id="tdsEdNav"><button type="button" data-s="bank">1 · Bank &amp; methods</button><button type="button" data-s="details">2 · 3DS page fields <small class="opt">optional</small></button><button type="button" data-s="scenarios">3 · Scenarios <small class="opt">optional</small></button><button type="button" data-s="files">4 · Screenshots, video, docs <small class="opt">optional</small></button></nav>
         <div class="ed-main">
+          <p class="tds-prefill hidden" id="tdsPrefill"></p>
           <div class="ed-sec" data-s="bank">
             <h4>Bank / PSP</h4>
             <div class="cols-2">

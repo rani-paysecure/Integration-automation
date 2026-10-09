@@ -16,7 +16,11 @@ function prepareSessionDir(): void {
     for (const entry of fs.readdirSync(SESSION_ROOT)) {
       const full = path.join(SESSION_ROOT, entry);
       if (Date.now() - fs.statSync(full).mtimeMs > 6 * 3_600_000) {
-        fs.rmSync(full, { recursive: true, force: true });
+        try {
+          fs.rmSync(full, { recursive: true, force: true });
+        } catch {
+          // Best effort – a folder that cannot be removed must not stop the run.
+        }
       }
     }
   }
