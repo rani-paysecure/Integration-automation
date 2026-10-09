@@ -27,6 +27,7 @@ const { DashboardClient, DashboardError } = require('./dashboard');
 const caseImport = require('./test-case-import');
 const bankProfiles = require('../../config/bank-profiles');
 const jira = require('./jira');
+const videoZip = require('./video-zip');
 const paymentMethodCases = require('./payment-method-cases');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
@@ -1352,7 +1353,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (
       method === 'GET' &&
-      (url.pathname === '/api/report' || url.pathname === '/api/report.xlsx')
+      (url.pathname === '/api/report' ||
+        url.pathname === '/api/report.xlsx' ||
+        url.pathname === '/api/report/videos.zip')
     ) {
       const name = String(url.searchParams.get('run') || 'latest');
       const latestFile = path.join(UI_REPORT_DIR, 'latest.json');
@@ -1370,6 +1373,25 @@ const server = http.createServer(async (req, res) => {
       if (!file || !fs.existsSync(file)) throw new HttpError(404, 'No report yet');
       const report = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (url.pathname === '/api/report') return send(res, 200, report);
+      if (url.pathname === '/api/report/videos.zip') {
+        // All payment videos of this run, named by purchase ID – one-time (deleted once zipped).
+        if (url.searchParams.get('token') !== TOKEN) throw new HttpError(403, 'Forbidden');
+        const videos = videoZip.reportVideos(report, ROOT);
+        if (videos.length === 0) {
+          throw new HttpError(
+            410,
+            'No payment videos left for this run – downloaded already, or a newer run replaced them',
+          );
+        }
+        const zipName = `payment-videos-${runStamp(report.finishedAt) || name}.zip`;
+        res.writeHead(200, {
+          'content-type': 'application/zip',
+          'content-disposition': `attachment; filename="${zipName}"`,
+          'cache-control': 'no-store',
+        });
+        await videoZip.streamVideoZip(res, videos);
+        return undefined;
+      }
       // One presentable workbook (Summary + Results) for sharing – named after the run's
       // local finish time (the time shown on the report page), not UTC.
       const finished = report.finishedAt ? new Date(report.finishedAt) : undefined;
