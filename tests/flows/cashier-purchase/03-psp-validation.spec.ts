@@ -1,6 +1,6 @@
 import { HttpStatus } from '@constants/http';
 import { recordPspResult, summarizePsp } from '@helpers/psp-validation';
-import { webhookResults } from '@helpers/transaction-flow';
+import { serviceMaskingKeys, webhookResults } from '@helpers/transaction-flow';
 import { expect, test } from '@fixtures/api.fixture';
 import { buildPurchaseRequest } from '@test-data/purchase/purchase-request.factory';
 
@@ -56,6 +56,7 @@ test.describe(
             request: trx,
             // PSP checks: masking rules + webhook in / out.
             pspChecks: true,
+            serviceMaskingKeys: await serviceMaskingKeys(backoffice),
           });
           // Webhook in (PSP → PGS) / webhook out (PGS → merchant) for the current status.
           const webhooks = psp.attempted

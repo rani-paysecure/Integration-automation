@@ -76,6 +76,34 @@ export type RequestContextFactory = (storageState?: StorageState) => Promise<API
  * through a `SessionStore` (all workers reuse it) and renewed automatically
  * if the session is ended elsewhere (e.g. the tester logs in in the browser).
  */
+/** Service config with the field names PGS masks for every PSP (all payment methods). */
+export const SERVICE_MASKING_CONFIG = 'COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS';
+
+/**
+ * Service config value → list of names. The value is a JSON array, sometimes returned as text
+ * with a stray comma (PGS tolerates "[,"a"," and ","]" too).
+ */
+export function parseKeyList(body: unknown, name = SERVICE_MASKING_CONFIG): string[] {
+  let value: unknown = body;
+  if (typeof value === 'string') {
+    const text = value
+      .trim()
+      .replace(/,\s*]/g, ']')
+      .replace(/\[\s*,/g, '[');
+    if (!text.startsWith('['))
+      throw new Error(`service config ${name}: ${text.slice(0, 80) || 'empty'}`);
+    value = JSON.parse(text) as unknown;
+  }
+  if (!Array.isArray(value)) throw new Error(`service config ${name} is not a list`);
+  return [
+    ...new Set(
+      value
+        .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+        .map((v) => v.trim()),
+    ),
+  ];
+}
+
 export class BackofficeClient extends BaseApiClient {
   private csrfToken: string | undefined;
   private context: APIRequestContext | undefined;
@@ -333,6 +361,32 @@ export class BackofficeClient extends BaseApiClient {
         (entry): entry is [string, string] => typeof entry[1] === 'string',
       ),
     );
+  }
+
+  private serviceKeys: Promise<string[]> | undefined;
+  /**
+   * Field names PGS masks in every PSP request / response it logs – service config
+   * COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS (JSON array). Read once per worker, like PGS reads
+   * it fresh per call: a change in the dashboard is picked up by the next run.
+   */
+  async getServiceMaskingKeys(name = SERVICE_MASKING_CONFIG): Promise<string[]> {
+    this.serviceKeys ??= (async () => {
+      const response = await this.withSession(async () => {
+        const result = await this.get(
+          `${Endpoints.backoffice.serviceConfig}${encodeURIComponent(name)}`,
+        );
+        this.assertSession(result.raw.url());
+        return result;
+      });
+      if (!response.ok) throw new Error(`service config ${name}: HTTP ${String(response.status)}`);
+      return parseKeyList(response.body, name);
+    })();
+    try {
+      return await this.serviceKeys;
+    } catch (error) {
+      this.serviceKeys = undefined; // retried by the next test
+      throw error;
+    }
   }
 
   /** JSON GET on the dashboard; `undefined` when it answers with a page instead of data. */
