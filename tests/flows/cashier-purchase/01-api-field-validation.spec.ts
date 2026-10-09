@@ -183,24 +183,20 @@ function judgeAndRecord(
   }
 }
 
-const ALL_CASES: readonly FieldTestCase[] = [...fieldTestCases, ...loadUploadedFieldCases()];
+// Built-in cases (FT-xxx, minus those removed on the launcher's Test cases tab) + uploaded cases (FV-xxx).
+const REMOVED_BUILTIN = removedBuiltinCaseIds();
+const ALL_CASES: readonly FieldTestCase[] = [
+  ...fieldTestCases.filter((c) => !REMOVED_BUILTIN.has(c.id)),
+  ...loadUploadedFieldCases(),
+];
 const AUTH_FAILURES = [401, 403];
 
 test.describe(
   'Cashier purchase › 1. API field validation',
   { tag: ['@cashier', '@field-validation'] },
   () => {
-<<<<<<< Updated upstream
-    // Built-in cases (FT-xxx, minus those removed in the launcher) + uploaded cases (FV-xxx).
-    const removed = removedBuiltinCaseIds();
-    for (const testCase of [
-      ...fieldTestCases.filter((c) => !removed.has(c.id)),
-      ...loadUploadedFieldCases(),
-    ]) {
-=======
-    // Built-in cases (FT-xxx) + cases uploaded in the launcher (FV-xxx) – API-validated fields.
+    // API-validated fields (the PSP-checked ones run in the block below).
     for (const testCase of ALL_CASES.filter((c) => !isPspCheckedCase(c))) {
->>>>>>> Stashed changes
       test(
         `${testCase.id} ${testCase.parameter} – ${testCase.title}`,
         {
