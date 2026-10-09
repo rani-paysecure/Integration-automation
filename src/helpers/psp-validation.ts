@@ -5,6 +5,7 @@ import type { CashierCard } from '../types/cashier.types';
 import { maskSensitiveData } from '../utils/masking';
 import {
   mappingChecks,
+  serviceConfigMaskingChecks,
   bankProfileFor,
   profileMappingChecks,
   maskingChecks,
@@ -145,6 +146,11 @@ const text = (value: unknown): string =>
  * Cross-checks the purchase (back-office transaction) against what was sent to
  * and received from the PSP. PSP-agnostic: only fields every bank record has.
  */
+/** The PSP was actually called for this purchase (a response or a PSP transaction ID is stored). */
+export function pspWasCalled(bank: BankTransaction | undefined): boolean {
+  return bank !== undefined && (isNonEmpty(bank.response) || isNonEmpty(bank.paymentTransId));
+}
+
 export function summarizePsp(
   purchaseId: string,
   trx: BackofficeTransaction,
@@ -158,10 +164,15 @@ export function summarizePsp(
     readonly card?:
       (Pick<CashierCard, 'number'> & Partial<Pick<CashierCard, 'cvv' | 'expiry'>>) | undefined;
     /**
-     * Apply the masking rules – PSP request/response cases, PSP check by ID, S2S and
-     * session payments. The other cashier runs (card, regex, edge, field, bank & MID) do not.
+     * Masking rules (+ service config keys) whenever the PSP was called – on by default;
+     * `false` switches them off.
      */
     readonly pspChecks?: boolean | undefined;
+    /**
+     * Service config COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS (field names PGS masks for every PSP)
+     * – or the error that prevented reading it. Checked with the masking rules.
+     */
+    readonly serviceMaskingKeys?: readonly string[] | Error | undefined;
   } = {},
 ): PspSummary {
   const status = trx.status.toUpperCase();
@@ -241,9 +252,9 @@ export function summarizePsp(
         actual: bank?.midName ?? '',
       });
     }
-    const pspCalled =
-      bank !== undefined && (isNonEmpty(bank.response) || isNonEmpty(bank.paymentTransId));
-    if (bank !== undefined && options.pspChecks === true) {
+    const pspCalled = pspWasCalled(bank);
+    // Whenever the PSP was called: masking rules + service config keys (webhooks: transaction flow).
+    if (bank !== undefined && pspCalled && options.pspChecks !== false) {
       // The card and purchase the test sent: their clear values are searched under any key.
       const masking = maskingChecks(
         bank,
@@ -252,6 +263,16 @@ export function summarizePsp(
       );
       checks.push(...masking.checks);
       notes.push(...masking.notes);
+      const keys = options.serviceMaskingKeys;
+      if (keys instanceof Error) {
+        notes.push(
+          `Warning: service config COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS could not be read (${keys.message}) – its masking keys were not checked`,
+        );
+      } else if (keys !== undefined) {
+        const service = serviceConfigMaskingChecks(bank, keys);
+        checks.push(...service.checks);
+        notes.push(...service.notes);
+      }
     }
     if (bank !== undefined && pspCalled) {
       const info = paymentInfoChecks(bank, expectedAmount, expectedCurrency);

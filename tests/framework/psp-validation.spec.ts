@@ -68,7 +68,8 @@ test.describe('Back-office / PSP validation helpers', () => {
         attempts: [{ type: 'execute', successful: true, error: { message: 'Risk rule failed' } }],
       },
     };
-    const summary = summarizePsp('pid-1', errorTrx, bank);
+    // pspChecks off: this test is about the attempt flags, not masking.
+    const summary = summarizePsp('pid-1', errorTrx, bank, { pspChecks: false });
     expect(summary.checks.find((c) => c.name === 'Error ⇒ last attempt failed')?.passed).toBe(true);
     expect(summary.notes).toEqual([
       'Attempt is flagged successful=true although it failed ("Risk rule failed")',

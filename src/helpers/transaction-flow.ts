@@ -12,7 +12,7 @@ import {
   type ComplianceResult,
 } from './psp-compliance';
 import { maskString } from '../utils/masking';
-import { recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
+import { pspWasCalled, recordPspResult, summarizePsp, type PspSummary } from './psp-validation';
 
 const FINAL_STATUS_TIMEOUT_MS = 90_000;
 /** Added to the test timeout when the 3DS page re-opens and the OTP is entered again. */
@@ -38,7 +38,7 @@ export interface TransactionInput {
   readonly expectedMid?: string | undefined;
   /** Purchase request that was sent – enables the purchase ↔ PSP mapping and webhook URL checks. */
   readonly request?: object | undefined;
-  /** PSP checks (masking rules + webhook in / out) – PSP request/response cases, S2S and session. */
+  /** PSP checks (masking, service config keys, webhook in / out) – on whenever the PSP was called; false = off. */
   readonly pspChecks?: boolean | undefined;
 }
 
@@ -196,6 +196,15 @@ export async function executeTransaction(
   return { cashier, ...settled };
 }
 
+/** Service config masking keys for the PSP checks – the error instead when it cannot be read. */
+export async function serviceMaskingKeys(backoffice: BackofficeClient): Promise<string[] | Error> {
+  try {
+    return await backoffice.getServiceMaskingKeys();
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+}
+
 /** Attachments with the 3DS page read by the test (structure + screenshot). */
 export const THREE_DS_PAGE_ATTACHMENT = 'three-ds-page.json';
 export const THREE_DS_SHOT_ATTACHMENT = 'three-ds-page.jpg';
@@ -283,7 +292,7 @@ export interface SettleInput {
   readonly expectedBank?: string | undefined;
   readonly expectedMid?: string | undefined;
   readonly request?: object | undefined;
-  /** PSP checks (masking rules + webhook in / out) – PSP request/response cases, S2S and session. */
+  /** PSP checks (masking, service config keys, webhook in / out) – on whenever the PSP was called; false = off. */
   readonly pspChecks?: boolean | undefined;
 }
 
@@ -329,10 +338,13 @@ export async function settleTransaction(
       request: input.request,
       card: input.card,
       pspChecks: input.pspChecks,
+      ...(input.pspChecks !== false && pspWasCalled(bank)
+        ? { serviceMaskingKeys: await serviceMaskingKeys(deps.backoffice) }
+        : {}),
     });
-    // Masking rules and webhooks: PSP request/response cases, S2S and session – not the other cashier runs.
     const webhooks =
-      summary.attempted && input.pspChecks === true
+      // Whenever the PSP was called: webhook in (PSP → PGS) and webhook out (PGS → merchant).
+      summary.attempted && pspWasCalled(bank) && input.pspChecks !== false
         ? await webhookResults(deps.backoffice, input.purchaseId, finalStatus, {
             request: input.request,
             pspTransId: bank?.paymentTransId,

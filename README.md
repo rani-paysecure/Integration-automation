@@ -485,9 +485,12 @@ masked PSP request/response are attached to each test in the HTML report.
 ### Automatic PSP compliance checks (every paid / failed transaction)
 
 Added to the PSP checks of every transaction (card payments, regex/PSP/edge cases, field cases
-that pay, and the by-ID check). **Masking rules and the webhook checks (in / out) run in the PSP
-request/response cases (PR-xxx), PSP check by ID, S2S and session payments** – not in the other cashier
-runs (card scenarios, regex, edge, field, bank & MID cases) or refunds. Code: `src/helpers/psp-compliance.ts`.
+that pay, and the by-ID check). **Masking rules, the service config keys
+(COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS), the bank-profile field mapping and the webhook checks (in /
+out) run whenever the PSP was called** – card scenarios, PSP request/response cases, PSP check by ID,
+S2S, session, and regex / edge / field / bank & MID cases that reach the PSP. Not when the payment
+never reached the PSP (rejected by the cashier / API), and not for refunds. Code:
+`src/helpers/psp-compliance.ts`.
 
 | Check                                                                      | Source                                                                                                                                                                          | Passes when                                                                                                                                                                                                                                                                                                                                                                |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

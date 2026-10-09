@@ -1272,6 +1272,28 @@ const server = http.createServer(async (req, res) => {
         const methods = Object.fromEntries(banks.map((b) => [b.name, b.methods || []]));
         return send(res, 200, { banks: names, suggested, methods });
       }
+      if (what === 'service-config') {
+        // Read only: the field names PGS masks for every PSP (Service config, approved version).
+        const { client } = dashboardFor(env, profileId);
+        const name = 'COMMON_GATEWAY_BLACKLISTED_LOGGING_KEYS';
+        const body = await fromDashboard(() =>
+          client.getJson(`/serviceConfiguration/name/${encodeURIComponent(name)}`, false),
+        );
+        let value = body;
+        if (typeof value === 'string') {
+          const text = value
+            .trim()
+            .replace(/,\s*]/g, ']')
+            .replace(/\[\s*,/g, '[');
+          if (!text.startsWith('[')) throw new HttpError(502, `${name}: ${text.slice(0, 120)}`);
+          value = JSON.parse(text);
+        }
+        if (!Array.isArray(value)) throw new HttpError(502, `${name} is not a list`);
+        return send(res, 200, {
+          name,
+          keys: [...new Set(value.filter((k) => typeof k === 'string' && k.trim()))],
+        });
+      }
       if (what === 'bank-methods') {
         const { client } = dashboardFor(env, profileId);
         const bank = String(url.searchParams.get('bank') || '').trim();
