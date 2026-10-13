@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Integration QA Automation
 
 Playwright + TypeScript framework for testing Paysecure **integrations, APIs and end-to-end flows**
@@ -757,3 +758,6 @@ step (`POST https://…/v1/payments`).
 2. ⏳ Regex validation (dashboard-configured regex, applied by the API and enforced on the cashier page)
 3. ✅ PSP request/response validation via the back-office (given purchase IDs) · ⏳ automated cashier payment
 4. ⏳ Excel report per run: purchase ID → transaction ID, status, PSP checks, verdict
+=======
+# pgs-svc-test-integration-suites
+>>>>>>> origin/main
