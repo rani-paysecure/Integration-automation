@@ -758,6 +758,65 @@ step (`POST https://…/v1/payments`).
 2. ⏳ Regex validation (dashboard-configured regex, applied by the API and enforced on the cashier page)
 3. ✅ PSP request/response validation via the back-office (given purchase IDs) · ⏳ automated cashier payment
 4. ⏳ Excel report per run: purchase ID → transaction ID, status, PSP checks, verdict
+
+## Run the launcher on a server (Docker)
+
+The same launcher runs in Docker for the whole team (`Dockerfile`, `docker-compose.yml`), behind
+**one team login** – it refuses to start on a public address without it.
+
+| What                                                                                          | Where                                                                             |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Code, framework, Chromium                                                                     | the image (rebuilt on every deploy)                                               |
+| Settings, testers (API keys, dashboard logins), 3DS flow files, uploaded cases, bank profiles | volume `launcher-data` (`/data`) – seeded from the repo on first start, then kept |
+| AI gateway / Jira tokens saved in the UI                                                      | `/data/.env` in the same volume (mode 600)                                        |
+| Report history                                                                                | volume `launcher-reports`                                                         |
+| Payment videos                                                                                | inside the container only – deleted after download / next run                     |
+
+On the server only **UAT** is offered (`LAUNCHER_ENVIRONMENTS=uat`, set in the image) – LOCAL stays on
+your own machine, where nothing changes (`npm run launcher`, no login). "Show browser while paying" is off
+on the server (no screen) – use **Record payment video** instead.
+
+**First deploy** (needs Docker + `docker compose` on the server):
+
+1. On the server (once): `sudo mkdir -p /opt/app && sudo chown $USER /opt/app && cd /opt/app`, then create
+   `.env.server` (see `.env.server.example`): `LAUNCHER_AUTH_USER=qa-team` and
+   `LAUNCHER_AUTH_PASSWORD_HASH=…` – create the hash on your machine with
+   `npm run launcher:hash-password -- '<team password>'`.
+2. On your machine: `deploy/deploy.sh` (default `gautam@23.29.114.29`, folder `/opt/app`). It uploads the code
+   (never `.env`, testers, settings or reports) and runs `docker compose up -d --build`.
+3. Open `http://23.29.114.29:4173` and sign in. Open port 4173 in the server firewall if needed.
+
+**Update**: run `deploy/deploy.sh` again – the volumes keep everything the team saved.
+**Logs**: `ssh gautam@23.29.114.29 'cd /opt/app && docker compose logs -f --tail 100'`.
+Cases committed to git later are added on the next start only if that category file does not exist yet
+on the server – the server's own uploads are never overwritten.
+
+Plain `http://` sends the password unencrypted – use it inside the office network / VPN. For HTTPS, put
+a reverse proxy (Caddy / nginx) with a certificate in front and set `LAUNCHER_COOKIE_SECURE=1`.
+
+### Auto-deploy on merge (GitHub Actions)
+
+`.github/workflows/deploy-launcher.yml` redeploys the launcher to `/opt/app` on the team server **after
+"Integration tests" passes for a push to main** (every merged PR). Same steps as `deploy/deploy.sh`,
+then it waits until the container reports healthy. A failed check never deploys; deploys run one at a time.
+Manual re-deploy: Actions → **Deploy launcher (team server)** → Run workflow.
+
+One-time setup:
+
+1. **Deploy key** (on your Mac): `ssh-keygen -t ed25519 -f ~/.ssh/launcher_deploy -N "" -C github-deploy`,
+   then `ssh-copy-id -i ~/.ssh/launcher_deploy.pub gautam@23.29.114.29`.
+2. **Host key**: `ssh-keyscan -t ed25519 23.29.114.29` – check it matches the server, keep the output.
+3. GitHub → repo **Settings → Environments → New environment `team-server`** (optionally add yourself as
+   required reviewer to approve each deploy), then add:
+   - secret `DEPLOY_SSH_KEY` = contents of `~/.ssh/launcher_deploy` (the private key)
+   - secret `DEPLOY_KNOWN_HOSTS` = the `ssh-keyscan` line
+   - variables (optional – defaults shown): `DEPLOY_HOST=23.29.114.29`, `DEPLOY_USER=gautam`,
+     `DEPLOY_DIR=/opt/app`, `DEPLOY_PORT=22`
+4. The server must accept SSH from GitHub's runners (not only office IPs), and `.env.server` must exist in
+   `/opt/app` (first deploy, see above).
+
+The server password is never stored in GitHub – only the deploy key, which you can revoke by removing its
+line from `~/.ssh/authorized_keys` on the server.
 =======
 # pgs-svc-test-integration-suites
 >>>>>>> origin/main

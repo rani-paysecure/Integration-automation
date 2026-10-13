@@ -33,6 +33,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run validate
+      # Some framework self-tests open Chromium (3DS flows, payment video).
+      - run: npx playwright install --with-deps chromium
       - run: npm run test:framework
         env:
           CI: 'true'

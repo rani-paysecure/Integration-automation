@@ -21,6 +21,7 @@
     "test:debug": "playwright test --debug --workers=1",
     "test:ci": "cross-env CI=true playwright test",
     "launcher": "node tools/launcher/server.js",
+    "launcher:hash-password": "node tools/launcher/auth.js",
     "test:report": "playwright show-report reports/html",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

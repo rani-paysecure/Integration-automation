@@ -1,0 +1,25 @@
+# Never in the image: local secrets, local state, generated output
+.git
+node_modules
+.env
+.env.*
+!.env.example
+!.env.server.example
+profiles.local.json
+settings.local.json
+settings.local.json.tmp
+reports
+test-results
+playwright-report
+blob-report
+playwright/.auth
+playwright/.cache
+psp-flows/**/*.mp4
+psp-flows/**/*.mov
+psp-flows/**/*.webm
+psp-flows/**/*.part
+Claude outputs
+*.log
+.DS_Store
+.idea
+.vscode

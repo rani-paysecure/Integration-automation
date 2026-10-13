@@ -702,6 +702,8 @@
       .mk-service-head b { font-family: ui-monospace, Menlo, monospace; font-size: 14px; } .mk-service-head .hint { margin: 4px 0 0; }
       .mk-service-search { max-width: 280px; margin: 10px 0 6px; }
       .mk-service-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 190px; overflow: auto; }
+      .side-user { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / 0.25); font-size: 12px; }
+      .side-logout { padding: 3px 10px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.5); background: rgb(255 255 255 / 0.15); color: #fff; font-size: 12px; font-weight: 700; box-shadow: none; cursor: pointer; }
       .rcard-3ds { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, #1c7ed6 7%, var(--surface)); border: 1px solid color-mix(in srgb, #1c7ed6 28%, transparent); border-left: 4px solid #1c7ed6; overflow-wrap: anywhere; }
       .rcard-3ds > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .rcard-3ds .row { margin-top: 4px; align-items: center; flex-wrap: wrap; }
       .tds-cap-shot img { width: 120px; height: 84px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
@@ -1094,6 +1096,7 @@
         <div class="side-card">
           <b>Test Launcher</b>
           <span>Integration QA Automation · LOCAL / UAT only. Nothing here can reach production.</span>
+          <span class="side-user hidden" id="sideUser"></span>
         </div>
       </aside>
       <div class="content">
@@ -1726,6 +1729,8 @@
 
     <script>
       const TOKEN = '__LAUNCHER_TOKEN__';
+      /** Signed-in team account on a server deployment ('' locally – no login). */
+      const LAUNCHER_USER = '__LAUNCHER_USER__';
       const CUSTOM = '__custom__';
       const $ = (id) => document.getElementById(id);
       const state = { options: null, settings: null, env: 'uat', editingProfile: null, editingCard: null };
@@ -1735,8 +1740,15 @@
         try { res = await fetch(path, { ...init, headers: { 'content-type': 'application/json', 'x-launcher-token': TOKEN, ...(init.headers || {}) } }); }
         catch { throw new Error('The launcher is not responding – check its terminal window (an error is printed there), then start it again with npm run launcher and reload this page.'); }
         const body = await res.json().catch(() => ({}));
+        // Server deployment: the session ended → back to the sign-in page.
+        if (res.status === 401 && LAUNCHER_USER) { location.replace(`/login?next=${encodeURIComponent(location.pathname)}`); throw new Error('Signed out'); }
         if (!res.ok) { const e = new Error(body.error || `HTTP ${res.status}`); e.status = res.status; throw e; }
         return body;
+      }
+      if (LAUNCHER_USER) {
+        const out = el('button', { type: 'button', class: 'side-logout' }, 'Sign out');
+        out.addEventListener('click', async () => { await fetch('/api/logout', { method: 'POST' }).catch(() => undefined); location.replace('/login'); });
+        $('sideUser').replaceChildren(el('span', {}, `Signed in as ${LAUNCHER_USER}`), out); $('sideUser').classList.remove('hidden');
       }
       const remember = (k, v) => { try { localStorage.setItem(`launcher.${k}`, v); } catch {} };
       const recall = (k) => { try { return localStorage.getItem(`launcher.${k}`); } catch { return null; } };
@@ -2426,7 +2438,7 @@
         const st = $('profileState'); st.className = `state-pill ${p ? (c ? 'ok' : 'warn') : 'off'}`; st.textContent = p ? (c ? 'Credentials saved' : `No ${state.env.toUpperCase()} credentials`) : 'New';
         const ks = $('kycState'); ks.className = `state-pill ${c?.kyc?.enabled ? 'ok' : 'off'}`; ks.textContent = c?.kyc?.enabled ? 'KYC on' : 'KYC off';
         $('kycBox').classList.remove('needs');
-        if (state.lastHealth && state.lastHealth.forProfile === p?.id && state.lastHealth.env === state.env.toUpperCase()) renderHealthLast(state.lastHealth); 
+        if (state.lastHealth && state.lastHealth.forProfile === p?.id && state.lastHealth.env === state.env.toUpperCase()) renderHealthLast(state.lastHealth);
         $('deleteProfile').classList.toggle('hidden', !p); $('profileMsg').textContent = '';
         for (const b of document.querySelectorAll('.pw-box .eye')) { $(b.dataset.for).type = 'password'; b.classList.remove('on'); }
       }
@@ -4127,6 +4139,10 @@
       async function init() {
         [state.options, state.settings] = await Promise.all([api('/api/options'), api('/api/settings')]);
         state.env = recall('env') || state.settings.effective.run.defaultEnvironment;
+        // Server: only the environments it offers (UAT) – a LOCAL choice remembered in this browser is ignored.
+        if (!state.options.environments.some((e) => e.id === state.env)) state.env = state.options.environments[0]?.id || 'uat';
+        // Server (Docker): no screen – the browser cannot be shown; record a video instead.
+        if (state.options.headlessOnly) { $('headed').checked = false; $('headed').disabled = true; $('headed').parentElement.title = 'Not available on the server (no screen) – use "Record payment video" instead'; $('headed').parentElement.classList.add('disabled'); }
         state.tests = []; state.selected = new Set();
         renderEnvs();
         renderAll();
@@ -4594,7 +4610,7 @@
             <div><label for="s2sRemoteIp">remote_ip <span class="hint">(customer IP – must differ from the IP calling the API)</span></label><input id="s2sRemoteIp" /></div>
             <div><label for="s2sRemember">remember_card</label><select id="s2sRemember"><option value="off">off – card not saved</option><option value="on">on – card saved for the customer</option></select></div>
           </div>
-          
+
           </div>
           <div class="ed-sec" data-s="browser">
             <h4>Browser data</h4><p class="hint">Sent for 3DS. "From the Run tab device" copies user agent and screen of the chosen device.</p>
@@ -4610,7 +4626,7 @@
           </div>
           <label for="s2sUa">user_agent</label><input id="s2sUa" />
           <label class="check" style="margin-top: 10px"><input id="s2sJs" type="checkbox" /> javascript_enabled</label>
-          
+
           </div>
           <div class="ed-sec" data-s="extra">
             <h4>Extra fields</h4><p class="hint">Optional – any extra keys sent with every S2S request.</p>
@@ -4664,18 +4680,18 @@
             <input id="sessionCustomerId" placeholder="e.g. 6ab6aa28228e19bf7ef100d5" />
           </div>
 
-          
+
             <div id="sessionCustomerBox">
             <label for="sessionCustomer">Create customer body <span class="hint">JSON · keep <code>{{unique}}</code> in <code>merchantCustomerId</code> – it must be new for every customer</span></label>
             <textarea id="sessionCustomer" class="code" rows="13" spellcheck="false"></textarea>
           </div>
-          
+
           </div>
           <div class="ed-sec" data-s="session">
             <h4>Session request</h4><p class="hint">Body of POST /v1/createSession. customerId, redirects and callbacks are added for you.</p><label for="sessionBody">Create session body <span class="hint">JSON · <code>customerId</code> is added automatically</span></label>
           <textarea id="sessionBody" class="code" rows="10" spellcheck="false"></textarea>
 
-          
+
             <details class="auto-filled">
             <summary>Filled in automatically</summary>
             <ul>

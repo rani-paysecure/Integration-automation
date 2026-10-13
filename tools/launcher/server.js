@@ -8,7 +8,9 @@
  * and suite, then run Playwright and open the results.
  *
  * Security
- * - Binds to 127.0.0.1 only; rejects foreign Host headers (DNS rebinding).
+ * - Binds to 127.0.0.1 by default and rejects foreign Host headers (DNS rebinding).
+ * - On a server (LAUNCHER_HOST=0.0.0.0, e.g. Docker) a login is mandatory: LAUNCHER_AUTH_USER +
+ *   LAUNCHER_AUTH_PASSWORD(_HASH) – see auth.js. It refuses to start without them.
  * - Every mutating call needs a per-process token embedded in the page (CSRF).
  * - API keys are stored only in profiles.local.json (git-ignored, mode 600),
  *   never sent back to the browser, and masked in streamed output.
@@ -28,6 +30,7 @@ const caseImport = require('./test-case-import');
 const bankProfiles = require('../../config/bank-profiles');
 const jira = require('./jira');
 const videoZip = require('./video-zip');
+const auth = require('./auth');
 const paymentMethodCases = require('./payment-method-cases');
 const regexCases = require('./regex-cases');
 const { reportWorkbook } = require('./report-xlsx');
@@ -62,7 +65,19 @@ const FLOW_FILE_TYPES = {
 const MAX_FLOW_FILE_BYTES = 200 * 1024 * 1024;
 const PLAYWRIGHT_CLI = require.resolve('@playwright/test/cli', { paths: [ROOT] });
 
-const HOST = '127.0.0.1';
+/** 127.0.0.1 locally; 0.0.0.0 in Docker / on a server (then a login is required). */
+const HOST = process.env.LAUNCHER_HOST || '127.0.0.1';
+const LOOPBACK = ['127.0.0.1', 'localhost', '::1'].includes(HOST);
+/** Server / Docker: no screen – "Show browser while paying" is not possible. */
+const HEADLESS_ONLY = process.env.LAUNCHER_HEADLESS_ONLY === '1';
+const AUTH = auth.config().enabled;
+if (!LOOPBACK && !AUTH) {
+  process.stderr.write(
+    `\n  LAUNCHER_HOST=${HOST} makes the launcher reachable from other machines – a login is required.\n` +
+      '  Set LAUNCHER_AUTH_USER and LAUNCHER_AUTH_PASSWORD (or LAUNCHER_AUTH_PASSWORD_HASH) and start again.\n\n',
+  );
+  process.exit(1);
+}
 const PORT = Number(process.env.LAUNCHER_PORT || 4173);
 const TOKEN = crypto.randomBytes(24).toString('hex');
 const MAX_BODY_BYTES = 64 * 1024;
@@ -70,7 +85,18 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 const MAX_LOG_LINES = 5000;
 
-const ENVIRONMENT_IDS = ['uat', 'local'];
+/**
+ * Environments this launcher offers. LAUNCHER_ENVIRONMENTS limits them – the server (Docker) runs
+ * UAT only (LAUNCHER_ENVIRONMENTS=uat); locally both LOCAL and UAT stay available.
+ */
+const ENVIRONMENT_IDS = (() => {
+  const all = ['uat', 'local'];
+  const only = String(process.env.LAUNCHER_ENVIRONMENTS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => all.includes(e));
+  return only.length > 0 ? only : all;
+})();
 /** Cashier devices – keep in sync with src/pages/devices.ts. */
 const DEVICES = {
   desktop: 'Desktop – Chrome, 1280×900',
@@ -598,6 +624,10 @@ function childEnvFor(env) {
   const childEnv = { ...process.env, TEST_ENV: env, FORCE_COLOR: '0', TEST_PROFILE: '' };
   delete childEnv.ANTHROPIC_API_KEY; // tests never need AI credentials
   delete childEnv.AI_GATEWAY_TOKEN;
+  // The launcher's own login never reaches the test runs.
+  delete childEnv.LAUNCHER_AUTH_USER;
+  delete childEnv.LAUNCHER_AUTH_PASSWORD;
+  delete childEnv.LAUNCHER_AUTH_PASSWORD_HASH;
   return childEnv;
 }
 
@@ -860,7 +890,7 @@ function startRun(input) {
     RUN_PAY_CARD: payCard,
     RUN_DEVICE: device,
     RUN_PAY_FIELD_CASES: payCard && input.payFieldCases === true ? '1' : '',
-    RUN_HEADED: input.headed === true ? '1' : '',
+    RUN_HEADED: input.headed === true && !HEADLESS_ONLY ? '1' : '',
     RUN_RECORD_VIDEO: input.recordVideo === true ? '1' : '',
     ATTACH_HTTP_ALWAYS: '1',
   };
@@ -972,7 +1002,8 @@ function startRun(input) {
   if (!Number.isInteger(workers) || workers < 0 || workers > 16) {
     throw new HttpError(400, 'Workers must be 1–16 (or empty for default)');
   }
-  if (input.headed === true || bankConfigKeys.length > 0) args.push('--workers=1');
+  if ((input.headed === true && !HEADLESS_ONLY) || bankConfigKeys.length > 0)
+    args.push('--workers=1');
   else if (workers > 0) args.push(`--workers=${workers}`);
   const retries = Number(input.retries || 0);
   if (!Number.isInteger(retries) || retries < 0 || retries > 3) {
@@ -1148,13 +1179,58 @@ function serveFile(res, baseDir, relative) {
 }
 
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+/** On a server any Host is accepted (the login protects it) unless LAUNCHER_ALLOWED_HOSTS lists them. */
+const SERVER_HOSTS = String(process.env.LAUNCHER_ALLOWED_HOSTS || '')
+  .split(',')
+  .map((h) => h.trim())
+  .filter(Boolean);
+const hostAllowed = (host) =>
+  LOOPBACK ? ALLOWED_HOSTS.has(host) : SERVER_HOSTS.length === 0 || SERVER_HOSTS.includes(host);
 
 const server = http.createServer(async (req, res) => {
   try {
-    if (!ALLOWED_HOSTS.has(String(req.headers.host))) throw new HttpError(403, 'Forbidden host');
+    if (!hostAllowed(String(req.headers.host))) throw new HttpError(403, 'Forbidden host');
     const url = new URL(req.url || '/', `http://${req.headers.host}`);
     const method = req.method || 'GET';
     const isApi = url.pathname.startsWith('/api/');
+    // Health check for Docker – says nothing about the launcher.
+    if (method === 'GET' && url.pathname === '/healthz') return send(res, 200, { ok: true });
+    // ── login (server deployments) ──
+    if (AUTH) {
+      if (method === 'GET' && url.pathname === '/login') {
+        if (auth.isLoggedIn(req)) {
+          res.writeHead(302, { location: '/' });
+          return res.end();
+        }
+        return send(res, 200, auth.LOGIN_PAGE, 'text/html; charset=utf-8');
+      }
+      if (method === 'POST' && url.pathname === '/api/login') {
+        const result = auth.login(req, await readJson(req, 4096));
+        if ('error' in result) throw new HttpError(result.status, result.error);
+        res.writeHead(200, {
+          'content-type': 'application/json',
+          'set-cookie': result.cookie,
+          'cache-control': 'no-store',
+        });
+        return res.end(JSON.stringify({ ok: true }));
+      }
+      if (method === 'POST' && url.pathname === '/api/logout') {
+        res.writeHead(200, {
+          'content-type': 'application/json',
+          'set-cookie': auth.logout(req),
+          'cache-control': 'no-store',
+        });
+        return res.end(JSON.stringify({ ok: true }));
+      }
+      if (!auth.isLoggedIn(req)) {
+        if (isApi) throw new HttpError(401, 'Signed out – reload the page and sign in again');
+        const next = url.pathname + url.search;
+        res.writeHead(302, {
+          location: `/login${next && next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`,
+        });
+        return res.end();
+      }
+    }
     if (isApi && method !== 'GET' && req.headers['x-launcher-token'] !== TOKEN) {
       throw new HttpError(403, 'Invalid launcher token');
     }
@@ -1234,7 +1310,10 @@ const server = http.createServer(async (req, res) => {
       }
     }
     if (method === 'GET' && url.pathname === '/') {
-      const html = fs.readFileSync(HTML_FILE, 'utf8').replace('__LAUNCHER_TOKEN__', TOKEN);
+      const html = fs
+        .readFileSync(HTML_FILE, 'utf8')
+        .replace('__LAUNCHER_TOKEN__', TOKEN)
+        .replace('__LAUNCHER_USER__', AUTH ? auth.config().user : '');
       return send(res, 200, html, 'text/html; charset=utf-8');
     }
     if (method === 'GET' && url.pathname === '/api/options') {
@@ -1242,6 +1321,7 @@ const server = http.createServer(async (req, res) => {
         environments: environments(),
         profiles: publicProfiles(),
         run: runState(),
+        headlessOnly: HEADLESS_ONLY,
       });
     }
     if (method === 'GET' && url.pathname.startsWith('/api/dashboard/')) {

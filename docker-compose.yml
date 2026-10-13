@@ -1,0 +1,24 @@
+# Test Launcher on a server:  docker compose up -d --build   →  http://<server>:4173
+# Login: LAUNCHER_AUTH_USER / LAUNCHER_AUTH_PASSWORD_HASH in .env.server (see .env.server.example).
+# Fixed project name: same container / volume names whatever the folder is called (e.g. /opt/app).
+name: integration-launcher
+
+services:
+  launcher:
+    build: .
+    image: integration-qa-launcher:latest
+    container_name: qa-launcher
+    restart: unless-stopped
+    env_file: .env.server
+    ports:
+      - '${LAUNCHER_PUBLIC_PORT:-4173}:4173'
+    volumes:
+      - launcher-data:/data
+      - launcher-reports:/app/reports
+    # Chromium needs more shared memory than Docker's 64 MB default.
+    shm_size: '1gb'
+    init: true
+
+volumes:
+  launcher-data:
+  launcher-reports:
