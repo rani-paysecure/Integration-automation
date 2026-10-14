@@ -1,11 +1,12 @@
-name: Deploy launcher (team server)
+name: Integration QA Automation – Deploy
+run-name: 'Integration QA Automation – Deploy · ${{ github.event.workflow_run.head_branch || github.ref_name }}'
 
-# Auto-deploy on merge: after "Integration tests" (typecheck, lint, framework self-tests) passes
+# Auto-deploy on merge: after "Integration QA Automation – Tests" (typecheck, lint, framework self-tests) passes
 # for a push to main, the launcher is rebuilt on the team server (/opt/apps/integration-launcher, docker compose).
-# Manual re-deploy: Actions → Deploy launcher → Run workflow.
+# Manual re-deploy: Actions → Integration QA Automation – Deploy → Run workflow.
 on:
   workflow_run:
-    workflows: [Integration tests]
+    workflows: ['Integration QA Automation – Tests']
     types: [completed]
     branches: [main]
   workflow_dispatch:

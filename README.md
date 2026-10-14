@@ -798,7 +798,7 @@ a reverse proxy (Caddy / nginx) with a certificate in front and set `LAUNCHER_CO
 ### Auto-deploy on merge (GitHub Actions)
 
 `.github/workflows/deploy-launcher.yml` redeploys the launcher to `/opt/apps/integration-launcher` on the team server **after
-"Integration tests" passes for a push to main** (every merged PR). Same steps as `deploy/deploy.sh`,
+"Integration QA Automation – Tests" passes for a push to main** (every merged PR). Same steps as `deploy/deploy.sh`,
 then it waits until the container reports healthy. A failed check never deploys; deploys run one at a time.
 Manual re-deploy: Actions → **Deploy launcher (team server)** → Run workflow.
 
