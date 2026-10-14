@@ -71,6 +71,18 @@ const LOOPBACK = ['127.0.0.1', 'localhost', '::1'].includes(HOST);
 /** Server / Docker: no screen – "Show browser while paying" is not possible. */
 const HEADLESS_ONLY = process.env.LAUNCHER_HEADLESS_ONLY === '1';
 const AUTH = auth.config().enabled;
+// A hash cut off by docker compose ($ read as variables) would make every login fail – say so.
+if (
+  AUTH &&
+  auth.config().hash &&
+  !/^scrypt\$[0-9a-f]{16,}\$[0-9a-f]{32,}$/.test(auth.config().hash)
+) {
+  process.stderr.write(
+    '\n  LAUNCHER_AUTH_PASSWORD_HASH is incomplete – in .env.server put the hash in single quotes:\n' +
+      "    LAUNCHER_AUTH_PASSWORD_HASH='scrypt$…$…'\n  (without them docker compose drops every part after a $ sign).\n\n",
+  );
+  process.exit(1);
+}
 if (!LOOPBACK && !AUTH) {
   process.stderr.write(
     `\n  LAUNCHER_HOST=${HOST} makes the launcher reachable from other machines – a login is required.\n` +

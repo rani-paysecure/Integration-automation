@@ -1,7 +1,7 @@
 name: Deploy launcher (team server)
 
 # Auto-deploy on merge: after "Integration tests" (typecheck, lint, framework self-tests) passes
-# for a push to main, the launcher is rebuilt on the team server (/opt/app, docker compose).
+# for a push to main, the launcher is rebuilt on the team server (/opt/apps/integration-launcher, docker compose).
 # Manual re-deploy: Actions → Deploy launcher → Run workflow.
 on:
   workflow_run:
@@ -26,9 +26,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    # Secrets live in the GitHub Environment "team-server" (Settings → Environments).
-    # It is the UAT test-launcher host – there is no production environment in this project.
-    environment: team-server
+    # Secrets are repository secrets (Settings → Secrets and variables → Actions):
+    # DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS. The target is the UAT test-launcher host –
+    # there is no production environment in this project.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
         run: |
           if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$SSH_KNOWN_HOSTS" ]; then
-            echo "::error::Set the DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets in the 'team-server' environment."
+            echo "::error::Set the DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS repository secrets (Settings → Secrets and variables → Actions)."
             exit 1
           fi
           install -m 700 -d ~/.ssh
@@ -60,11 +60,11 @@ jobs:
             ServerAliveInterval 30
           CFG
 
-      - name: Deploy to /opt/app
+      - name: Deploy to /opt/apps/integration-launcher
         env:
           DEPLOY_USER: ${{ vars.DEPLOY_USER || 'gautam' }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST || '23.29.114.29' }}
-          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/app' }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/apps/integration-launcher' }}
         run: bash deploy/deploy.sh "$DEPLOY_USER@$DEPLOY_HOST" "$DEPLOY_DIR"
 
       - name: Remove the key

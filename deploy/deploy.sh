@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 # Deploys the Test Launcher to the team server with Docker.
-#   deploy/deploy.sh                       → gautam@23.29.114.29, folder /opt/app
+#   deploy/deploy.sh                       → gautam@23.29.114.29, folder /opt/apps/integration-launcher
 #   deploy/deploy.sh user@host some/folder
 # Needs: your SSH access to the server; Docker + "docker compose" on the server;
 #        .env.server created ON THE SERVER once (see .env.server.example).
 # Uploads the code only – never .env, testers, settings, reports or videos.
 set -euo pipefail
 TARGET="${1:-gautam@23.29.114.29}"
-DIR="${2:-/opt/app}"
+DIR="${2:-/opt/apps/integration-launcher}"
 cd "$(dirname "$0")/.."
 
 echo "→ Uploading code to $TARGET:$DIR"
-# /opt/app must exist and belong to the SSH user (once: sudo mkdir -p /opt/app && sudo chown \$USER /opt/app).
+# The upload mirrors the code with --delete: the folder must belong to the launcher alone –
+# never a shared parent such as /opt/apps (other apps there would be deleted).
+case "$DIR" in
+  /|/opt|/opt/|/opt/apps|/opt/apps/|/home|/home/*/|/root|/srv|/var|/usr*|/etc*)
+    echo "  Refusing to deploy into $DIR – use a folder of its own, e.g. /opt/apps/integration-launcher"; exit 1 ;;
+esac
+# It must exist and belong to the SSH user (once: sudo mkdir -p <dir> && sudo chown \$USER <dir>).
 ssh "$TARGET" "test -d '$DIR' && test -w '$DIR' || { echo '  $DIR is missing or not writable – run once on the server: sudo mkdir -p $DIR && sudo chown \$USER $DIR'; exit 1; }"
 rsync -az --delete \
   --exclude='.git' --exclude='node_modules' \

@@ -141,5 +141,6 @@ if (require.main === module) {
     process.stderr.write("Usage: npm run launcher:hash-password -- '<password>'\n");
     process.exit(1);
   }
-  process.stdout.write(`LAUNCHER_AUTH_PASSWORD_HASH=${hashPassword(pw)}\n`);
+  // Single quotes: docker compose would read the $ signs of the hash as variables otherwise.
+  process.stdout.write(`LAUNCHER_AUTH_PASSWORD_HASH='${hashPassword(pw)}'\n`);
 }
